@@ -15,12 +15,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         className={cn(
-          'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background',
+          'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none',
           {
-            'bg-primary text-primary-foreground hover:bg-primary/90': variant === 'default',
-            'border border-input hover:bg-accent hover:text-accent-foreground': variant === 'outline',
-            'hover:bg-accent hover:text-accent-foreground': variant === 'ghost',
-            'bg-destructive text-destructive-foreground hover:bg-destructive/90': variant === 'destructive',
+            'bg-blue-600 text-white hover:bg-blue-700': variant === 'default',
+            'border border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-900': variant === 'outline',
+            'hover:bg-gray-100 hover:text-gray-900': variant === 'ghost',
+            'bg-red-600 text-white hover:bg-red-700': variant === 'destructive',
           },
           {
             'h-10 py-2 px-4': size === 'default',

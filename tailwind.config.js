@@ -19,6 +19,8 @@ module.exports = {
           500: '#64748b',
           600: '#475569',
         },
+        // ✅ Add this section
+        border: '#e5e7eb', // Tailwind's gray.200 equivalent
       },
     },
   },
