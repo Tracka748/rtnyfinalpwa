@@ -25,7 +25,7 @@ export default function HomePage() {
       <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2">Exclusive Events</h3>
-          <p className="text-gray-600">Access to Rochester&apos;sottest nightlife events</p>
+          <p className="text-gray-600">Access to Rochester&#39;s hottest nightlife events</p>
         </div>
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2">Tier Benefits</h3>
