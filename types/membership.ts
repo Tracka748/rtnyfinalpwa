@@ -1,5 +1,11 @@
 export type MembershipTier = 'basic' | 'promoter' | 'bottle_girl' | 'team'
 
+export interface Perk {
+  id: string
+  name: string
+  description?: string
+}
+
 export interface Membership {
   id: string
   user_id: string
