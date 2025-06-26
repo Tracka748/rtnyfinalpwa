@@ -9,16 +9,26 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant = 'default',
+      size = 'default',
+      asChild = false,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? 'span' : 'button'
-    
+
     return (
       <Comp
         className={cn(
           'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none',
           {
             'bg-blue-600 text-white hover:bg-blue-700': variant === 'default',
-            'border border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-900': variant === 'outline',
+            'border border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-900':
+              variant === 'outline',
             'hover:bg-gray-100 hover:text-gray-900': variant === 'ghost',
             'bg-red-600 text-white hover:bg-red-700': variant === 'destructive',
           },

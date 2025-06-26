@@ -12,7 +12,7 @@ export default function HomePage() {
         <p className="text-xl text-gray-600 mb-8">
           Your gateway to Rochester nightlife events and exclusive experiences
         </p>
-        
+
         <div className="space-x-4">
           <Button asChild>
             <Link href="/events">Browse Events</Link>
@@ -22,19 +22,25 @@ export default function HomePage() {
           </Button>
         </div>
       </div>
-      
+
       <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2">Exclusive Events</h3>
-          <p className="text-gray-600">Access to Hottest nightlife events in Rochester</p>
+          <p className="text-gray-600">
+            Access to Hottest nightlife events in Rochester
+          </p>
         </div>
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2">Tier Benefits</h3>
-          <p className="text-gray-600">Unlock perks and discounts with membership tiers</p>
+          <p className="text-gray-600">
+            Unlock perks and discounts with membership tiers
+          </p>
         </div>
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2">Win Big</h3>
-          <p className="text-gray-600">Every ticket purchase enters you in sweepstakes</p>
+          <p className="text-gray-600">
+            Every ticket purchase enters you in sweepstakes
+          </p>
         </div>
       </div>
     </div>

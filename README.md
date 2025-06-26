@@ -23,6 +23,7 @@ Your gateway to Rochester nightlife events and exclusive experiences.
 ## Quick Start
 
 1. **Clone and install dependencies**:
+
    ```bash
    git clone <your-repo>
    cd rocticketny
@@ -30,6 +31,7 @@ Your gateway to Rochester nightlife events and exclusive experiences.
    ```
 
 2. **Set up environment variables**:
+
    ```bash
    cp .env.example .env.local
    # Fill in your Supabase credentials
@@ -72,27 +74,33 @@ rocticketny/
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/login` - Login with email/phone
 - `POST /api/v1/auth/verify` - Verify OTP code
 
 ### Memberships
+
 - `GET /api/v1/memberships/me` - Get current user membership
 - `PUT /api/v1/memberships/me` - Update membership
 
 ### Events
+
 - `GET /api/v1/events` - List events
 - `GET /api/v1/events/[id]` - Get event details
 
 ### Tickets
+
 - `POST /api/v1/tickets/purchase` - Purchase tickets
 - `GET /api/v1/tickets` - Get user tickets
 
 ### Promo Codes
+
 - `POST /api/v1/promo/validate` - Validate promo code
 
 ## Deployment
 
 1. **Deploy to Vercel**:
+
    ```bash
    npm run build
    vercel --prod
