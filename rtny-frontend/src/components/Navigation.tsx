@@ -36,6 +36,12 @@ export function Navigation({
       label: 'My Tickets',
       icon: Ticket,
       show: !!user
+    },
+    {
+      id: 'profile',
+      label: 'Profile',
+      icon: User,
+      show: !!user
     }
   ]
 
