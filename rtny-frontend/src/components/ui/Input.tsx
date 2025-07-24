@@ -2,7 +2,7 @@ import React from 'react'
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
-export function Input({ className, type, ...props }: InputProps) {
+function Input({ className, type, ...props }: InputProps) {
   return (
     <input
       type={type}
@@ -18,3 +18,5 @@ export function Input({ className, type, ...props }: InputProps) {
     />
   )
 }
+
+export { Input }

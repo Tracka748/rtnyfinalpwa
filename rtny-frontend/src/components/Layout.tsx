@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
 import { Navigation } from './Navigation'
 
 interface LayoutProps {
@@ -8,9 +7,8 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [currentPage, setCurrentPage] = useState('events')
-  const { user } = useAuth()
 
-  const handleNavigate = (page: string, eventId?: string) => {
+  const handleNavigate = (page: string) => {
     setCurrentPage(page)
     // Add your page navigation logic here
   }

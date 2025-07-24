@@ -1,3 +1,12 @@
+export * from './auth'
+export * from './events'
+export * from './tickets'
+export * from './venues'
+export * from './promoters'
+export * from './membership'
+export * from './sweepstakes'
+export * from './promo-codes'
+
 export interface User {
   id: string
   email: string
@@ -40,21 +49,46 @@ export interface Venue {
 
 export interface Event {
   id: string
-  venue_id: string
-  title: string
-  description?: string
+  name: string
+  description: string
   event_date: string
   doors_open?: string
   event_end?: string
-  status: 'draft' | 'published' | 'cancelled' | 'completed'
-  total_tickets: number
-  available_tickets: number
-  base_price: number
+  venue_id: string
+  venue_name?: string
+  venue_address?: string
+  promoter_id: string
+  category: string
+  status: 'draft' | 'active' | 'sold_out' | 'cancelled'
+  featured: boolean
+  age_restriction: string
+  ticket_types: TicketType[]
+  max_tickets_per_user: number
+  special_instructions?: string
   image_url?: string
-  tags: any[]
-  age_restriction?: number
+  tags?: string[]
   created_at: string
   updated_at: string
+  
+  // Joined data (optional)
+  venues?: Venue
+  promoters?: User
+  tickets?: Ticket[]
+  
+  // Computed properties
+  available_tickets?: number
+  min_price?: number
+  max_price?: number
+}
+
+export interface TicketType {
+  id: string
+  name: string
+  price: number
+  available_count: number
+  total_count: number
+  description?: string
+  perks?: string[]
 }
 
 export interface Ticket {
@@ -72,6 +106,20 @@ export interface Ticket {
   metadata: any
   created_at: string
   updated_at: string
+}
+
+export interface FilterOptions {
+  category?: string
+  venue?: string
+  date_range?: 'today' | 'this_week' | 'this_month' | 'all'
+  price_range?: 'free' | 'under_25' | 'under_50' | 'under_100' | 'all'
+  status?: 'active' | 'sold_out' | 'all'
+  featured?: boolean
+}
+
+export interface SortOptions {
+  field: 'date' | 'name' | 'price' | 'created_at'
+  direction: 'asc' | 'desc'
 }
 
 export interface Perk {

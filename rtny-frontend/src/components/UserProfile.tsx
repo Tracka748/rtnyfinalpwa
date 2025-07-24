@@ -1,25 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Button } from './ui/Button'
-import { Input } from './ui/Input'
-import { Alert } from './ui/Alert'
-import { 
-  User, 
-  CreditCard, 
-  Star, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  ShieldCheck, 
-  Bell, 
-  Tag, 
-  Crown, 
-  Trophy, 
-  Gift, 
-  LogOut 
-} from 'lucide-react'
+import { Button } from '../components/ui/Button'
+import { Alert } from '../components/ui/Alert'
+import { Input } from '../components/ui/Input'
+import { User } from '../types'
+import { Bell, Star, Gift, Trophy, ShieldCheck, CreditCard, Tag, Crown, Mail, Phone, LogOut, Calendar } from 'lucide-react'
 
 interface UserProfileProps {
+  user: {
+    id: string
+    email: string
+    phone?: string
+    first_name?: string
+    last_name?: string
+    preferences: {
+      notifications_enabled: boolean
+      marketing_emails: boolean
+      guest_account: boolean
+    }
+    tier: 'free' | 'premium' | 'vip'
+    total_spent: number
+    total_purchases: number
+    membership_expires_at?: string
+  }
   onClose: () => void
 }
 
@@ -29,25 +32,39 @@ interface PerkBenefit {
   description: string
 }
 
-const MEMBERSHIP_BENEFITS: Record<'free' | 'premium' | 'vip', PerkBenefit[]> = {
-  free: [
-    { icon: Calendar, title: 'Early Access', description: 'Get notified about upcoming events' },
-    { icon: Bell, title: 'Event Updates', description: 'Stay informed about your favorite events' }
+const perks: Record<'free' | 'premium' | 'vip', PerkBenefit[]> = {
+  'free': [
+    { icon: Bell, title: 'Event Notifications', description: 'Get notified about upcoming events' },
+    { icon: Star, title: 'Member Discounts', description: 'Enjoy special member-only discounts' },
+    { icon: Gift, title: 'Exclusive Perks', description: 'Access to member-exclusive events' }
   ],
-  premium: [
-    { icon: Star, title: 'VIP Entry', description: 'Skip the lines at events' },
-    { icon: Gift, title: 'Exclusive Perks', description: 'Access special member-only offers' },
-    { icon: Calendar, title: 'Priority Booking', description: 'Book tickets before they go on sale' }
+  'premium': [
+    { icon: ShieldCheck, title: 'Priority Access', description: 'Skip the lines at events' },
+    { icon: CreditCard, title: 'VIP Discounts', description: 'Enjoy even more discounts' },
+    { icon: Tag, title: 'Special Offers', description: 'Get exclusive offers and deals' }
   ],
-  vip: [
-    { icon: Trophy, title: 'VIP Lounge', description: 'Access exclusive VIP areas' },
-    { icon: Gift, title: 'Special Offers', description: 'Exclusive discounts and promotions' },
-    { icon: Star, title: 'Personal Concierge', description: 'Dedicated event assistance' }
+  'vip': [
+    { icon: Crown, title: 'VIP Lounge', description: 'Access to VIP lounges' },
+    { icon: Star, title: 'Personal Concierge', description: 'Personal assistance at events' },
+    { icon: Gift, title: 'VIP Perks', description: 'Exclusive VIP experiences' }
   ]
 }
 
-export function UserProfile({ onClose }: UserProfileProps) {
-  const { user, updateProfile, signOut, hasPremiumAccess, hasVipAccess } = useAuth()
+const renderPerks = (tier: 'free' | 'premium' | 'vip') => {
+  return perks[tier]?.map((benefit: PerkBenefit, index: number) => (
+    <div key={index} className="flex items-center gap-4 p-4">
+      <benefit.icon className="h-6 w-6 text-primary" />
+      <div>
+        <h3 className="font-semibold">{benefit.title}</h3>
+        <p className="text-sm text-gray-600">{benefit.description}</p>
+      </div>
+    </div>
+  ))
+}
+
+export function UserProfile({ user, onClose }: UserProfileProps) {
+  const { updateProfile, signOut } = useAuth()
+  const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
@@ -57,7 +74,6 @@ export function UserProfile({ onClose }: UserProfileProps) {
     notifications_enabled: user?.preferences?.notifications_enabled || false,
     marketing_emails: user?.preferences?.marketing_emails || false
   })
-  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,7 +176,7 @@ export function UserProfile({ onClose }: UserProfileProps) {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">{user.tier.charAt(0).toUpperCase() + user.tier.slice(1)} Membership</h3>
-                <p className="text-sm text-gray-600">Expires {new Date(user.membership_expires_at).toLocaleDateString()}</p>
+                <p className="text-sm text-gray-600">Expires {user.membership_expires_at ? new Date(user.membership_expires_at).toLocaleDateString() : 'N/A'}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

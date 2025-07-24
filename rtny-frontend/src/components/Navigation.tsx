@@ -1,4 +1,5 @@
-import { useState } from 'react'
+
+import type { LucideProps } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { Calendar, Ticket, User, LogIn, Crown } from 'lucide-react'
 
@@ -12,7 +13,7 @@ interface NavigationProps {
 interface NavItem {
   id: string
   label: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: React.ComponentType<LucideProps>
   show: boolean
 }
 

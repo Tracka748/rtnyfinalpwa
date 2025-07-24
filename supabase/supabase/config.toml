@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "rtnyfinalpwa"
+project_id = "supabase"
 
 [api]
 enabled = true
@@ -42,24 +42,22 @@ default_pool_size = 20
 # Maximum number of client connections allowed.
 max_client_conn = 100
 
-[db.vault]
-secret_key = "env(SECRET_VALUE)"
+# [db.vault]
+# secret_key = "env(SECRET_VALUE)"
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.
 enabled = true
-# Path to the migrations directory
-path = "./migrations"
+# Specifies an ordered list of schema files that describe your database.
+# Supports glob patterns relative to supabase directory: "./schemas/*.sql"
+schema_paths = []
 
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
 enabled = true
-# Path to the seed SQL file
-path = "./seed.sql"
-
-[db.roles]
-# Path to the roles SQL file
-path = "./roles.sql"
+# Specifies an ordered list of seed files to load during db reset.
+# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
+sql_paths = ["./seed.sql"]
 
 [realtime]
 enabled = true

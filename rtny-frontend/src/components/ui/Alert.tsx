@@ -6,11 +6,12 @@ interface AlertProps {
   children: React.ReactNode
 }
 
-export function Alert({
+function Alert({
   variant = 'default',
   className = '',
-  children
-}: AlertProps) {
+  children,
+  ...props
+}: AlertProps & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={`
@@ -20,8 +21,11 @@ export function Alert({
           : 'border-destructive/50 text-destructive'}
         ${className}
       `}
+      {...props}
     >
       {children}
     </div>
   )
 }
+
+export { Alert }

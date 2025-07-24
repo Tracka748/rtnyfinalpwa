@@ -1,8 +1,25 @@
 import { supabase } from './client'
-import { UserProfile } from '../types'
+import { 
+  User, 
+  Membership, 
+  Venue, 
+  Event, 
+  Ticket, 
+  Perk, 
+  MembershipPerk, 
+  SweepstakesEntry
+} from '../../types'
 
-import { supabase } from './client'
-import { User, Membership, Venue, Event, Ticket, Perk, MembershipPerk, SweepstakesEntry } from '../types'
+// Export the database object
+export const db = supabase
+
+// Error Handling
+export class DatabaseError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DatabaseError'
+  }
+}
 
 // Users
 export async function getUser(userId: string): Promise<User | null> {
@@ -131,6 +148,7 @@ export async function getEvents(filters?: {
   status?: 'draft' | 'published' | 'cancelled' | 'completed'
   startDate?: string
   endDate?: string
+  search?: string
 }): Promise<Event[]> {
   try {
     let query = supabase
@@ -154,12 +172,32 @@ export async function getEvents(filters?: {
       query = query.lte('event_date', filters.endDate)
     }
 
+    if (filters?.search) {
+      query = query.ilike('title', `%${filters.search}%`)
+    }
+
     const { data, error } = await query
 
     if (error) throw new DatabaseError(error.message)
     return data as Event[]
   } catch (err) {
     console.error('Error fetching events:', err)
+    throw err
+  }
+}
+
+export async function getEventById(eventId: string): Promise<Event | null> {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single()
+
+    if (error) throw new DatabaseError(error.message)
+    return data as Event
+  } catch (err) {
+    console.error('Error fetching event:', err)
     throw err
   }
 }
@@ -338,202 +376,6 @@ export function subscribeToSweepstakesEntries(userId: string, callback: (entry: 
       },
       (payload) => {
         callback(payload.new as SweepstakesEntry)
-      }
-    )
-    .subscribe()
-}
-
-// Error Handling
-export class DatabaseError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'DatabaseError'
-  }
-}
-
-// Users
-export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (error) throw new DatabaseError(error.message)
-    return data as UserProfile
-  } catch (err) {
-    console.error('Error fetching user profile:', err)
-    throw err
-  }
-}
-
-export async function updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single()
-
-    if (error) throw new DatabaseError(error.message)
-    return data as UserProfile
-  } catch (err) {
-    console.error('Error updating user profile:', err)
-    throw err
-  }
-}
-
-// Events
-export async function getEvents(filters?: {
-  status?: string
-  search?: string
-  venueId?: string
-}): Promise<Event[]> {
-  try {
-    let query = supabase
-      .from('events')
-      .select('*')
-      .order('start_time', { ascending: false })
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status)
-    }
-
-    if (filters?.search) {
-      query = query.ilike('title', `%${filters.search}%`)
-    }
-
-    if (filters?.venueId) {
-      query = query.eq('venue_id', filters.venueId)
-    }
-
-    const { data, error } = await query
-
-    if (error) throw new DatabaseError(error.message)
-    return data as Event[]
-  } catch (err) {
-    console.error('Error fetching events:', err)
-    throw err
-  }
-}
-
-export async function getEventById(eventId: string): Promise<Event | null> {
-  try {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .single()
-
-    if (error) throw new DatabaseError(error.message)
-    return data as Event
-  } catch (err) {
-    console.error('Error fetching event:', err)
-    throw err
-  }
-}
-
-// Tickets
-export async function createTicket(ticket: Omit<Ticket, 'id' | 'created_at' | 'updated_at'>): Promise<Ticket | null> {
-  try {
-    const { data, error } = await supabase
-      .from('tickets')
-      .insert([ticket])
-      .select()
-      .single()
-
-    if (error) throw new DatabaseError(error.message)
-    return data as Ticket
-  } catch (err) {
-    console.error('Error creating ticket:', err)
-    throw err
-  }
-}
-
-export async function getUserTickets(userId: string): Promise<Ticket[]> {
-  try {
-    const { data, error } = await supabase
-      .from('tickets')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw new DatabaseError(error.message)
-    return data as Ticket[]
-  } catch (err) {
-    console.error('Error fetching user tickets:', err)
-    throw err
-  }
-}
-
-// Venues
-export async function getVenues(): Promise<Venue[]> {
-  try {
-    const { data, error } = await supabase
-      .from('venues')
-      .select('*')
-      .order('name')
-
-    if (error) throw new DatabaseError(error.message)
-    return data as Venue[]
-  } catch (err) {
-    console.error('Error fetching venues:', err)
-    throw err
-  }
-}
-
-// Memberships
-export async function getUserMembership(userId: string): Promise<Membership | null> {
-  try {
-    const { data, error } = await supabase
-      .from('memberships')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (error) throw new DatabaseError(error.message)
-    return data as Membership
-  } catch (err) {
-    console.error('Error fetching user membership:', err)
-    throw err
-  }
-}
-
-// Real-time subscriptions
-export function subscribeToEvents(callback: (event: Event) => void) {
-  return supabase
-    .channel('events')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'events'
-      },
-      (payload) => {
-        callback(payload.new as Event)
-      }
-    )
-    .subscribe()
-}
-
-export function subscribeToUserTickets(userId: string, callback: (ticket: Ticket) => void) {
-  return supabase
-    .channel('tickets')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'tickets',
-        filter: `user_id=eq.${userId}`
-      },
-      (payload) => {
-        callback(payload.new as Ticket)
       }
     )
     .subscribe()
