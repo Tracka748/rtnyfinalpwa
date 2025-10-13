@@ -13,3 +13,12 @@ export interface Event {
   featured?: boolean
   tickets_available?: number
 }
+export interface EventWithTickets extends Event {
+  ticketTypes: Array<{
+    id: string
+    name: string
+    price: number
+    quantity: number
+    remaining: number
+  }>
+}
