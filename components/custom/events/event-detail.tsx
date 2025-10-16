@@ -3,8 +3,8 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { ArrowLeft, Share2, MapPin } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { MapPin } from "lucide-react"
+import { AppNav } from "@/components/custom/layout/app-nav"
 import { TicketSelector } from "./ticket-selector"
 import { PurchaseSummary } from "./purchase-summary"
 import type { EventWithTickets } from "@/types/event"
@@ -46,35 +46,39 @@ export function EventDetail({ event, onPurchase, onBack }: EventDetailProps) {
     }
   }
 
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator
+        .share({
+          title: event.name,
+          text: `Check out ${event.name} at ${event.venue_name}`,
+          url: window.location.href,
+        })
+        .catch((err) => console.log("Error sharing:", err))
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      alert("Link copied to clipboard!")
+    }
+  }
+
   const eventDate = new Date(event.event_date)
   const isSoldOut = event.status === "sold_out"
   const isCancelled = event.status === "cancelled"
 
   return (
-    <div className="min-h-screen bg-[#121113] text-[#F9FDFF] pb-32">
-      {/* Hero Section */}
-      <div className="relative w-full aspect-[4/5] md:aspect-[16/9]">
-        {/* Navigation Buttons */}
-        <div className="absolute top-4 left-4 right-4 z-20 flex justify-between">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onBack}
-            className="h-10 w-10 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 active:scale-95 transition-all duration-300"
-          >
-            <ArrowLeft className="h-5 w-5 text-white" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 active:scale-95 transition-all duration-300"
-          >
-            <Share2 className="h-5 w-5 text-white" />
-          </Button>
-        </div>
+    <div className="min-h-screen bg-[#121113] text-[#F9FDFF]">
+      {/* App Navigation */}
+      <AppNav 
+        showBack 
+        onBack={onBack} 
+        showShare
+        onShare={handleShare}
+      />
 
+      {/* Hero Section */}
+      <div className="relative w-full aspect-[4/5] md:aspect-[16/9] mt-16">
         {/* Category Badge */}
-        <div className="absolute top-20 left-4 z-20 animate-in fade-in slide-in-from-left duration-500">
+        <div className="absolute top-4 left-4 z-20 animate-in fade-in slide-in-from-left duration-500">
           <span className="inline-block px-3 py-1 text-xs font-medium tracking-wide uppercase bg-[#59FFA0] text-[#121113] rounded-full font-[family-name:var(--font-montserrat)] shadow-lg">
             {event.category}
           </span>
@@ -99,7 +103,7 @@ export function EventDetail({ event, onPurchase, onBack }: EventDetailProps) {
       </div>
 
       {/* Content Section */}
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8 pb-32">
         {/* Date & Time */}
         <div className="space-y-2 animate-in fade-in slide-in-from-bottom duration-500 delay-100">
           <div className="text-3xl font-bold text-[#59FFA0] font-[family-name:var(--font-playfair)]">
@@ -160,7 +164,7 @@ export function EventDetail({ event, onPurchase, onBack }: EventDetailProps) {
           </div>
         )}
 
-        {/* Ticket Selection - Now using extracted component */}
+        {/* Ticket Selection */}
         {!isCancelled && !isSoldOut && (
           <div className="animate-in fade-in slide-in-from-bottom duration-500 delay-600">
             <TicketSelector
@@ -172,7 +176,7 @@ export function EventDetail({ event, onPurchase, onBack }: EventDetailProps) {
         )}
       </div>
 
-      {/* Purchase Summary - Now using extracted component */}
+      {/* Purchase Summary */}
       {!isCancelled && !isSoldOut && (
         <PurchaseSummary
           totalQuantity={totalQuantity}

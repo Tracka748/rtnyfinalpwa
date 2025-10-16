@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { AppNav } from "@/components/custom/layout/app-nav"
 import { EventGrid } from "@/components/custom/events/event-grid"
 import { SearchBar } from "@/components/custom/events/search-bar"
 import { EventFilters, type DateFilter } from "@/components/custom/events/event-filters"
@@ -175,18 +176,21 @@ export default function EventsPage() {
 
   return (
     <main className="min-h-screen bg-[#121113]">
+      {/* App Navigation */}
+      <AppNav />
+
       {/* Header */}
-      <div className="bg-gradient-to-b from-[#0A0A0A] to-[#121113] pb-8 pt-16 text-center">
-        <h1 className="font-header text-5xl font-bold text-[#F9FDFF] md:text-6xl">
+      <div className="bg-gradient-to-b from-[#0A0A0A] to-[#121113] pb-8 pt-24 text-center">
+        <h1 className="font-[family-name:var(--font-rokkitt)] text-5xl font-bold text-[#F9FDFF] md:text-6xl">
           Upcoming Events
         </h1>
-        <p className="mt-4 font-sans text-lg text-[#A0A0A0]">
+        <p className="mt-4 font-[family-name:var(--font-rubik)] text-lg text-[#A0A0A0]">
           Rochester's hottest nightlife events
         </p>
       </div>
 
       {/* Search and Filters Container */}
-      <div className="sticky top-0 z-10 border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
+      <div className="sticky top-16 z-10 border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="space-y-4">
             {/* Search Bar */}
@@ -206,7 +210,7 @@ export default function EventsPage() {
             {/* Active Filters */}
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-sans text-sm text-[#A0A0A0]">
+                <span className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
                   {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active:
                 </span>
 
@@ -242,7 +246,7 @@ export default function EventsPage() {
 
                 <button
                   onClick={handleClearAll}
-                  className="font-sans text-sm text-[#59FFA0] underline-offset-2 transition-all hover:underline"
+                  className="font-[family-name:var(--font-rubik)] text-sm text-[#59FFA0] underline-offset-2 transition-all hover:underline"
                 >
                   Clear All
                 </button>
@@ -254,7 +258,7 @@ export default function EventsPage() {
 
       {/* Results Count */}
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <p className="font-sans text-sm text-[#A0A0A0]">
+        <p className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
           {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
         </p>
       </div>
