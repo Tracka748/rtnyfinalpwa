@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { AppNav } from "@/components/custom/layout/app-nav"
 import { EventGrid } from "@/components/custom/events/event-grid"
 import { SearchBar } from "@/components/custom/events/search-bar"
@@ -8,112 +8,54 @@ import { EventFilters, type DateFilter } from "@/components/custom/events/event-
 import { FilterChip } from "@/components/ui/filter-chip"
 import type { Event } from "@/types/event"
 
-const sampleEvents: Event[] = [
-  {
-    id: "1",
-    name: "Saturday Night Fever",
-    description: "Experience the best house and techno beats with DJ Apex",
-    event_date: "2025-01-18T22:00:00Z",
-    venue_name: "The Montage Music Hall",
-    venue_address: "50 Chestnut St, Rochester, NY 14604",
-    flyer_image_url: "https://placehold.co/800x1000/1a1a1a/59FFA0?text=Saturday+Night+Fever&font=roboto",
-    min_price: 25,
-    max_price: 45,
-    category: "Electronic",
-    featured: true,
-    status: "active",
-    tickets_available: 150,
-  },
-  {
-    id: "2",
-    name: "Jazz & Cocktails Night",
-    description: "Smooth jazz with craft cocktails and tapas",
-    event_date: "2025-01-20T20:00:00Z",
-    venue_name: "Anthology",
-    venue_address: "336 East Ave, Rochester, NY 14604",
-    flyer_image_url: "https://placehold.co/800x1000/1a1a1a/1AC8ED?text=Jazz+%26+Cocktails&font=roboto",
-    min_price: 35,
-    max_price: 60,
-    category: "Jazz",
-    featured: false,
-    status: "active",
-    tickets_available: 80,
-  },
-  {
-    id: "3",
-    name: "Rooftop Summer Vibes",
-    description: "Open-air party with panoramic city views",
-    event_date: "2025-01-22T21:00:00Z",
-    venue_name: "Skylark Lounge",
-    venue_address: "4 Pl, Rochester, NY 14614",
-    flyer_image_url: "https://placehold.co/800x1000/1a1a1a/FFB84D?text=Rooftop+Vibes&font=roboto",
-    min_price: 30,
-    max_price: 50,
-    category: "Party",
-    featured: false,
-    status: "active",
-    tickets_available: 120,
-  },
-  {
-    id: "4",
-    name: "Comedy Night Live",
-    description: "Stand-up comedy featuring local and touring comedians",
-    event_date: "2025-01-24T19:30:00Z",
-    venue_name: "Anthology",
-    venue_address: "336 East Ave, Rochester, NY 14604",
-    flyer_image_url: "https://placehold.co/800x1000/1a1a1a/FF6B9D?text=Comedy+Night&font=roboto",
-    min_price: 15,
-    max_price: 35,
-    category: "Comedy",
-    featured: false,
-    status: "active",
-    tickets_available: 95,
-  },
-  {
-    id: "5",
-    name: "Hip-Hop Takeover",
-    description: "The hottest hip-hop tracks all night long",
-    event_date: "2025-01-25T22:00:00Z",
-    venue_name: "The Montage Music Hall",
-    venue_address: "50 Chestnut St, Rochester, NY 14604",
-    flyer_image_url: "https://placehold.co/800x1000/1a1a1a/9D4EDD?text=Hip-Hop+Takeover&font=roboto",
-    min_price: 20,
-    max_price: 40,
-    category: "Hip-Hop",
-    featured: true,
-    status: "active",
-    tickets_available: 200,
-  },
-  {
-    id: "6",
-    name: "Latin Nights",
-    description: "Salsa, bachata, and reggaeton with live DJ",
-    event_date: "2025-01-27T21:00:00Z",
-    venue_name: "Skylark Lounge",
-    venue_address: "4 Pl, Rochester, NY 14614",
-    flyer_image_url: "https://placehold.co/800x1000/1a1a1a/FF006E?text=Latin+Nights&font=roboto",
-    min_price: 25,
-    max_price: 45,
-    category: "Latin",
-    featured: false,
-    status: "active",
-    tickets_available: 110,
-  },
-]
-
 export default function EventsPage() {
+  // State for events data
+  const [events, setEvents] = useState<Event[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Filter states
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedDate, setSelectedDate] = useState<DateFilter>("all")
 
-  // Extract unique categories
+  // Fetch events from API
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/v1/events')
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch events')
+        }
+
+        const result = await response.json()
+        
+        if (result.success && result.data) {
+          setEvents(result.data)
+        } else {
+          throw new Error(result.error || 'Unknown error')
+        }
+      } catch (err: any) {
+        console.error('Error fetching events:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEvents()
+  }, []) // Empty dependency array = fetch once on mount
+
+  // Extract unique categories from real data
   const categories = useMemo(() => {
-    return Array.from(new Set(sampleEvents.map((e) => e.category))).sort()
-  }, [])
+    return Array.from(new Set(events.map((e) => e.category))).sort()
+  }, [events])
 
   // Filter events based on search and filters
   const filteredEvents = useMemo(() => {
-    let filtered = sampleEvents
+    let filtered = events
 
     // Search filter (name or venue)
     if (searchQuery) {
@@ -154,7 +96,7 @@ export default function EventsPage() {
     }
 
     return filtered
-  }, [searchQuery, selectedCategory, selectedDate])
+  }, [events, searchQuery, selectedCategory, selectedDate])
 
   // Clear all filters
   const handleClearAll = () => {
@@ -172,6 +114,8 @@ export default function EventsPage() {
 
   const handleEventClick = (event: Event) => {
     console.log("Event clicked:", event.name)
+    // TODO: Navigate to event detail page
+    // router.push(`/events/${event.id}`)
   }
 
   return (
@@ -256,15 +200,63 @@ export default function EventsPage() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#59FFA0] border-r-transparent"></div>
+          <p className="mt-4 font-[family-name:var(--font-rubik)] text-[#A0A0A0]">
+            Loading events...
+          </p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-6">
+            <p className="font-[family-name:var(--font-rubik)] text-red-400">
+              Error loading events: {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 rounded-lg bg-[#59FFA0] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Results Count */}
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <p className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
-          {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
-        </p>
-      </div>
+      {!loading && !error && (
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+          <p className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
+            {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
+          </p>
+        </div>
+      )}
 
       {/* Event Grid */}
-      <EventGrid events={filteredEvents} onEventClick={handleEventClick} />
+      {!loading && !error && (
+        <EventGrid events={filteredEvents} onEventClick={handleEventClick} />
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && filteredEvents.length === 0 && (
+        <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
+          <p className="font-[family-name:var(--font-rubik)] text-lg text-[#A0A0A0]">
+            No events found matching your criteria
+          </p>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="mt-4 rounded-lg bg-[#59FFA0] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
     </main>
   )
 }
