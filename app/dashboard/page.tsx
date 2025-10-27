@@ -1,0 +1,112 @@
+// app/dashboard/page.tsx
+import { getCurrentUser } from "@/lib/auth/get-user"
+import { redirect } from "next/navigation"
+import { LogoutButton } from "@/components/custom/auth/logout-button"
+import Link from "next/link"
+
+export default async function DashboardPage() {
+  const { user } = await getCurrentUser()
+
+  // Protect route - redirect if not authenticated
+  if (!user) {
+    redirect('/login')
+  }
+
+  return (
+    <main className="min-h-screen bg-[#121113]">
+      {/* Header */}
+      <div className="border-b border-[#2A2A2A] bg-[#0A0A0A]">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <h1 className="font-[family-name:var(--font-rokkitt)] text-3xl font-bold text-[#F9FDFF]">
+              Dashboard
+            </h1>
+            <LogoutButton />
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        {/* Welcome Card */}
+        <div className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-8">
+          <h2 className="font-[family-name:var(--font-rokkitt)] text-2xl font-bold text-[#F9FDFF]">
+            Welcome back!
+          </h2>
+          <p className="mt-2 font-[family-name:var(--font-rubik)] text-[#A0A0A0]">
+            Logged in as: <span className="text-[#59FFA0]">{user.email}</span>
+          </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Browse Events */}
+          <Link
+            href="/events"
+            className="group rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/5"
+          >
+            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF] group-hover:text-[#59FFA0]">
+              Browse Events
+            </h3>
+            <p className="mt-2 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
+              Discover upcoming nightlife events in Rochester
+            </p>
+          </Link>
+
+          {/* My Tickets (Coming Soon) */}
+          <div className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 opacity-60">
+            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF]">
+              My Tickets
+            </h3>
+            <p className="mt-2 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
+              View your purchased tickets
+            </p>
+            <span className="mt-3 inline-block rounded bg-[#59FFA0]/20 px-2 py-1 font-[family-name:var(--font-rubik)] text-xs text-[#59FFA0]">
+              Coming Soon
+            </span>
+          </div>
+
+          {/* Profile (Coming Soon) */}
+          <div className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 opacity-60">
+            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF]">
+              Profile Settings
+            </h3>
+            <p className="mt-2 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
+              Manage your account and preferences
+            </p>
+            <span className="mt-3 inline-block rounded bg-[#59FFA0]/20 px-2 py-1 font-[family-name:var(--font-rubik)] text-xs text-[#59FFA0]">
+              Coming Soon
+            </span>
+          </div>
+        </div>
+
+        {/* User Info (Debug) */}
+        <div className="mt-8 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6">
+          <h3 className="font-[family-name:var(--font-rokkitt)] text-lg font-bold text-[#F9FDFF]">
+            Account Info
+          </h3>
+          <dl className="mt-4 space-y-2 font-[family-name:var(--font-rubik)] text-sm">
+            <div>
+              <dt className="text-[#A0A0A0]">User ID:</dt>
+              <dd className="text-[#F9FDFF]">{user.id}</dd>
+            </div>
+            <div>
+              <dt className="text-[#A0A0A0]">Email:</dt>
+              <dd className="text-[#F9FDFF]">{user.email}</dd>
+            </div>
+            {user.profile && (
+              <>
+                <div>
+                  <dt className="text-[#A0A0A0]">Name:</dt>
+                  <dd className="text-[#F9FDFF]">
+                    {user.profile.first_name || 'Not set'} {user.profile.last_name || ''}
+                  </dd>
+                </div>
+              </>
+            )}
+          </dl>
+        </div>
+      </div>
+    </main>
+  )
+}
