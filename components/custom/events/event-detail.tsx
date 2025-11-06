@@ -1,189 +1,339 @@
-// components/custom/events/event-detail.tsx
 "use client"
 
-import { useState } from "react"
-import { format } from "date-fns"
-import { MapPin } from "lucide-react"
-import { AppNav } from "@/components/custom/layout/app-nav"
-import { TicketSelector } from "./ticket-selector"
-import { PurchaseSummary } from "./purchase-summary"
-import type { EventWithTickets } from "@/types/event"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { notFound } from "next/navigation"
+import { ArrowLeft, Calendar, MapPin, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Image from "next/image"
 
-interface EventDetailProps {
-  event: EventWithTickets
-  onPurchase: (selections: Array<{ ticketTypeId: string; quantity: number }>) => void
-  onBack?: () => void
+interface TicketType {
+  id: string
+  name: string
+  price: number
+  description?: string
 }
 
-export function EventDetail({ event, onPurchase, onBack }: EventDetailProps) {
-  const [quantities, setQuantities] = useState<Record<string, number>>(
-    event.ticketTypes.reduce((acc, ticket) => ({ ...acc, [ticket.id]: 0 }), {}),
-  )
+interface Event {
+  id: string
+  name: string
+  description: string
+  event_date: string
+  venue_name: string
+  venue_address: string
+  flyer_image_url: string | null
+  category: string
+  status: string
+  ticket_types: TicketType[]
+}
 
-  const updateQuantity = (ticketId: string, delta: number) => {
-    setQuantities((prev) => {
-      const ticket = event.ticketTypes.find((t) => t.id === ticketId)
-      if (!ticket) return prev
+interface TicketSelection {
+  ticketTypeId: string
+  quantity: number
+}
 
-      const newQuantity = Math.max(0, Math.min(ticket.remaining, (prev[ticketId] || 0) + delta))
-      return { ...prev, [ticketId]: newQuantity }
+export default function EventDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const router = useRouter()
+  const [eventId, setEventId] = useState<string | null>(null)
+  const [event, setEvent] = useState<Event | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selections, setSelections] = useState<Record<string, number>>({})
+  const [isValidating, setIsValidating] = useState(false)
+
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setEventId(p.id))
+  }, [params])
+
+  // Fetch event data
+  useEffect(() => {
+    if (!eventId) return
+
+    async function fetchEvent() {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/v1/events/${eventId}`)
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            notFound()
+          }
+          throw new Error('Failed to fetch event')
+        }
+
+        const result = await response.json()
+        
+        if (result.success && result.data) {
+          setEvent(result.data)
+        } else {
+          throw new Error('Invalid response')
+        }
+      } catch (err: any) {
+        console.error('Error fetching event:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEvent()
+  }, [eventId])
+
+  // Update ticket quantity
+  const updateQuantity = (ticketTypeId: string, delta: number) => {
+    setSelections(prev => {
+      const current = prev[ticketTypeId] || 0
+      const newQuantity = Math.max(0, current + delta)
+      
+      if (newQuantity === 0) {
+        const { [ticketTypeId]: _, ...rest } = prev
+        return rest
+      }
+      
+      return { ...prev, [ticketTypeId]: newQuantity }
     })
   }
 
-  const totalPrice = event.ticketTypes.reduce((sum, ticket) => {
-    return sum + ticket.price * (quantities[ticket.id] || 0)
-  }, 0)
+  // Calculate totals
+  const totalQuantity = Object.values(selections).reduce((sum, qty) => sum + qty, 0)
+  
+  const totalPrice = event?.ticket_types?.reduce((sum, type) => {
+    const quantity = selections[type.id] || 0
+    return sum + (type.price * quantity)
+  }, 0) || 0
 
-  const totalQuantity = Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
+  // Handle checkout
+  const handleProceedToCheckout = async () => {
+    if (!event || totalQuantity === 0) return
 
-  const handlePurchase = () => {
-    const selections = Object.entries(quantities)
-      .filter(([_, qty]) => qty > 0)
-      .map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }))
+    setIsValidating(true)
 
-    if (selections.length > 0) {
-      onPurchase(selections)
+    try {
+      const ticketSelections: TicketSelection[] = Object.entries(selections)
+        .filter(([_, quantity]) => quantity > 0)
+        .map(([ticketTypeId, quantity]) => ({
+          ticketTypeId,
+          quantity
+        }))
+
+      // Navigate to checkout with params
+      const searchParams = new URLSearchParams({
+        eventId: event.id,
+        tickets: JSON.stringify(ticketSelections)
+      })
+      
+      router.push(`/checkout?${searchParams.toString()}`)
+    } catch (err) {
+      console.error('Error:', err)
+      alert('Failed to proceed to checkout')
+    } finally {
+      setIsValidating(false)
     }
   }
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator
-        .share({
-          title: event.name,
-          text: `Check out ${event.name} at ${event.venue_name}`,
-          url: window.location.href,
-        })
-        .catch((err) => console.log("Error sharing:", err))
-    } else {
-      navigator.clipboard.writeText(window.location.href)
-      alert("Link copied to clipboard!")
-    }
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#121113] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#59FFA0]" />
+      </div>
+    )
   }
 
+  // Error state
+  if (error || !event) {
+    return (
+      <div className="min-h-screen bg-[#121113] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">{error || 'Event not found'}</p>
+          <Button onClick={() => router.push('/events')}>
+            Back to Events
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Format date
   const eventDate = new Date(event.event_date)
-  const isSoldOut = event.status === "sold_out"
-  const isCancelled = event.status === "cancelled"
+  const formattedDate = eventDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+  const formattedTime = eventDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 
   return (
-    <div className="min-h-screen bg-[#121113] text-[#F9FDFF]">
-      {/* App Navigation */}
-      <AppNav 
-        showBack 
-        onBack={onBack} 
-        showShare
-        onShare={handleShare}
-      />
-
-      {/* Hero Section */}
-      <div className="relative w-full aspect-[4/5] md:aspect-[16/9] mt-16">
-        {/* Category Badge */}
-        <div className="absolute top-4 left-4 z-20 animate-in fade-in slide-in-from-left duration-500">
-          <span className="inline-block px-3 py-1 text-xs font-medium tracking-wide uppercase bg-[#59FFA0] text-[#121113] rounded-full font-[family-name:var(--font-montserrat)] shadow-lg">
-            {event.category}
-          </span>
-        </div>
-
-        {/* Event Image */}
-        <img
-          src={event.flyer_image_url || "/placeholder.svg"}
-          alt={event.name}
-          className="w-full h-full object-cover"
-        />
-
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#121113] via-[#121113]/60 to-transparent" />
-
-        {/* Event Title */}
-        <div className="absolute bottom-6 left-6 right-6 z-10 animate-in fade-in slide-in-from-bottom duration-700">
-          <h1 className="text-4xl md:text-5xl font-bold text-white font-[family-name:var(--font-rokkitt)] leading-tight">
-            {event.name}
-          </h1>
+    <main className="min-h-screen bg-[#121113] pb-32">
+      {/* Back Button */}
+      <div className="sticky top-0 z-20 bg-[#121113]/95 backdrop-blur-lg border-b border-[#2A2A2A]">
+        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
+          <button
+            onClick={() => router.push('/events')}
+            className="flex items-center gap-2 text-[#A0A0A0] transition-colors hover:text-[#59FFA0]"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span className="font-[family-name:var(--font-rubik)]">Back to Events</span>
+          </button>
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8 pb-32">
-        {/* Date & Time */}
-        <div className="space-y-2 animate-in fade-in slide-in-from-bottom duration-500 delay-100">
-          <div className="text-3xl font-bold text-[#59FFA0] font-[family-name:var(--font-playfair)]">
-            {format(eventDate, "EEEE, MMMM d")}
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Event Image */}
+        {event.flyer_image_url && (
+          <div className="relative aspect-video w-full overflow-hidden rounded-lg mb-8">
+            <Image
+              src={event.flyer_image_url}
+              alt={event.name}
+              fill
+              className="object-cover"
+              priority
+            />
           </div>
-          <div className="text-xl text-[#F9FDFF]/80 font-[family-name:var(--font-rubik)]">
-            {format(eventDate, "h:mm a")}
-          </div>
-        </div>
+        )}
 
-        {/* Venue */}
-        <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom duration-500 delay-200">
-          <MapPin className="h-5 w-5 text-[#1AC8ED] mt-1 flex-shrink-0" />
-          <div>
-            <div className="text-lg font-semibold text-[#F9FDFF] font-[family-name:var(--font-rubik)]">
-              {event.venue_name}
+        {/* Event Info */}
+        <div className="mb-8">
+          <div className="mb-4">
+            <span className="inline-block rounded-full bg-[#59FFA0]/10 px-3 py-1 text-sm font-[family-name:var(--font-montserrat)] text-[#59FFA0]">
+              {event.category}
+            </span>
+          </div>
+
+          <h1 className="font-[family-name:var(--font-rokkitt)] text-4xl font-bold text-[#F9FDFF] md:text-5xl mb-4">
+            {event.name}
+          </h1>
+
+          <div className="space-y-3 mb-6">
+            <div className="flex items-start gap-3 text-[#A0A0A0]">
+              <Calendar className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-[family-name:var(--font-rubik)]">{formattedDate}</p>
+                <p className="font-[family-name:var(--font-rubik)] text-sm">{formattedTime}</p>
+              </div>
             </div>
-            <div className="text-sm text-[#F9FDFF]/60 font-[family-name:var(--font-rubik)]">
-              {event.venue_address}
+
+            <div className="flex items-start gap-3 text-[#A0A0A0]">
+              <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-[family-name:var(--font-rubik)]">{event.venue_name}</p>
+                <p className="font-[family-name:var(--font-rubik)] text-sm">{event.venue_address}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Description */}
-        <div className="space-y-2 animate-in fade-in slide-in-from-bottom duration-500 delay-300">
-          <h2 className="text-xl font-semibold text-[#F9FDFF] font-[family-name:var(--font-playfair)]">
-            About This Event
-          </h2>
-          <p className="text-[#F9FDFF]/80 leading-relaxed font-[family-name:var(--font-rubik)]">
+          <p className="font-[family-name:var(--font-rubik)] text-[#A0A0A0] leading-relaxed whitespace-pre-line">
             {event.description}
           </p>
         </div>
 
-        {/* Price Range */}
-        <div className="flex items-baseline gap-2 animate-in fade-in slide-in-from-bottom duration-500 delay-400">
-          <span className="text-sm text-[#F9FDFF]/60 font-[family-name:var(--font-rubik)]">
-            Price Range:
-          </span>
-          <span className="text-2xl font-bold text-[#59FFA0] font-[family-name:var(--font-playfair)]">
-            ${event.min_price} - ${event.max_price}
-          </span>
-        </div>
+        {/* Ticket Selector */}
+        {event.ticket_types && Array.isArray(event.ticket_types) && event.ticket_types.length > 0 && (
+          <section>
+            <h2 className="font-[family-name:var(--font-rokkitt)] text-2xl font-bold text-[#F9FDFF] mb-6">
+              Select Tickets
+            </h2>
 
-        {/* Status Messages */}
-        {isCancelled && (
-          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 animate-in fade-in slide-in-from-bottom duration-500 delay-500">
-            <p className="text-red-400 font-semibold font-[family-name:var(--font-rubik)]">
-              This event has been cancelled.
-            </p>
-          </div>
+            <div className="space-y-4">
+              {event.ticket_types.map(type => (
+                <div 
+                  key={type.id}
+                  className="flex items-center justify-between p-4 border border-[#2A2A2A] rounded-lg bg-[#1a1a1a]"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-[family-name:var(--font-poppins)] text-lg text-[#F9FDFF]">
+                      {type.name}
+                    </h3>
+                    {type.description && (
+                      <p className="text-sm text-[#A0A0A0] mt-1">{type.description}</p>
+                    )}
+                    <p className="font-[family-name:var(--font-playfair)] text-[#59FFA0] mt-2 text-xl">
+                      ${type.price.toFixed(2)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => updateQuantity(type.id, -1)}
+                      disabled={(selections[type.id] || 0) === 0}
+                      className="h-9 w-9 border-[#2A2A2A]"
+                    >
+                      <span className="text-lg">−</span>
+                    </Button>
+
+                    <span className="w-8 text-center font-[family-name:var(--font-montserrat)] text-[#F9FDFF]">
+                      {selections[type.id] || 0}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => updateQuantity(type.id, 1)}
+                      className="h-9 w-9 border-[#2A2A2A]"
+                    >
+                      <span className="text-lg">+</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
-        {isSoldOut && !isCancelled && (
-          <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 animate-in fade-in slide-in-from-bottom duration-500 delay-500">
-            <p className="text-yellow-400 font-semibold font-[family-name:var(--font-rubik)]">
-              This event is sold out.
+        {/* No Tickets Available */}
+        {(!event.ticket_types || !Array.isArray(event.ticket_types) || event.ticket_types.length === 0) && (
+          <div className="text-center py-12 bg-[#1a1a1a] border border-[#2A2A2A] rounded-lg">
+            <p className="text-[#A0A0A0] font-[family-name:var(--font-rubik)]">
+              Tickets are not yet available for this event.
             </p>
-          </div>
-        )}
-
-        {/* Ticket Selection */}
-        {!isCancelled && !isSoldOut && (
-          <div className="animate-in fade-in slide-in-from-bottom duration-500 delay-600">
-            <TicketSelector
-              ticketTypes={event.ticketTypes}
-              quantities={quantities}
-              onQuantityChange={updateQuantity}
-            />
           </div>
         )}
       </div>
 
-      {/* Purchase Summary */}
-      {!isCancelled && !isSoldOut && (
-        <PurchaseSummary
-          totalQuantity={totalQuantity}
-          totalPrice={totalPrice}
-          onPurchase={handlePurchase}
-        />
+      {/* Fixed Bottom Toolbar */}
+      {totalQuantity > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
+          <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-[family-name:var(--font-montserrat)] text-sm text-[#A0A0A0]">
+                  Total ({totalQuantity} {totalQuantity === 1 ? 'ticket' : 'tickets'})
+                </p>
+                <p className="font-[family-name:var(--font-playfair)] text-2xl text-[#59FFA0]">
+                  ${totalPrice.toFixed(2)}
+                </p>
+              </div>
+
+              <Button
+                onClick={handleProceedToCheckout}
+                disabled={isValidating}
+                className="bg-[#59FFA0] hover:bg-[#4DE08A] text-[#121113] font-[family-name:var(--font-montserrat)] px-8 py-6 text-lg"
+                size="lg"
+              >
+                {isValidating ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Select Tickets'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </main>
   )
 }

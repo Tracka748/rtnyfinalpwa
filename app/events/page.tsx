@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation" // ADD THIS IMPORT
 import { AppNav } from "@/components/custom/layout/app-nav"
 import { EventGrid } from "@/components/custom/events/event-grid"
 import { SearchBar } from "@/components/custom/events/search-bar"
@@ -9,6 +10,8 @@ import { FilterChip } from "@/components/ui/filter-chip"
 import type { Event } from "@/types/event"
 
 export default function EventsPage() {
+  const router = useRouter() // ADD THIS LINE
+  
   // State for events data
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -112,10 +115,10 @@ export default function EventsPage() {
     selectedDate !== "all",
   ].filter(Boolean).length
 
+  // FIXED: Navigate to event detail page
   const handleEventClick = (event: Event) => {
-    console.log("Event clicked:", event.name)
-    // TODO: Navigate to event detail page
-    // router.push(`/events/${event.id}`)
+    console.log("Navigating to event:", event.name, event.id)
+    router.push(`/events/${event.id}`)
   }
 
   return (
