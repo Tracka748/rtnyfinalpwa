@@ -3,15 +3,19 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Calendar, MapPin, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
+import { format } from "date-fns"
+import { MapPin, Loader2 } from "lucide-react"
+import { AppNav } from "@/components/custom/layout/app-nav"
+import { TicketSelector } from "@/components/custom/events/ticket-selector"
+import { PurchaseSummary } from "@/components/custom/events/purchase-summary"
 
 interface TicketType {
   id: string
   name: string
   price: number
   description?: string
+  quantity: number
+  remaining: number
 }
 
 interface Event {
@@ -27,11 +31,6 @@ interface Event {
   ticket_types: TicketType[]
 }
 
-interface TicketSelection {
-  ticketTypeId: string
-  quantity: number
-}
-
 export default function EventDetailPage({ 
   params 
 }: { 
@@ -42,8 +41,8 @@ export default function EventDetailPage({
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selections, setSelections] = useState<Record<string, number>>({})
-  const [isValidating, setIsValidating] = useState(false)
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [isProcessing, setIsProcessing] = useState(false)
 
   // Unwrap params
   useEffect(() => {
@@ -84,37 +83,62 @@ export default function EventDetailPage({
     fetchEvent()
   }, [eventId])
 
-  // Update ticket quantity
-  const updateQuantity = (ticketTypeId: string, delta: number) => {
-    setSelections(prev => {
-      const current = prev[ticketTypeId] || 0
-      const newQuantity = Math.max(0, current + delta)
+  // Handle back navigation
+  const handleBack = () => {
+    router.push('/events')
+  }
+
+  // Handle share
+  const handleShare = async () => {
+    if (!event) return
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.name,
+          text: `Check out ${event.name}!`,
+          url: window.location.href,
+        })
+      } catch (err) {
+        console.log('Error sharing:', err)
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      alert('Link copied to clipboard!')
+    }
+  }
+
+  // Update quantity handler for TicketSelector
+  const updateQuantity = (ticketId: string, delta: number) => {
+    setQuantities((prev) => {
+      const current = prev[ticketId] || 0
+      const newValue = Math.max(0, current + delta)
       
-      if (newQuantity === 0) {
-        const { [ticketTypeId]: _, ...rest } = prev
+      if (newValue === 0) {
+        const { [ticketId]: _, ...rest } = prev
         return rest
       }
       
-      return { ...prev, [ticketTypeId]: newQuantity }
+      return { ...prev, [ticketId]: newValue }
     })
   }
 
   // Calculate totals
-  const totalQuantity = Object.values(selections).reduce((sum, qty) => sum + qty, 0)
+  const totalQuantity = Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
   
-  const totalPrice = event?.ticket_types.reduce((sum, type) => {
-    const quantity = selections[type.id] || 0
-    return sum + (type.price * quantity)
+  const totalPrice = event?.ticket_types.reduce((sum, ticket) => {
+    const qty = quantities[ticket.id] || 0
+    return sum + ticket.price * qty
   }, 0) || 0
 
-  // Handle checkout
-  const handleProceedToCheckout = async () => {
+  // Handle purchase/checkout
+  const handlePurchase = async () => {
     if (!event || totalQuantity === 0) return
 
-    setIsValidating(true)
+    setIsProcessing(true)
 
     try {
-      const ticketSelections: TicketSelection[] = Object.entries(selections)
+      const ticketSelections = Object.entries(quantities)
         .filter(([_, quantity]) => quantity > 0)
         .map(([ticketTypeId, quantity]) => ({
           ticketTypeId,
@@ -132,7 +156,7 @@ export default function EventDetailPage({
       console.error('Error:', err)
       alert('Failed to proceed to checkout')
     } finally {
-      setIsValidating(false)
+      setIsProcessing(false)
     }
   }
 
@@ -151,180 +175,87 @@ export default function EventDetailPage({
       <div className="min-h-screen bg-[#121113] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error || 'Event not found'}</p>
-          <Button onClick={() => router.push('/events')}>
+          <button 
+            onClick={handleBack}
+            className="text-[#59FFA0] hover:underline"
+          >
             Back to Events
-          </Button>
+          </button>
         </div>
       </div>
     )
   }
 
-  // Format date
-  const eventDate = new Date(event.event_date)
-  const formattedDate = eventDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-  const formattedTime = eventDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-
   return (
-    <main className="min-h-screen bg-[#121113] pb-32">
-      {/* Back Button */}
-      <div className="sticky top-0 z-20 bg-[#121113]/95 backdrop-blur-lg border-b border-[#2A2A2A]">
-        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-          <button
-            onClick={() => router.push('/events')}
-            className="flex items-center gap-2 text-[#A0A0A0] transition-colors hover:text-[#59FFA0]"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="font-[family-name:var(--font-rubik)]">Back to Events</span>
-          </button>
-        </div>
+    <div className="min-h-screen bg-[#121113] text-[#F9FDFF] pb-32">
+      {/* App Navigation */}
+      <AppNav 
+        showBack 
+        onBack={handleBack} 
+        showShare
+        onShare={handleShare}
+      />
+
+      {/* Hero Section */}
+      <div className="relative h-[60vh] overflow-hidden">
+        {event.flyer_image_url ? (
+          <img
+            src={event.flyer_image_url}
+            alt={event.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-[#1A1A1A] to-[#121113]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#121113] via-[#121113]/60 to-transparent" />
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Event Image */}
-        {event.flyer_image_url && (
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg mb-8">
-            <Image
-              src={event.flyer_image_url}
-              alt={event.name}
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-        )}
-
-        {/* Event Info */}
-        <div className="mb-8">
-          <div className="mb-4">
-            <span className="inline-block rounded-full bg-[#59FFA0]/10 px-3 py-1 text-sm font-[family-name:var(--font-montserrat)] text-[#59FFA0]">
-              {event.category}
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-6 -mt-32 relative z-10 space-y-8">
+        {/* Event Header */}
+        <div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#F9FDFF] font-[family-name:var(--font-rokkitt)]">
+            {event.name}
+          </h1>
+          
+          <div className="flex items-center gap-2 text-[#F9FDFF]/80">
+            <MapPin className="h-5 w-5" />
+            <span className="font-[family-name:var(--font-rubik)]">
+              {event.venue_name}
             </span>
           </div>
 
-          <h1 className="font-[family-name:var(--font-rokkitt)] text-4xl font-bold text-[#F9FDFF] md:text-5xl mb-4">
-            {event.name}
-          </h1>
-
-          <div className="space-y-3 mb-6">
-            <div className="flex items-start gap-3 text-[#A0A0A0]">
-              <Calendar className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-[family-name:var(--font-rubik)]">{formattedDate}</p>
-                <p className="font-[family-name:var(--font-rubik)] text-sm">{formattedTime}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 text-[#A0A0A0]">
-              <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-[family-name:var(--font-rubik)]">{event.venue_name}</p>
-                <p className="font-[family-name:var(--font-rubik)] text-sm">{event.venue_address}</p>
-              </div>
-            </div>
+          <div className="text-[#F9FDFF]/60 font-[family-name:var(--font-rubik)]">
+            {format(new Date(event.event_date), "EEEE, MMMM d, yyyy 'at' h:mm a")}
           </div>
-
-          <p className="font-[family-name:var(--font-rubik)] text-[#A0A0A0] leading-relaxed whitespace-pre-line">
-            {event.description}
-          </p>
         </div>
+
+        {/* Description */}
+        {event.description && (
+          <div className="p-6 rounded-2xl bg-[#1A1A1A]/60 backdrop-blur-sm border border-[#2A2A2A]">
+            <p className="text-[#F9FDFF]/80 font-[family-name:var(--font-rubik)] leading-relaxed whitespace-pre-line">
+              {event.description}
+            </p>
+          </div>
+        )}
 
         {/* Ticket Selector */}
         {event.ticket_types && event.ticket_types.length > 0 && (
-          <section>
-            <h2 className="font-[family-name:var(--font-rokkitt)] text-2xl font-bold text-[#F9FDFF] mb-6">
-              Select Tickets
-            </h2>
-
-            <div className="space-y-4">
-              {event.ticket_types.map(type => (
-                <div 
-                  key={type.id}
-                  className="flex items-center justify-between p-4 border border-[#2A2A2A] rounded-lg bg-[#1a1a1a]"
-                >
-                  <div className="flex-1">
-                    <h3 className="font-[family-name:var(--font-poppins)] text-lg text-[#F9FDFF]">
-                      {type.name}
-                    </h3>
-                    {type.description && (
-                      <p className="text-sm text-[#A0A0A0] mt-1">{type.description}</p>
-                    )}
-                    <p className="font-[family-name:var(--font-playfair)] text-[#59FFA0] mt-2 text-xl">
-                      ${type.price.toFixed(2)}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => updateQuantity(type.id, -1)}
-                      disabled={(selections[type.id] || 0) === 0}
-                      className="h-9 w-9 border-[#2A2A2A]"
-                    >
-                      <span className="text-lg">−</span>
-                    </Button>
-
-                    <span className="w-8 text-center font-[family-name:var(--font-montserrat)] text-[#F9FDFF]">
-                      {selections[type.id] || 0}
-                    </span>
-
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => updateQuantity(type.id, 1)}
-                      className="h-9 w-9 border-[#2A2A2A]"
-                    >
-                      <span className="text-lg">+</span>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          <TicketSelector
+            ticketTypes={event.ticket_types}
+            quantities={quantities}
+            onQuantityChange={updateQuantity}
+          />
         )}
       </div>
 
-      {/* Fixed Bottom Toolbar */}
-      {totalQuantity > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
-          <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="font-[family-name:var(--font-montserrat)] text-sm text-[#A0A0A0]">
-                  Total ({totalQuantity} {totalQuantity === 1 ? 'ticket' : 'tickets'})
-                </p>
-                <p className="font-[family-name:var(--font-playfair)] text-2xl text-[#59FFA0]">
-                  ${totalPrice.toFixed(2)}
-                </p>
-              </div>
-
-              <Button
-                onClick={handleProceedToCheckout}
-                disabled={isValidating}
-                className="bg-[#59FFA0] hover:bg-[#4DE08A] text-[#121113] font-[family-name:var(--font-montserrat)] px-8 py-6 text-lg"
-                size="lg"
-              >
-                {isValidating ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Select Tickets'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+      {/* Purchase Summary - Floating Bottom Bar (Always Visible) */}
+      <PurchaseSummary
+        totalQuantity={totalQuantity}
+        totalPrice={totalPrice}
+        onPurchase={handlePurchase}
+        disabled={isProcessing}
+      />
+    </div>
   )
 }

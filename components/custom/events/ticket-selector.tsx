@@ -1,7 +1,5 @@
-// components/custom/events/ticket-selector.tsx
 "use client"
 
-import { useState } from "react"
 import { Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -9,6 +7,7 @@ interface TicketType {
   id: string
   name: string
   price: number
+  description?: string
   quantity: number
   remaining: number
 }
@@ -51,13 +50,18 @@ export function TicketSelector({
                   <div className="text-lg font-semibold text-[#F9FDFF] font-[family-name:var(--font-rubik)] transition-colors duration-300 group-hover:text-[#59FFA0]">
                     {ticket.name}
                   </div>
-                  <div className="text-sm text-[#F9FDFF]/60 font-[family-name:var(--font-rubik)]">
-                    {isTicketSoldOut ? "Sold Out" : `${ticket.remaining} available`}
+                  {ticket.description && (
+                    <div className="text-sm text-[#F9FDFF]/60 font-[family-name:var(--font-rubik)] mt-1">
+                      {ticket.description}
+                    </div>
+                  )}
+                  <div className="text-sm text-[#F9FDFF]/60 font-[family-name:var(--font-rubik)] mt-1">
+                    {isTicketSoldOut ? "Sold Out" : `${ticket.remaining} remaining`}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-xl font-bold text-[#59FFA0] font-[family-name:var(--font-playfair)]">
-                    ${ticket.price}
+                    ${ticket.price.toFixed(2)}
                   </div>
                   {!isTicketSoldOut && (
                     <div className="flex items-center gap-2">
