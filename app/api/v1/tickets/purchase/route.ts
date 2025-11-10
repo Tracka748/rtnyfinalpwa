@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           purchase_price: parseFloat(ticketType.price),
           purchased_by: user.id,
           purchase_date: new Date().toISOString(),
-          status: 'active',
+          status: 'purchased',
           description: ticketType.description || null
         })
       }
@@ -108,7 +108,11 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('Insert error:', insertError)
       return NextResponse.json(
-        { error: 'Failed to create tickets' },
+        { 
+          error: 'Failed to create tickets',
+          details: insertError.message,
+          code: insertError.code 
+        },
         { status: 500 }
       )
     }
