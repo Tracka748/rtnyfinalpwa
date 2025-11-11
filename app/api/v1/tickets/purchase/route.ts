@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create ticket records and track what needs to be decremented
+    // FIX: Properly accumulate quantities for same ticket type
     const ticketRecords = []
     const ticketTypeUpdates: Record<string, number> = {}
     
@@ -70,18 +71,25 @@ export async function POST(request: NextRequest) {
       }
 
       // Check availability
-      if (ticketType.remaining < ticket.quantity) {
+      const currentRemaining = Number(ticketType.remaining)
+      const requestedQuantity = Number(ticket.quantity)
+      
+      if (currentRemaining < requestedQuantity) {
         return NextResponse.json(
-          { error: `Only ${ticketType.remaining} ${ticketType.name} tickets remaining` },
+          { error: `Only ${currentRemaining} ${ticketType.name} tickets remaining` },
           { status: 400 }
         )
       }
 
-      // Track how many to decrement for this ticket type
-      ticketTypeUpdates[ticketType.id] = ticket.quantity
+      // FIX: Accumulate quantities instead of overwriting
+      if (ticketTypeUpdates[ticketType.id]) {
+        ticketTypeUpdates[ticketType.id] += requestedQuantity
+      } else {
+        ticketTypeUpdates[ticketType.id] = requestedQuantity
+      }
 
       // Create one record per ticket quantity
-      for (let i = 0; i < ticket.quantity; i++) {
+      for (let i = 0; i < requestedQuantity; i++) {
         // Generate unique ticket number
         const ticketNumber = `${eventId.substring(0, 8)}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`.toUpperCase()
         
@@ -111,27 +119,47 @@ export async function POST(request: NextRequest) {
         { 
           error: 'Failed to create tickets',
           details: insertError.message,
-          code: insertError.code 
+          code: insertError.code
         },
         { status: 500 }
       )
     }
 
-    // Update remaining counts for each ticket type
-    for (const [ticketTypeId, quantity] of Object.entries(ticketTypeUpdates)) {
+    console.log(`✅ Created ${insertedTickets.length} tickets`)
+
+    // FIX: Update remaining counts with proper number coercion and logging
+    for (const [ticketTypeId, quantityToDecrement] of Object.entries(ticketTypeUpdates)) {
       const ticketType = ticketTypes.find((t: any) => t.id === ticketTypeId)
       
-      const { error: updateError } = await supabase
+      if (!ticketType) {
+        console.error(`⚠️ Ticket type ${ticketTypeId} not found for update`)
+        continue
+      }
+
+      const currentRemaining = Number(ticketType.remaining)
+      const newRemaining = currentRemaining - Number(quantityToDecrement)
+
+      console.log(`📊 Updating ${ticketType.name}: ${currentRemaining} → ${newRemaining}`)
+      
+      const { data: updateData, error: updateError } = await supabase
         .from('ticket_types')
         .update({ 
-          remaining: ticketType.remaining - quantity 
+          remaining: newRemaining,
+          updated_at: new Date().toISOString()
         })
         .eq('id', ticketTypeId)
+        .select()
 
       if (updateError) {
-        console.error('Failed to update remaining count:', updateError)
-        // Note: Tickets are already created, this is just a count update
-        // In production, you'd want to use a database transaction
+        console.error('❌ Failed to update remaining count:', {
+          ticketTypeId,
+          ticketTypeName: ticketType.name,
+          error: updateError.message,
+          details: updateError.details,
+          code: updateError.code
+        })
+      } else {
+        console.log(`✅ Updated ${ticketType.name} remaining count:`, updateData)
       }
     }
 
