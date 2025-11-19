@@ -1,339 +1,399 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { notFound } from "next/navigation"
-import { ArrowLeft, Calendar, MapPin, Loader2 } from "lucide-react"
+import { useState } from "react"
+import { format } from "date-fns"
+import { ArrowLeft, Share2, MapPin, Calendar, Clock, Users, Music } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 interface TicketType {
   id: string
   name: string
   price: number
   description?: string
+  quantity: number
+  remaining: number
 }
 
-interface Event {
+interface BoostSlot {
   id: string
   name: string
   description: string
-  event_date: string
-  venue_name: string
-  venue_address: string
-  flyer_image_url: string | null
-  category: string
-  status: string
-  ticket_types: TicketType[]
+  price: number
+  icon?: string
+  memberOnly: boolean
 }
 
-interface TicketSelection {
-  ticketTypeId: string
-  quantity: number
+interface EventDetailProps {
+  event: {
+    id: string
+    name: string
+    description: string
+    event_date: string
+    venue_name: string
+    venue_address: string
+    flyer_image_url: string | null
+    category: string
+    status: string
+    ticket_types: TicketType[]
+    spotlight_text?: string
+    music_genre?: string
+    min_age?: number
+    start_time?: string
+    end_time?: string
+  }
+  quantities: Record<string, number>
+  onQuantityChange: (ticketId: string, delta: number) => void
+  onPurchase: () => void
+  onBack?: () => void
+  onShare?: () => void
+  totalQuantity: number
+  totalPrice: number
+  isMember?: boolean
 }
 
-export default function EventDetailPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
-  const router = useRouter()
-  const [eventId, setEventId] = useState<string | null>(null)
-  const [event, setEvent] = useState<Event | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selections, setSelections] = useState<Record<string, number>>({})
-  const [isValidating, setIsValidating] = useState(false)
+export function EventDetail({
+  event,
+  quantities,
+  onQuantityChange,
+  onPurchase,
+  onBack,
+  onShare,
+  totalQuantity,
+  totalPrice,
+  isMember = false
+}: EventDetailProps) {
+  const [selectedBoosts, setSelectedBoosts] = useState<string[]>([])
 
-  // Unwrap params
-  useEffect(() => {
-    params.then(p => setEventId(p.id))
-  }, [params])
+  // Sample boost data - can be passed as prop later
+  const availableBoosts: BoostSlot[] = [
+    { id: '1', name: 'VIP Entry', description: 'Skip the line', price: 10, icon: '🎁', memberOnly: true },
+    { id: '2', name: 'Free Drink', description: '1 drink ticket', price: 8, icon: '🍹', memberOnly: true },
+    { id: '3', name: 'Photo Booth', description: 'Unlimited photos', price: 5, icon: '📸', memberOnly: false },
+    { id: '4', name: 'Coat Check', description: 'Free coat check', price: 5, icon: '👔', memberOnly: true },
+    { id: '5', name: 'Parking Pass', description: 'Reserved parking', price: 15, icon: '🚗', memberOnly: true },
+    { id: '6', name: 'Meet & Greet', description: 'Meet the artist', price: 25, icon: '🤝', memberOnly: true },
+    { id: '7', name: 'Early Access', description: '30 min early entry', price: 12, icon: '⏰', memberOnly: true },
+    { id: '8', name: 'Merch Bundle', description: 'Event merch', price: 20, icon: '👕', memberOnly: false },
+  ]
 
-  // Fetch event data
-  useEffect(() => {
-    if (!eventId) return
-
-    async function fetchEvent() {
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/v1/events/${eventId}`)
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            notFound()
-          }
-          throw new Error('Failed to fetch event')
-        }
-
-        const result = await response.json()
-        
-        if (result.success && result.data) {
-          setEvent(result.data)
-        } else {
-          throw new Error('Invalid response')
-        }
-      } catch (err: any) {
-        console.error('Error fetching event:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
+  const toggleBoost = (boostId: string) => {
+    if (!isMember && availableBoosts.find(b => b.id === boostId)?.memberOnly) {
+      return
     }
-
-    fetchEvent()
-  }, [eventId])
-
-  // Update ticket quantity
-  const updateQuantity = (ticketTypeId: string, delta: number) => {
-    setSelections(prev => {
-      const current = prev[ticketTypeId] || 0
-      const newQuantity = Math.max(0, current + delta)
-      
-      if (newQuantity === 0) {
-        const { [ticketTypeId]: _, ...rest } = prev
-        return rest
-      }
-      
-      return { ...prev, [ticketTypeId]: newQuantity }
-    })
-  }
-
-  // Calculate totals
-  const totalQuantity = Object.values(selections).reduce((sum, qty) => sum + qty, 0)
-  
-  const totalPrice = event?.ticket_types?.reduce((sum, type) => {
-    const quantity = selections[type.id] || 0
-    return sum + (type.price * quantity)
-  }, 0) || 0
-
-  // Handle checkout
-  const handleProceedToCheckout = async () => {
-    if (!event || totalQuantity === 0) return
-
-    setIsValidating(true)
-
-    try {
-      const ticketSelections: TicketSelection[] = Object.entries(selections)
-        .filter(([_, quantity]) => quantity > 0)
-        .map(([ticketTypeId, quantity]) => ({
-          ticketTypeId,
-          quantity
-        }))
-
-      // Navigate to checkout with params
-      const searchParams = new URLSearchParams({
-        eventId: event.id,
-        tickets: JSON.stringify(ticketSelections)
-      })
-      
-      router.push(`/checkout?${searchParams.toString()}`)
-    } catch (err) {
-      console.error('Error:', err)
-      alert('Failed to proceed to checkout')
-    } finally {
-      setIsValidating(false)
-    }
-  }
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#121113] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#59FFA0]" />
-      </div>
+    
+    setSelectedBoosts(prev =>
+      prev.includes(boostId)
+        ? prev.filter(id => id !== boostId)
+        : [...prev, boostId]
     )
   }
 
-  // Error state
-  if (error || !event) {
-    return (
-      <div className="min-h-screen bg-[#121113] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{error || 'Event not found'}</p>
-          <Button onClick={() => router.push('/events')}>
-            Back to Events
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  // Format date
   const eventDate = new Date(event.event_date)
-  const formattedDate = eventDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-  const formattedTime = eventDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  const isSoldOut = event.status === "sold_out"
+  const isCancelled = event.status === "cancelled"
+
+  // Calculate total with boosts
+  const boostTotal = selectedBoosts.reduce((sum, boostId) => {
+    const boost = availableBoosts.find(b => b.id === boostId)
+    return sum + (boost?.price || 0)
+  }, 0)
+
+  const grandTotal = totalPrice + boostTotal
 
   return (
-    <main className="min-h-screen bg-[#121113] pb-32">
-      {/* Back Button */}
-      <div className="sticky top-0 z-20 bg-[#121113]/95 backdrop-blur-lg border-b border-[#2A2A2A]">
-        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-          <button
-            onClick={() => router.push('/events')}
-            className="flex items-center gap-2 text-[#A0A0A0] transition-colors hover:text-[#59FFA0]"
+    <div className="min-h-screen bg-[#121113] text-[#F9FDFF]">
+      {/* Hero Section */}
+      <div className="relative w-full aspect-[4/5] md:aspect-[16/9]">
+        {/* Navigation Buttons */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex justify-between">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            className="h-10 w-10 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all duration-300"
           >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="font-[family-name:var(--font-rubik)]">Back to Events</span>
-          </button>
+            <ArrowLeft className="h-5 w-5 text-white" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onShare}
+            className="h-10 w-10 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all duration-300"
+          >
+            <Share2 className="h-5 w-5 text-white" />
+          </Button>
+        </div>
+
+        {/* Category Badge */}
+        <div className="absolute top-20 left-4 z-20">
+          <span className="inline-block px-3 py-1 text-xs font-medium tracking-wide uppercase bg-[#59FFA0] text-[#121113] rounded-full font-[family-name:var(--font-montserrat)]">
+            {event.category}
+          </span>
+        </div>
+
+        {/* Event Image */}
+        {event.flyer_image_url ? (
+          <img
+            src={event.flyer_image_url}
+            alt={event.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-[#1A1A1A] to-[#121113]" />
+        )}
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#121113] via-[#121113]/60 to-transparent" />
+
+        {/* Event Title */}
+        <div className="absolute bottom-6 left-6 right-6 z-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-white font-[family-name:var(--font-rokkitt)] leading-tight">
+            {event.name}
+          </h1>
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Event Image */}
-        {event.flyer_image_url && (
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg mb-8">
-            <Image
-              src={event.flyer_image_url}
-              alt={event.name}
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-        )}
+      {/* Content Section */}
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        
+        {/* NEW: Two-Column Layout - Event Details + Ticket Selector */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* LEFT: Event Detail Highlights */}
+          <Card className="border-2 border-[#59FFA0]/20 bg-[#1A1A1A]/60 backdrop-blur-sm h-fit">
+            <CardContent className="p-6">
+              <h2 className="text-2xl font-semibold mb-6 text-[#F9FDFF] font-[family-name:var(--font-poppins)]">
+                Event Details
+              </h2>
+              
+              <div className="space-y-5">
+                {/* Event Spotlight */}
+                {event.spotlight_text && (
+                  <div className="flex items-start gap-4">
+                    <span className="text-2xl flex-shrink-0">🎊</span>
+                    <div className="flex-1">
+                      <p className="text-[#F9FDFF]/60 text-xs uppercase tracking-wider mb-1 font-[family-name:var(--font-montserrat)]">
+                        Event Spotlight
+                      </p>
+                      <p className="text-[#F9FDFF] text-lg font-medium font-[family-name:var(--font-rubik)]">
+                        {event.spotlight_text}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-        {/* Event Info */}
-        <div className="mb-8">
-          <div className="mb-4">
-            <span className="inline-block rounded-full bg-[#59FFA0]/10 px-3 py-1 text-sm font-[family-name:var(--font-montserrat)] text-[#59FFA0]">
-              {event.category}
-            </span>
-          </div>
-
-          <h1 className="font-[family-name:var(--font-rokkitt)] text-4xl font-bold text-[#F9FDFF] md:text-5xl mb-4">
-            {event.name}
-          </h1>
-
-          <div className="space-y-3 mb-6">
-            <div className="flex items-start gap-3 text-[#A0A0A0]">
-              <Calendar className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-[family-name:var(--font-rubik)]">{formattedDate}</p>
-                <p className="font-[family-name:var(--font-rubik)] text-sm">{formattedTime}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 text-[#A0A0A0]">
-              <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-[family-name:var(--font-rubik)]">{event.venue_name}</p>
-                <p className="font-[family-name:var(--font-rubik)] text-sm">{event.venue_address}</p>
-              </div>
-            </div>
-          </div>
-
-          <p className="font-[family-name:var(--font-rubik)] text-[#A0A0A0] leading-relaxed whitespace-pre-line">
-            {event.description}
-          </p>
-        </div>
-
-        {/* Ticket Selector */}
-        {event.ticket_types && Array.isArray(event.ticket_types) && event.ticket_types.length > 0 && (
-          <section>
-            <h2 className="font-[family-name:var(--font-rokkitt)] text-2xl font-bold text-[#F9FDFF] mb-6">
-              Select Tickets
-            </h2>
-
-            <div className="space-y-4">
-              {event.ticket_types.map(type => (
-                <div 
-                  key={type.id}
-                  className="flex items-center justify-between p-4 border border-[#2A2A2A] rounded-lg bg-[#1a1a1a]"
-                >
+                {/* Date */}
+                <div className="flex items-start gap-4">
+                  <Calendar className="h-6 w-6 text-[#59FFA0] flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="font-[family-name:var(--font-poppins)] text-lg text-[#F9FDFF]">
-                      {type.name}
-                    </h3>
-                    {type.description && (
-                      <p className="text-sm text-[#A0A0A0] mt-1">{type.description}</p>
-                    )}
-                    <p className="font-[family-name:var(--font-playfair)] text-[#59FFA0] mt-2 text-xl">
-                      ${type.price.toFixed(2)}
+                    <p className="text-[#F9FDFF]/60 text-xs uppercase tracking-wider mb-1 font-[family-name:var(--font-montserrat)]">
+                      Date
+                    </p>
+                    <p className="text-[#F9FDFF] text-lg font-medium font-[family-name:var(--font-rubik)]">
+                      {format(eventDate, "EEEE, MMMM d, yyyy")}
                     </p>
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => updateQuantity(type.id, -1)}
-                      disabled={(selections[type.id] || 0) === 0}
-                      className="h-9 w-9 border-[#2A2A2A]"
-                    >
-                      <span className="text-lg">−</span>
-                    </Button>
-
-                    <span className="w-8 text-center font-[family-name:var(--font-montserrat)] text-[#F9FDFF]">
-                      {selections[type.id] || 0}
-                    </span>
-
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => updateQuantity(type.id, 1)}
-                      className="h-9 w-9 border-[#2A2A2A]"
-                    >
-                      <span className="text-lg">+</span>
-                    </Button>
+                {/* Time */}
+                <div className="flex items-start gap-4">
+                  <Clock className="h-6 w-6 text-[#59FFA0] flex-shrink-0 mt-1" />
+                  <div className="flex-1">
+                    <p className="text-[#F9FDFF]/60 text-xs uppercase tracking-wider mb-1 font-[family-name:var(--font-montserrat)]">
+                      Time
+                    </p>
+                    <p className="text-[#F9FDFF] text-lg font-medium font-[family-name:var(--font-rubik)]">
+                      {event.start_time || format(eventDate, "h:mm a")}
+                      {event.end_time && ` - ${event.end_time}`}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
 
-        {/* No Tickets Available */}
-        {(!event.ticket_types || !Array.isArray(event.ticket_types) || event.ticket_types.length === 0) && (
-          <div className="text-center py-12 bg-[#1a1a1a] border border-[#2A2A2A] rounded-lg">
-            <p className="text-[#A0A0A0] font-[family-name:var(--font-rubik)]">
-              Tickets are not yet available for this event.
+                {/* Age */}
+                {event.min_age && (
+                  <div className="flex items-start gap-4">
+                    <Users className="h-6 w-6 text-[#59FFA0] flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                      <p className="text-[#F9FDFF]/60 text-xs uppercase tracking-wider mb-1 font-[family-name:var(--font-montserrat)]">
+                        Age Requirement
+                      </p>
+                      <p className="text-[#F9FDFF] text-lg font-medium font-[family-name:var(--font-rubik)]">
+                        {event.min_age}+ (ID Required)
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Music */}
+                {event.music_genre && (
+                  <div className="flex items-start gap-4">
+                    <Music className="h-6 w-6 text-[#59FFA0] flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                      <p className="text-[#F9FDFF]/60 text-xs uppercase tracking-wider mb-1 font-[family-name:var(--font-montserrat)]">
+                        Music
+                      </p>
+                      <p className="text-[#F9FDFF] text-lg font-medium font-[family-name:var(--font-rubik)]">
+                        {event.music_genre}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Location */}
+                <div className="pt-4 border-t border-[#2A2A2A]">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-[#1AC8ED] mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-[#F9FDFF]/60 text-xs uppercase tracking-wider mb-1 font-[family-name:var(--font-montserrat)]">
+                        Location
+                      </p>
+                      <p className="text-[#F9FDFF] text-lg font-medium mb-1 font-[family-name:var(--font-rubik)]">
+                        {event.venue_name}
+                      </p>
+                      <p className="text-[#F9FDFF]/60 text-sm font-[family-name:var(--font-rubik)]">
+                        {event.venue_address}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* RIGHT: Ticket Selection (Your existing TicketSelector will go here via page.tsx) */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold text-[#F9FDFF] font-[family-name:var(--font-poppins)]">
+              Select Tickets
+            </h2>
+            {/* TicketSelector component will be inserted here by parent */}
+            <div id="ticket-selector-slot" />
+          </div>
+        </div>
+
+        {/* Description - Full Width Below */}
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold text-[#F9FDFF] font-[family-name:var(--font-poppins)]">
+            About This Event
+          </h2>
+          <div className="p-6 rounded-2xl bg-[#1A1A1A]/60 backdrop-blur-sm border border-[#2A2A2A]">
+            <p className="text-[#F9FDFF]/80 leading-relaxed font-[family-name:var(--font-rubik)] whitespace-pre-line">
+              {event.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Status Messages */}
+        {isCancelled && (
+          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+            <p className="text-red-400 font-semibold font-[family-name:var(--font-rubik)]">
+              This event has been cancelled.
             </p>
           </div>
         )}
-      </div>
 
-      {/* Fixed Bottom Toolbar */}
-      {totalQuantity > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
-          <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="font-[family-name:var(--font-montserrat)] text-sm text-[#A0A0A0]">
-                  Total ({totalQuantity} {totalQuantity === 1 ? 'ticket' : 'tickets'})
-                </p>
-                <p className="font-[family-name:var(--font-playfair)] text-2xl text-[#59FFA0]">
-                  ${totalPrice.toFixed(2)}
-                </p>
+        {isSoldOut && !isCancelled && (
+          <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <p className="text-yellow-400 font-semibold font-[family-name:var(--font-rubik)]">
+              This event is sold out.
+            </p>
+          </div>
+        )}
+
+        {/* NEW: Ticket Booster Section */}
+        {!isCancelled && !isSoldOut && (
+          <Card className={`border-2 bg-[#1A1A1A]/60 backdrop-blur-sm ${!isMember ? 'opacity-60' : 'border-[#59FFA0]/20 border-[#2A2A2A]'}`}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-[#F9FDFF] font-[family-name:var(--font-poppins)] flex items-center gap-2">
+                    Ticket Boosters
+                    {!isMember && (
+                      <Badge variant="outline" className="ml-2 border-[#59FFA0]/50 text-[#59FFA0]">
+                        Members Only
+                      </Badge>
+                    )}
+                  </h2>
+                  <p className="text-sm text-[#F9FDFF]/60 mt-1 font-[family-name:var(--font-rubik)]">
+                    {isMember 
+                      ? 'Add special perks to enhance your experience'
+                      : 'Become a member to unlock exclusive add-ons'
+                    }
+                  </p>
+                </div>
               </div>
 
-              <Button
-                onClick={handleProceedToCheckout}
-                disabled={isValidating}
-                className="bg-[#59FFA0] hover:bg-[#4DE08A] text-[#121113] font-[family-name:var(--font-montserrat)] px-8 py-6 text-lg"
-                size="lg"
-              >
-                {isValidating ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Select Tickets'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+              {/* Boost Grid - 8 large icons */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {availableBoosts.map((boost) => {
+                  const isDisabled = !isMember && boost.memberOnly
+                  const isSelected = selectedBoosts.includes(boost.id)
+
+                  return (
+                    <button
+                      key={boost.id}
+                      onClick={() => toggleBoost(boost.id)}
+                      disabled={isDisabled}
+                      className={`
+                        relative p-5 rounded-2xl border-2 transition-all text-center
+                        ${isDisabled 
+                          ? 'border-[#2A2A2A]/50 bg-[#1A1A1A]/20 cursor-not-allowed' 
+                          : isSelected
+                            ? 'border-[#59FFA0] bg-[#59FFA0]/10'
+                            : 'border-[#2A2A2A] hover:border-[#59FFA0]/50 hover:bg-[#59FFA0]/5'
+                        }
+                      `}
+                    >
+                      {/* Large Icon - 64px */}
+                      <div className={`
+                        w-16 h-16 mx-auto mb-3 rounded-xl flex items-center justify-center text-4xl
+                        ${isDisabled ? 'bg-[#2A2A2A]/30' : 'bg-[#59FFA0]/10'}
+                      `}>
+                        {boost.icon || '🎁'}
+                      </div>
+
+                      <h3 className={`font-semibold text-sm mb-1 font-[family-name:var(--font-rubik)] ${isDisabled ? 'text-[#F9FDFF]/30' : 'text-[#F9FDFF]'}`}>
+                        {boost.name}
+                      </h3>
+                      
+                      <p className={`text-xs mb-2 font-[family-name:var(--font-rubik)] ${isDisabled ? 'text-[#F9FDFF]/20' : 'text-[#F9FDFF]/60'}`}>
+                        {boost.description}
+                      </p>
+                      
+                      <p className={`text-lg font-bold font-[family-name:var(--font-playfair)] ${isDisabled ? 'text-[#F9FDFF]/30' : 'text-[#59FFA0]'}`}>
+                        +${boost.price}
+                      </p>
+
+                      {boost.memberOnly && !isMember && (
+                        <div className="absolute top-2 right-2">
+                          <span className="text-sm">🔒</span>
+                        </div>
+                      )}
+
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#59FFA0] flex items-center justify-center">
+                          <span className="text-[#121113] text-xs font-bold">✓</span>
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {!isMember && (
+                <div className="mt-6 text-center">
+                  <button className="px-6 py-3 rounded-xl border-2 border-[#59FFA0]/50 text-[#59FFA0] hover:bg-[#59FFA0]/10 transition-all font-[family-name:var(--font-rubik)] font-medium">
+                    Become a Member to Unlock Boosters
+                  </button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Purchase Summary will be added by parent component */}
+    </div>
   )
 }
