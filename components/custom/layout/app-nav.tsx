@@ -53,9 +53,9 @@ export function AppNav() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link 
-            href="/events" 
-            className="font-[family-name:var(--font-rokkitt)] text-2xl font-bold text-[#F9FDFF] transition-colors hover:text-[#59FFA0]"
+          <Link
+            href="/events"
+            className="font-header text-2xl font-bold text-[#F9FDFF] transition-colors hover:text-[#59FFA0]"
           >
             RTNY
           </Link>
@@ -65,7 +65,7 @@ export function AppNav() {
             {/* Events Link */}
             <Link
               href="/events"
-              className={`font-[family-name:var(--font-rubik)] text-sm font-medium transition-colors ${
+              className={`font-sans text-sm font-medium transition-colors ${
                 isActive("/events")
                   ? "text-[#59FFA0]"
                   : "text-[#F9FDFF] hover:text-[#59FFA0]"
@@ -82,7 +82,7 @@ export function AppNav() {
                   <>
                     <Link
                       href="/dashboard"
-                      className={`font-[family-name:var(--font-rubik)] text-sm font-medium transition-colors ${
+                      className={`font-sans text-sm font-medium transition-colors ${
                         isActive("/dashboard")
                           ? "text-[#59FFA0]"
                           : "text-[#F9FDFF] hover:text-[#59FFA0]"
@@ -93,7 +93,7 @@ export function AppNav() {
 
                     <Link
                       href="/profile"
-                      className={`font-[family-name:var(--font-rubik)] text-sm font-medium transition-colors ${
+                      className={`font-sans text-sm font-medium transition-colors ${
                         isActive("/profile")
                           ? "text-[#59FFA0]"
                           : "text-[#F9FDFF] hover:text-[#59FFA0]"
@@ -104,12 +104,12 @@ export function AppNav() {
 
                     {/* User Menu */}
                     <div className="flex items-center gap-4">
-                      <span className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
+                      <span className="font-sans text-sm text-[#A0A0A0]">
                         {user.email}
                       </span>
                       <button
                         onClick={handleLogout}
-                        className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10"
+                        className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-2 font-sans text-sm text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10"
                       >
                         Logout
                       </button>
@@ -119,7 +119,7 @@ export function AppNav() {
                   // Logged Out State
                   <Link
                     href="/login"
-                    className="rounded-lg bg-[#59FFA0] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
+                    className="rounded-lg bg-[#59FFA0] px-4 py-2 font-sans text-sm font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
                   >
                     Login
                   </Link>
@@ -160,7 +160,7 @@ export function AppNav() {
             <Link
               href="/events"
               onClick={() => setMobileMenuOpen(false)}
-              className={`block rounded-lg px-3 py-2 font-[family-name:var(--font-rubik)] text-base font-medium transition-colors ${
+              className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
                 isActive("/events")
                   ? "bg-[#59FFA0]/10 text-[#59FFA0]"
                   : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
@@ -176,7 +176,7 @@ export function AppNav() {
                     <Link
                       href="/dashboard"
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`block rounded-lg px-3 py-2 font-[family-name:var(--font-rubik)] text-base font-medium transition-colors ${
+                      className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
                         isActive("/dashboard")
                           ? "bg-[#59FFA0]/10 text-[#59FFA0]"
                           : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
@@ -188,7 +188,7 @@ export function AppNav() {
                     <Link
                       href="/profile"
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`block rounded-lg px-3 py-2 font-[family-name:var(--font-rubik)] text-base font-medium transition-colors ${
+                      className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
                         isActive("/profile")
                           ? "bg-[#59FFA0]/10 text-[#59FFA0]"
                           : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
@@ -198,7 +198,7 @@ export function AppNav() {
                     </Link>
 
                     <div className="mt-4 border-t border-[#2A2A2A] pt-4">
-                      <p className="px-3 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
+                      <p className="px-3 font-sans text-sm text-[#A0A0A0]">
                         {user.email}
                       </p>
                       <button
@@ -206,7 +206,7 @@ export function AppNav() {
                           handleLogout()
                           setMobileMenuOpen(false)
                         }}
-                        className="mt-2 w-full rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-left font-[family-name:var(--font-rubik)] text-base font-medium text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10"
+                        className="mt-2 w-full rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-left font-sans text-base font-medium text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10"
                       >
                         Logout
                       </button>
@@ -216,7 +216,7 @@ export function AppNav() {
                   <Link
                     href="/login"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block rounded-lg bg-[#59FFA0] px-3 py-2 text-center font-[family-name:var(--font-rubik)] text-base font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
+                    className="block rounded-lg bg-[#59FFA0] px-3 py-2 text-center font-sans text-base font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
                   >
                     Login
                   </Link>
