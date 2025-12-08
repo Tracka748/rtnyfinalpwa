@@ -20,42 +20,99 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
+interface OrderData {
+  orderId: string
+  confirmationCode: string
+  eventName: string
+  eventDate: string
+  venueName: string
+  venueAddress: string
+  tickets: Array<{ type: string; quantity: number; price: number }>
+  boosters: Array<{ name: string; price: number }>
+  total: number
+  email: string
+}
+
 export default function ConfirmationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const success = searchParams.get('success')
+  const orderId = searchParams.get('orderId')
 
   const [showConfetti, setShowConfetti] = useState(false)
+  const [orderData, setOrderData] = useState<OrderData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (success === 'true') {
       setShowConfetti(true)
       // Hide confetti after 3 seconds
       setTimeout(() => setShowConfetti(false), 3000)
+
+      // Load order data from sessionStorage
+      const savedOrder = sessionStorage.getItem('completed_order')
+      if (savedOrder) {
+        try {
+          const completedOrder = JSON.parse(savedOrder)
+          console.log('Loaded completed order:', completedOrder)
+
+          // Transform the data to match our OrderData interface
+          const tickets = completedOrder.tickets || []
+          const ticketItems = tickets.map((ticket: any) => ({
+            type: ticket.ticket_type_name || 'Ticket',
+            quantity: 1, // Each ticket is individual in DB
+            price: ticket.price || 0
+          }))
+
+          // Group tickets by type for display
+          const groupedTickets = ticketItems.reduce((acc: any[], ticket: any) => {
+            const existing = acc.find(t => t.type === ticket.type)
+            if (existing) {
+              existing.quantity += ticket.quantity
+            } else {
+              acc.push({ ...ticket })
+            }
+            return acc
+          }, [])
+
+          setOrderData({
+            orderId: completedOrder.orderId || orderId || 'N/A',
+            confirmationCode: orderId || 'CONF-' + Math.random().toString(36).substring(2, 11).toUpperCase(),
+            eventName: completedOrder.eventName || 'Event',
+            eventDate: completedOrder.eventDate || new Date().toISOString(),
+            venueName: 'Venue TBA', // TODO: Add venue to completed_order
+            venueAddress: 'Address TBA', // TODO: Add venue to completed_order
+            tickets: groupedTickets,
+            boosters: [], // TODO: Add boosters to completed_order if needed
+            total: completedOrder.totalAmount || 0,
+            email: 'user@example.com', // TODO: Get from auth
+          })
+        } catch (error) {
+          console.error('Failed to parse order data:', error)
+          // Redirect to events if data is invalid
+          router.push('/events')
+        }
+      } else {
+        // No order data found, redirect to events
+        console.warn('No completed_order found in sessionStorage')
+        router.push('/events')
+      }
+      setIsLoading(false)
     } else {
       // If no success param, redirect to events
       router.push('/events')
     }
-  }, [success])
+  }, [success, orderId, router])
 
-  // Mock order data - in production, fetch from database using order ID
-  const orderData = {
-    orderId: 'ORDER-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
-    confirmationCode: 'CONF-' + Math.random().toString(36).substring(2, 11).toUpperCase(),
-    eventName: 'Saturday Night Live at Montage Music Hall',
-    eventDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    venueName: 'Montage Music Hall',
-    venueAddress: '50 Chestnut St, Rochester, NY 14604',
-    tickets: [
-      { type: 'General Admission', quantity: 2, price: 25 },
-      { type: 'VIP', quantity: 1, price: 50 },
-    ],
-    boosters: [
-      { name: 'VIP Entry', price: 10 },
-      { name: 'Free Drink', price: 8 },
-    ],
-    total: 133,
-    email: 'user@example.com', // In production, get from auth
+  if (isLoading || !orderData) {
+    return (
+      <div className="min-h-screen bg-[#121113] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#59FFA0] mx-auto mb-4"></div>
+          <p className="font-sans text-[#F9FDFF]/60">Loading order details...</p>
+        </div>
+      </div>
+    )
   }
 
   const handleDownloadTickets = () => {

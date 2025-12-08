@@ -114,15 +114,65 @@ export default function CheckoutPage() {
   // Process payment
   const handlePayment = async () => {
     setIsProcessing(true)
-    
-    // TODO: Integrate with your payment processor (Stripe, Cash App, etc.)
-    // For now, simulate payment processing
-    
-    setTimeout(() => {
-      // Clear cart and redirect to confirmation
+
+    try {
+      // Prepare the purchase request
+      const purchaseData = {
+        eventId: checkoutData.eventId,
+        tickets: checkoutData.items.map(item => ({
+          ticketTypeId: item.ticketTypeId,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        promoCode: appliedPromo?.code || null,
+        totalAmount: totalAmount
+      }
+
+      console.log('🛒 Submitting purchase:', purchaseData)
+
+      // Call the ticket purchase API
+      const response = await fetch('/api/v1/tickets/purchase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(purchaseData)
+      })
+
+      const result = await response.json()
+      console.log('📦 Purchase API response:', result)
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to complete purchase')
+      }
+
+      // Save order details to sessionStorage for confirmation page
+      const completedOrder = {
+        orderId: result.data.tickets?.[0]?.id || 'N/A',
+        eventName: checkoutData.eventName,
+        eventDate: checkoutData.eventDate,
+        ticketCount: result.data.ticketCount,
+        totalAmount: totalAmount,
+        tickets: result.data.tickets,
+        purchaseDate: new Date().toISOString()
+      }
+
+      sessionStorage.setItem('completed_order', JSON.stringify(completedOrder))
+
+      // Clear cart
       sessionStorage.removeItem('checkout_cart')
-      router.push('/confirmation?success=true')
-    }, 2000)
+
+      // Redirect to confirmation page
+      const orderId = result.data.tickets?.[0]?.id || 'unknown'
+      router.push(`/confirmation?orderId=${orderId}&success=true`)
+
+      console.log('✅ Purchase completed successfully')
+
+    } catch (error) {
+      console.error('❌ Payment error:', error)
+      alert(error instanceof Error ? error.message : 'Failed to complete purchase. Please try again.')
+      setIsProcessing(false)
+    }
   }
 
   return (

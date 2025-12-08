@@ -120,7 +120,7 @@ export default function EventDetailPage({
 
         const supabase = createBrowserSupabaseClient()
 
-        // Fetch event with venue relationship
+        // Fetch event with venue relationship and ticket types
         const { data: eventData, error: eventError } = await supabase
           .from('events')
           .select(`
@@ -140,6 +140,14 @@ export default function EventDetailPage({
             venues!inner (
               name,
               address
+            ),
+            ticket_types (
+              id,
+              name,
+              description,
+              price,
+              quantity,
+              remaining
             )
           `)
           .eq('id', id)
@@ -159,11 +167,27 @@ export default function EventDetailPage({
         const venue = (Array.isArray(venueData) && venueData.length > 0
           ? venueData[0]
           : venueData) as { name: string; address: string } | null
-        const ticketTypes = convertTicketPricesToTypes(
-          eventData.ticket_prices as Record<string, number> | null,
-          eventData.total_tickets || 500,
-          eventData.tickets_sold || 0
-        )
+
+        // Use actual ticket_types from database if available, otherwise fall back to derived types
+        const rawTicketTypes = eventData.ticket_types as unknown
+        const ticketTypesArray = Array.isArray(rawTicketTypes) ? rawTicketTypes : []
+
+        const ticketTypes: TicketType[] = ticketTypesArray.length > 0
+          ? ticketTypesArray.map((tt: any) => ({
+              id: tt.id, // Use the actual UUID from database
+              name: tt.name,
+              description: tt.description || `${tt.name} admission`,
+              price: Number(tt.price),
+              quantity: tt.quantity,
+              remaining: tt.remaining
+            }))
+          : convertTicketPricesToTypes(
+              eventData.ticket_prices as Record<string, number> | null,
+              eventData.total_tickets || 500,
+              eventData.tickets_sold || 0
+            )
+
+        console.log('Ticket types with IDs:', ticketTypes)
 
         const formattedEvent: Event = {
           id: eventData.id,
@@ -262,15 +286,20 @@ export default function EventDetailPage({
     }))
   }
 
-  // Proceed to checkout (Unchanged)
+  // Proceed to checkout
   const handleCheckout = () => {
     if (totalTickets === 0) return
 
     // Build cart data
     const cartData = cartItems.map(([ticketTypeId, quantity]) => {
       const ticketType = event.ticket_types.find(t => t.id === ticketTypeId)!
-      return {
+      console.log('Building cart item:', {
         ticketTypeId,
+        ticketTypeName: ticketType.name,
+        isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ticketTypeId)
+      })
+      return {
+        ticketTypeId, // This should be a UUID from database
         quantity,
         price: ticketType.price,
         name: ticketType.name
@@ -278,13 +307,16 @@ export default function EventDetailPage({
     })
 
     // Store in sessionStorage and navigate to checkout
-    sessionStorage.setItem('checkout_cart', JSON.stringify({
+    const checkoutData = {
       eventId: event.id,
       eventName: event.name,
       eventDate: event.event_date,
       items: cartData,
       subtotal
-    }))
+    }
+
+    console.log('Storing checkout cart:', checkoutData)
+    sessionStorage.setItem('checkout_cart', JSON.stringify(checkoutData))
 
     router.push(`/checkout?eventId=${event.id}`)
   }
