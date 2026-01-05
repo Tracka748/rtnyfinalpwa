@@ -42,8 +42,12 @@ export function VerifyForm() {
       // Clear stored email
       sessionStorage.removeItem('verifyEmail')
 
-      // Redirect to dashboard
+      // Redirect to dashboard and force refresh to update nav
       router.push('/dashboard')
+      router.refresh()
+      
+      // Force full page reload to ensure auth state updates
+      window.location.href = '/dashboard'
 
     } catch (err: any) {
       setError(err.message)

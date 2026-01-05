@@ -53,18 +53,18 @@ export default async function DashboardPage() {
             </p>
           </Link>
 
-          {/* My Tickets (Coming Soon) */}
-          <div className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 opacity-60">
-            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF]">
+          {/* My Tickets */}
+          <Link
+            href="/dashboard/tickets"
+            className="group rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/5"
+          >
+            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF] group-hover:text-[#59FFA0]">
               My Tickets
             </h3>
             <p className="mt-2 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
               View your purchased tickets
             </p>
-            <span className="mt-3 inline-block rounded bg-[#59FFA0]/20 px-2 py-1 font-[family-name:var(--font-rubik)] text-xs text-[#59FFA0]">
-              Coming Soon
-            </span>
-          </div>
+          </Link>
 
           {/* Profile (Coming Soon) */}
           <div className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 opacity-60">

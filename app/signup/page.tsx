@@ -1,31 +1,30 @@
-// app/login/page.tsx
-import { LoginForm } from "@/components/custom/auth/login-form"
+import { SignupForm } from "@/components/custom/auth/signup-form"
 import Link from "next/link"
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#121113] px-4">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
           <h1 className="font-[family-name:var(--font-rokkitt)] text-4xl font-bold text-[#F9FDFF]">
-            Welcome Back
+            Welcome to RTNY
           </h1>
           <p className="mt-3 font-[family-name:var(--font-rubik)] text-[#A0A0A0]">
-            Sign in to your RTNY account
+            Create your account to get started
           </p>
         </div>
 
-        {/* Login Form */}
-        <LoginForm />
+        {/* Signup Form */}
+        <SignupForm />
 
-        {/* Sign Up Link */}
+        {/* Sign In Link */}
         <div className="text-center">
           <Link
-            href="/signup"
+            href="/login"
             className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0] underline-offset-2 transition-all hover:text-[#F9FDFF] hover:underline"
           >
-            Don't have an account? Sign up →
+            Already have an account? Sign in →
           </Link>
         </div>
 

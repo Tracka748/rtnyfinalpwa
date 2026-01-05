@@ -1,103 +1,534 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState, useEffect } from "react"
+import { HeroPromo } from "@/components/custom/homepage/hero-promo"
+import { DateTabs } from "@/components/custom/homepage/date-tabs"
+import { FeaturedEvents } from "@/components/custom/homepage/featured-events"
+import { AnnouncementStrip } from "@/components/custom/homepage/announcement-strip"
+import { TonightSection } from "@/components/custom/homepage/tonight-section"
+import { ModuleSection } from "@/components/custom/homepage/module-section"
+import { ContextualAd } from "@/components/custom/homepage/contextual-ad"
+import { CategoryGrid } from "@/components/custom/homepage/category-grid"
+import { PointsFeedback } from "@/components/custom/homepage/points-feedback"
+import { Footer } from "@/components/custom/homepage/footer"
+import { getModulePriority } from "@/lib/homepage/get-module-priority"
+import type { Event, PromoCard, Module } from "@/lib/homepage/types"
+
+// Helper function to get category-specific placeholder images
+function getPlaceholderImage(category: string) {
+  const placeholders: Record<string, string> = {
+    dining: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=800&fit=crop',
+    nightlife: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=800&fit=crop',
+    music: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=800&fit=crop',
+    movies: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=800&fit=crop',
+    family: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=600&h=800&fit=crop',
+    festivals: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=800&fit=crop',
+    sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=600&h=800&fit=crop',
+    arts: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=600&h=800&fit=crop',
+    default: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=800&fit=crop'
+  }
+  return placeholders[category] || placeholders.default
+}
+
+export default function HomePage() {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
+  const [allEvents, setAllEvents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch events from API
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const response = await fetch('/api/v1/events')
+        const result = await response.json()
+
+        console.log('📥 API Response:', result)
+
+        if (result.success && result.data) {
+          console.log('✅ Events fetched successfully:', result.data.length)
+          console.log('📅 Sample event dates:', result.data.slice(0, 3).map((e: any) => ({ name: e.name, date: e.event_date })))
+          setAllEvents(result.data)
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch events:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEvents()
+  }, [])
+
+  // Helper function to map API event to Event type
+  const mapEventToEventType = (apiEvent: any): Event => {
+    const lowestPrice = apiEvent.ticket_types?.[0]?.price || 0
+    const category = apiEvent.category || "nightlife"
+    return {
+      id: apiEvent.id,
+      title: apiEvent.name,
+      category: category,
+      image: apiEvent.image_url || getPlaceholderImage(category),
+      venue: apiEvent.venue_name || "TBA",
+      time: new Date(apiEvent.event_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      price: lowestPrice > 0 ? `$${lowestPrice}` : "Free",
+      points: Math.floor(lowestPrice * 5) || 50,
+      date: new Date(apiEvent.event_date).toISOString().split("T")[0],
+    }
+  }
+
+  // Filter featured events (featured=true, limit 10)
+  const featuredEvents: Event[] = allEvents
+    .filter(event => event.featured === true)
+    .slice(0, 10)
+    .map(mapEventToEventType)
+
+  // Filter tonight events (events in the next 24 hours)
+  const now = new Date()
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+
+  console.log('🔍 DEBUG - All events count:', allEvents.length)
+  console.log('🔍 DEBUG - Current date:', now)
+  console.log('🔍 DEBUG - Tomorrow (24h from now):', tomorrow)
+
+  const tonightEvents: Event[] = allEvents
+    .filter(event => {
+      const eventDate = new Date(event.event_date)
+      const isInNext24Hours = eventDate >= now && eventDate < tomorrow
+
+      console.log('🌙 Tonight filter:', {
+        eventName: event.name,
+        eventDate: eventDate.toISOString(),
+        now: now.toISOString(),
+        isInNext24Hours
+      })
+
+      return isInNext24Hours
+    })
+    .map(mapEventToEventType)
+
+  console.log('🌙 Tonight events found:', tonightEvents.length)
+
+  // Mock user data for PointsFeedback
+  const userData = {
+    isLoggedIn: true,
+    points: 1240,
+    badges: [{ id: "explorer", name: "Explorer", icon: "🏅", tier: "explorer" as const }],
+  }
+
+  // Mock promo data
+  const promos: PromoCard[] = [
+    {
+      id: "1",
+      title: "🎬 Free Kids Movies Weekend",
+      subtitle: "Dec 15-20 • All Rochester Theaters",
+      image: "/movie-theater-kids-family.jpg",
+      points: 300,
+      cta: "View Showtimes",
+      link: "/movies",
+    },
+    {
+      id: "2",
+      title: "🎸 Rochester Music Festival",
+      subtitle: "Live bands every night • Downtown venues",
+      image: "/live-music-festival-night.jpg",
+      points: 500,
+      cta: "Get Tickets",
+      link: "/festivals",
+    },
+    {
+      id: "3",
+      title: "🍹 Holiday Food & Wine Walk",
+      subtitle: "Taste Rochester • Over 25 restaurants",
+      image: "/restaurant-food-wine-tasting.jpg",
+      points: 250,
+      cta: "Reserve Spot",
+      link: "/dining",
+    },
+  ]
+
+  const currentHour = new Date().getHours()
+  const isWeekend = [0, 6].includes(new Date().getDay())
+  const moduleOrder = getModulePriority(userData.badges, currentHour, isWeekend, userData.points, userData.isLoggedIn)
+
+  const tonightDeals: Event[] = [
+    {
+      id: "d1",
+      title: "HAPPY HOUR",
+      category: "dining",
+      image: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=800&fit=crop",
+      venue: "5-7PM",
+      time: "All Bars",
+      price: "Specials",
+      points: 100,
+      date: selectedDate,
+    },
+    {
+      id: "d2",
+      title: "2-FOR-1 DRINKS",
+      category: "dining",
+      image: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=800&fit=crop",
+      venue: "Bug Jar",
+      time: "All Night",
+      price: "$10",
+      points: 50,
+      date: selectedDate,
+    },
+    {
+      id: "d3",
+      title: "LADIES NIGHT",
+      category: "nightlife",
+      image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=800&fit=crop",
+      venue: "Lux Club",
+      time: "Free Before 10PM",
+      price: "$0",
+      points: 75,
+      date: selectedDate,
+    },
+    {
+      id: "d4",
+      title: "VIP BOTTLE SERVICE",
+      category: "nightlife",
+      image: "https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=600&h=800&fit=crop",
+      venue: "All Venues",
+      time: "Reserve Now",
+      price: "$250",
+      points: 250,
+      date: selectedDate,
+    },
+  ]
+
+  const modules: Module[] = [
+    {
+      id: "family",
+      title: "Family Weekend",
+      icon: "👨‍👩‍👧",
+      priority: 0,
+      events: [
+        {
+          id: "f1",
+          title: "Zoo Day",
+          category: "family",
+          image: "/zoo-animals-family-kids.jpg",
+          venue: "Seneca Zoo",
+          time: "Sat • 10AM",
+          price: "$15",
+          points: 75,
+          date: selectedDate,
+        },
+        {
+          id: "f2",
+          title: "Museum Free Sunday",
+          category: "family",
+          image: "/museum-kids-exhibits.jpg",
+          venue: "Strong Museum",
+          time: "Sun • 12PM",
+          price: "$10",
+          points: 50,
+          date: selectedDate,
+        },
+        {
+          id: "f3",
+          title: "Park Festival",
+          category: "family",
+          image: "/park-festival-family-fun.jpg",
+          venue: "Highland Park",
+          time: "Sat • 11AM",
+          price: "Free",
+          points: 25,
+          date: selectedDate,
+        },
+        {
+          id: "f4",
+          title: "Aquarium Visit",
+          category: "family",
+          image: "/aquarium-fish-kids.jpg",
+          venue: "Seabreeze",
+          time: "Sun • 1PM",
+          price: "$20",
+          points: 100,
+          date: selectedDate,
+        },
+      ],
+    },
+    {
+      id: "movies",
+      title: "Movies This Week",
+      icon: "🎬",
+      priority: 0,
+      events: [
+        {
+          id: "m1",
+          title: "Wicked",
+          category: "movies",
+          image: "/wicked-musical-theater-movie.jpg",
+          venue: "Little Theatre",
+          time: "7:30 PM",
+          price: "$25",
+          points: 150,
+          date: selectedDate,
+        },
+        {
+          id: "m2",
+          title: "Gladiator II",
+          category: "movies",
+          image: "/gladiator-action-sequel.jpg",
+          venue: "Regal Henrietta",
+          time: "7:00 PM",
+          price: "$14",
+          points: 85,
+          date: selectedDate,
+        },
+        {
+          id: "m3",
+          title: "The Wild Robot",
+          category: "movies",
+          image: "/wild-robot-animated-film.jpg",
+          venue: "AMC Webster",
+          time: "2:00 PM",
+          price: "$12",
+          points: 75,
+          date: selectedDate,
+        },
+        {
+          id: "m4",
+          title: "Nosferatu",
+          category: "movies",
+          image: "/nosferatu-horror-vampire.jpg",
+          venue: "Little Theatre",
+          time: "9:00 PM",
+          price: "$18",
+          points: 90,
+          date: selectedDate,
+        },
+      ],
+    },
+    {
+      id: "music",
+      title: "Live Music",
+      icon: "🎸",
+      priority: 0,
+      events: [
+        {
+          id: "mu1",
+          title: "Jazz Night",
+          category: "music",
+          image: "/jazz-live-band-saxophone.jpg",
+          venue: "Old Toad",
+          time: "8:00 PM",
+          price: "$15",
+          points: 80,
+          date: selectedDate,
+        },
+        {
+          id: "mu2",
+          title: "Rock Concert",
+          category: "music",
+          image: "/rock-concert-guitar-band.jpg",
+          venue: "Anthology",
+          time: "9:00 PM",
+          price: "$30",
+          points: 150,
+          date: selectedDate,
+        },
+        {
+          id: "mu3",
+          title: "Open Mic Night",
+          category: "music",
+          image: "/open-mic-acoustic-guitar.jpg",
+          venue: "Java's",
+          time: "7:00 PM",
+          price: "Free",
+          points: 40,
+          date: selectedDate,
+        },
+      ],
+    },
+    {
+      id: "plan-day",
+      title: "Plan My Day",
+      icon: "☀️",
+      priority: 0,
+      events: [
+        {
+          id: "pd1",
+          title: "Brunch Specials",
+          category: "dining",
+          image: "/brunch-food-breakfast.jpg",
+          venue: "Good Luck",
+          time: "11:00 AM",
+          price: "$25",
+          points: 100,
+          date: selectedDate,
+        },
+        {
+          id: "pd2",
+          title: "Coffee & Pastries",
+          category: "dining",
+          image: "/coffee-pastries-cafe.jpg",
+          venue: "Java's",
+          time: "8:00 AM",
+          price: "$8",
+          points: 30,
+          date: selectedDate,
+        },
+        {
+          id: "pd3",
+          title: "Shopping Downtown",
+          category: "shopping",
+          image: "/shopping-downtown-stores.jpg",
+          venue: "East Ave",
+          time: "10:00 AM",
+          price: "Free",
+          points: 20,
+          date: selectedDate,
+        },
+      ],
+    },
+  ]
+
+  // Sort modules by priority
+  const sortedModules = modules
+    .filter((module) => moduleOrder.some((m) => m.id === module.id))
+    .map((module) => ({
+      ...module,
+      priority: moduleOrder.find((m) => m.id === module.id)?.priority || 0,
+    }))
+    .sort((a, b) => b.priority - a.priority)
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-background">
+      {/* Section 1: Hero Promo */}
+      <HeroPromo promos={promos} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Section 2: Date Tabs */}
+      <DateTabs onDateChange={setSelectedDate} />
+
+      {/* Section 3: Featured Events */}
+      <FeaturedEvents events={featuredEvents} />
+
+      {/* Section 4: Announcement Strip */}
+      <AnnouncementStrip
+        icon="🎊"
+        title="NEW YEAR'S EVE"
+        subtitle="50+ Events Live Now"
+        highlight="Earn 500 bonus points"
+        ctaText="View All Events"
+        ctaLink="/nye"
+      />
+
+      {/* Section 5: Tonight in Rochester (Two Rows) */}
+      <TonightSection events={tonightEvents} deals={tonightDeals} />
+
+      {/* Section 6: RTNY Merch */}
+      <section className="py-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-header text-2xl font-bold text-foreground">
+              🛍️ RTNY Merch
+            </h2>
+            <button className="text-accent hover:text-accent/80 font-sans text-sm">
+              Shop All →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Product 1: T-Shirt */}
+            <div className="group cursor-pointer rounded-xl overflow-hidden bg-surface/50 hover:bg-surface transition-colors">
+              <div className="aspect-square overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop"
+                  alt="RTNY Logo T-Shirt"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <div className="p-3">
+                <h3 className="font-sans font-medium text-foreground text-sm mb-1">
+                  RTNY Logo Tee
+                </h3>
+                <p className="font-serif text-accent">
+                  $25
+                </p>
+              </div>
+            </div>
+
+            {/* Product 2: Hoodie */}
+            <div className="group cursor-pointer rounded-xl overflow-hidden bg-surface/50 hover:bg-surface transition-colors">
+              <div className="aspect-square overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&h=400&fit=crop"
+                  alt="RTNY Hoodie"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <div className="p-3">
+                <h3 className="font-sans font-medium text-foreground text-sm mb-1">
+                  RTNY Hoodie
+                </h3>
+                <p className="font-serif text-accent">
+                  $45
+                </p>
+              </div>
+            </div>
+
+            {/* Product 3: Hat */}
+            <div className="group cursor-pointer rounded-xl overflow-hidden bg-surface/50 hover:bg-surface transition-colors">
+              <div className="aspect-square overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&h=400&fit=crop"
+                  alt="RTNY Hat"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <div className="p-3">
+                <h3 className="font-sans font-medium text-foreground text-sm mb-1">
+                  RTNY Hat
+                </h3>
+                <p className="font-serif text-accent">
+                  $20
+                </p>
+              </div>
+            </div>
+
+            {/* Product 4: Sticker Pack */}
+            <div className="group cursor-pointer rounded-xl overflow-hidden bg-surface/50 hover:bg-surface transition-colors">
+              <div className="aspect-square overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1611532736579-6b16e2b50449?w=400&h=400&fit=crop"
+                  alt="RTNY Sticker Pack"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <div className="p-3">
+                <h3 className="font-sans font-medium text-foreground text-sm mb-1">
+                  Sticker Pack
+                </h3>
+                <p className="font-serif text-accent">
+                  $10
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      {/* Section 7: Other Modules */}
+      {sortedModules.slice(0, 4).map((module) => (
+        <ModuleSection key={module.id} module={module} />
+      ))}
+
+      {/* Section 7: Contextual Ad */}
+      <ContextualAd />
+
+      {/* Section 8: Category Grid */}
+      <CategoryGrid />
+
+      {/* Section 9: Points Feedback */}
+      {userData.isLoggedIn && (
+        <PointsFeedback points={userData.points} currentBadge="Explorer" nextBadge="Night Owl" progress={70} />
+      )}
+
+      {/* Section 10: Footer */}
+      <Footer />
     </div>
-  );
+  )
 }
