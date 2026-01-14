@@ -1,10 +1,11 @@
 'use client'
 
 // app/checkout/page.tsx
-// Complete checkout page with promo codes, boosters, and payment
+// Complete checkout page with promo codes, boosters, and Stripe payment
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { loadStripe } from '@stripe/stripe-js'
 import { 
   ShoppingCart, 
   Calendar, 
@@ -19,6 +20,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PromoCodeSection, PromoDiscount } from '@/components/checkout/promo-code-section'
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 interface CartItem {
   ticketTypeId: string
@@ -55,6 +59,10 @@ export default function CheckoutPage() {
   const [selectedBoosters, setSelectedBoosters] = useState<Set<string>>(new Set())
   const [appliedPromo, setAppliedPromo] = useState<PromoDiscount | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  // Check if payment was canceled
+  const canceled = searchParams.get('canceled')
 
   // Load cart data on mount
   useEffect(() => {
@@ -66,6 +74,13 @@ export default function CheckoutPage() {
       router.push('/events')
     }
   }, [])
+
+  // Show cancel message if user returned from Stripe
+  useEffect(() => {
+    if (canceled === 'true') {
+      setPaymentError('Payment was canceled. You can try again below.')
+    }
+  }, [canceled])
 
   if (!checkoutData) {
     return (
@@ -111,66 +126,58 @@ export default function CheckoutPage() {
     setAppliedPromo(null)
   }
 
-  // Process payment
-  const handlePayment = async () => {
+  // Process payment with Stripe
+  const handleStripePayment = async () => {
     setIsProcessing(true)
+    setPaymentError(null)
 
     try {
-      // Prepare the purchase request
-      const purchaseData = {
-        eventId: checkoutData.eventId,
-        tickets: checkoutData.items.map(item => ({
-          ticketTypeId: item.ticketTypeId,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        promoCode: appliedPromo?.code || null,
-        totalAmount: totalAmount
-      }
+      console.log('🔄 Creating Stripe checkout session...')
 
-      console.log('🛒 Submitting purchase:', purchaseData)
+      // Prepare items for Stripe
+      const stripeItems = checkoutData.items.map(item => ({
+        ticketTypeId: item.ticketTypeId,
+        quantity: item.quantity,
+        price: item.price,
+        name: item.name
+      }))
 
-      // Call the ticket purchase API
-      const response = await fetch('/api/v1/tickets/purchase', {
+      // Create Stripe checkout session
+      const response = await fetch('/api/v1/stripe/create-checkout-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(purchaseData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: checkoutData.eventId,
+          items: stripeItems,
+          promoCode: appliedPromo?.code || '',
+          boosters: Array.from(selectedBoosters).map(id => {
+            const booster = availableBoosters.find(b => b.id === id)
+            return {
+              id: booster?.id,
+              name: booster?.name,
+              price: booster?.price
+            }
+          })
+        }),
       })
 
-      const result = await response.json()
-      console.log('📦 Purchase API response:', result)
+      const data = await response.json()
+      console.log('📦 Stripe session response:', data)
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to complete purchase')
+        throw new Error(data.error || 'Failed to create checkout session')
       }
 
-      // Save order details to sessionStorage for confirmation page
-      const completedOrder = {
-        orderId: result.data.tickets?.[0]?.id || 'N/A',
-        eventName: checkoutData.eventName,
-        eventDate: checkoutData.eventDate,
-        ticketCount: result.data.ticketCount,
-        totalAmount: totalAmount,
-        tickets: result.data.tickets,
-        purchaseDate: new Date().toISOString()
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        console.log('✅ Redirecting to Stripe...')
+        window.location.href = data.url
+      } else {
+        throw new Error('No checkout URL returned')
       }
-
-      sessionStorage.setItem('completed_order', JSON.stringify(completedOrder))
-
-      // Clear cart
-      sessionStorage.removeItem('checkout_cart')
-
-      // Redirect to confirmation page
-      const orderId = result.data.tickets?.[0]?.id || 'unknown'
-      router.push(`/confirmation?orderId=${orderId}&success=true`)
-
-      console.log('✅ Purchase completed successfully')
-
-    } catch (error) {
-      console.error('❌ Payment error:', error)
-      alert(error instanceof Error ? error.message : 'Failed to complete purchase. Please try again.')
+    } catch (error: any) {
+      console.error('❌ Stripe checkout error:', error)
+      setPaymentError(error.message || 'Failed to start checkout. Please try again.')
       setIsProcessing(false)
     }
   }
@@ -195,6 +202,13 @@ export default function CheckoutPage() {
             Complete your order for {checkoutData.eventName}
           </p>
         </div>
+
+        {/* Error Message */}
+        {paymentError && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <p className="text-red-400 font-sans">{paymentError}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content - Left Column */}
@@ -360,21 +374,21 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Payment Button */}
+                {/* Stripe Payment Button */}
                 <Button
-                  onClick={handlePayment}
+                  onClick={handleStripePayment}
                   disabled={isProcessing}
                   className="w-full bg-[#59FFA0] hover:bg-[#59FFA0]/90 text-[#121113] font-semibold text-lg py-6 rounded-xl"
                 >
                   {isProcessing ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#121113] mr-2"></div>
-                      Processing...
+                      Redirecting to Stripe...
                     </>
                   ) : (
                     <>
-                      <Lock className="h-5 w-5 mr-2" />
-                      Complete Payment
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Pay with Card
                     </>
                   )}
                 </Button>
@@ -384,7 +398,7 @@ export default function CheckoutPage() {
                   <div className="flex items-start gap-2">
                     <Lock className="h-4 w-4 text-[#F9FDFF]/40 mt-0.5" />
                     <p className="text-xs text-[#F9FDFF]/40 font-sans">
-                      Secure checkout powered by industry-standard encryption
+                      Secure payment powered by Stripe
                     </p>
                   </div>
                 </div>

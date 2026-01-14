@@ -14,7 +14,8 @@ import {
   Download,
   Share2,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -36,80 +37,124 @@ interface OrderData {
 export default function ConfirmationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const success = searchParams.get('success')
-  const orderId = searchParams.get('orderId')
+  const sessionId = searchParams.get('session_id')
 
   const [showConfetti, setShowConfetti] = useState(false)
   const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [attempts, setAttempts] = useState(0)
 
   useEffect(() => {
-    if (success === 'true') {
-      setShowConfetti(true)
-      // Hide confetti after 3 seconds
-      setTimeout(() => setShowConfetti(false), 3000)
+    if (!sessionId) {
+      console.log('❌ No session_id, redirecting to events')
+      router.push('/events')
+      return
+    }
 
-      // Load order data from sessionStorage
-      const savedOrder = sessionStorage.getItem('completed_order')
-      if (savedOrder) {
-        try {
-          const completedOrder = JSON.parse(savedOrder)
-          console.log('Loaded completed order:', completedOrder)
+    setShowConfetti(true)
+    setTimeout(() => setShowConfetti(false), 3000)
 
-          // Transform the data to match our OrderData interface
-          const tickets = completedOrder.tickets || []
-          const ticketItems = tickets.map((ticket: any) => ({
-            type: ticket.ticket_type_name || 'Ticket',
-            quantity: 1, // Each ticket is individual in DB
-            price: ticket.price || 0
-          }))
+    console.log('🔍 Looking for order with session_id:', sessionId)
 
-          // Group tickets by type for display
-          const groupedTickets = ticketItems.reduce((acc: any[], ticket: any) => {
-            const existing = acc.find(t => t.type === ticket.type)
+    // Poll for order data (webhook might still be processing)
+    const fetchOrder = async () => {
+      try {
+        const res = await fetch(`/api/v1/orders/by-session/${sessionId}`)
+        
+        if (res.ok) {
+          const data = await res.json()
+          console.log('✅ Order found:', data)
+          
+          // Transform database data to OrderData format
+          const tickets = data.tickets || []
+          
+          // Group tickets by type
+          const groupedTickets = tickets.reduce((acc: any[], ticket: any) => {
+            const existing = acc.find((t: any) => t.type === ticket.ticket_type)
             if (existing) {
-              existing.quantity += ticket.quantity
+              existing.quantity += 1
+              existing.price = ticket.base_price
             } else {
-              acc.push({ ...ticket })
+              acc.push({
+                type: ticket.ticket_type,
+                quantity: 1,
+                price: ticket.base_price
+              })
             }
             return acc
           }, [])
 
           setOrderData({
-            orderId: completedOrder.orderId || orderId || 'N/A',
-            confirmationCode: orderId || 'CONF-' + Math.random().toString(36).substring(2, 11).toUpperCase(),
-            eventName: completedOrder.eventName || 'Event',
-            eventDate: completedOrder.eventDate || new Date().toISOString(),
-            venueName: 'Venue TBA', // TODO: Add venue to completed_order
-            venueAddress: 'Address TBA', // TODO: Add venue to completed_order
+            orderId: data.order_number,
+            confirmationCode: data.order_number,
+            eventName: 'Event Name', // TODO: Join with events table
+            eventDate: new Date().toISOString(), // TODO: Get from event
+            venueName: 'Venue TBA',
+            venueAddress: 'Address TBA',
             tickets: groupedTickets,
-            boosters: [], // TODO: Add boosters to completed_order if needed
-            total: completedOrder.totalAmount || 0,
-            email: 'user@example.com', // TODO: Get from auth
+            boosters: [],
+            total: data.total_amount,
+            email: data.customer_email,
           })
-        } catch (error) {
-          console.error('Failed to parse order data:', error)
-          // Redirect to events if data is invalid
+          setIsLoading(false)
+        } else if (res.status === 404) {
+          console.log(`⏳ Order not found yet (attempt ${attempts + 1}/10)`)
+          // Order not yet created by webhook, try again
+          if (attempts < 10) {
+            setAttempts(prev => prev + 1)
+            setTimeout(fetchOrder, 1500) // Try again in 1.5 seconds
+          } else {
+            console.error('❌ Order not found after 10 attempts')
+            // Fall back to sessionStorage if available
+            const savedOrder = sessionStorage.getItem('completed_order')
+            if (savedOrder) {
+              const completedOrder = JSON.parse(savedOrder)
+              setOrderData({
+                orderId: completedOrder.orderId || 'N/A',
+                confirmationCode: completedOrder.orderId || 'CONF-' + Math.random().toString(36).substring(2, 11).toUpperCase(),
+                eventName: completedOrder.eventName || 'Event',
+                eventDate: completedOrder.eventDate || new Date().toISOString(),
+                venueName: 'Venue TBA',
+                venueAddress: 'Address TBA',
+                tickets: completedOrder.tickets || [],
+                boosters: [],
+                total: completedOrder.totalAmount || 0,
+                email: 'user@example.com',
+              })
+            } else {
+              router.push('/events')
+            }
+            setIsLoading(false)
+          }
+        } else {
+          console.error('❌ Error fetching order:', res.status)
           router.push('/events')
         }
-      } else {
-        // No order data found, redirect to events
-        console.warn('No completed_order found in sessionStorage')
-        router.push('/events')
+      } catch (err) {
+        console.error('❌ Error:', err)
+        if (attempts < 10) {
+          setAttempts(prev => prev + 1)
+          setTimeout(fetchOrder, 1500)
+        } else {
+          router.push('/events')
+        }
       }
-      setIsLoading(false)
-    } else {
-      // If no success param, redirect to events
-      router.push('/events')
     }
-  }, [success, orderId, router])
+
+    fetchOrder()
+  }, [sessionId, router, attempts])
 
   if (isLoading || !orderData) {
     return (
       <div className="min-h-screen bg-[#121113] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#59FFA0] mx-auto mb-4"></div>
-          <p className="font-sans text-[#F9FDFF]/60">Loading order details...</p>
+          <Loader2 className="animate-spin rounded-full h-12 w-12 border-[#59FFA0] mx-auto mb-4" />
+          <p className="font-sans text-[#F9FDFF]/60 mb-2">
+            Processing Your Order
+          </p>
+          <p className="font-sans text-sm text-[#F9FDFF]/40">
+            Attempt {attempts + 1} of 10
+          </p>
         </div>
       </div>
     )
@@ -178,6 +223,7 @@ export default function ConfirmationPage() {
           </p>
         </div>
 
+        {/* Rest of your existing UI code stays the same */}
         {/* Order Details */}
         <div className="space-y-6 mb-8">
           {/* Confirmation Numbers */}
@@ -285,28 +331,6 @@ export default function ConfirmationPage() {
                 </div>
               ))}
 
-              {orderData.boosters.length > 0 && (
-                <>
-                  <div className="h-px bg-[#2A2A2A] my-4" />
-                  <p className="font-label text-xs uppercase tracking-wider text-[#F9FDFF]/60 mb-2">
-                    Boosters Added
-                  </p>
-                  {orderData.boosters.map((booster, idx) => (
-                    <div 
-                      key={idx}
-                      className="flex items-center justify-between p-3 bg-[#121113] rounded-lg border border-[#2A2A2A]"
-                    >
-                      <p className="font-sans text-sm text-[#F9FDFF]">
-                        {booster.name}
-                      </p>
-                      <p className="font-sans text-sm font-semibold text-[#59FFA0]">
-                        +${booster.price}
-                      </p>
-                    </div>
-                  ))}
-                </>
-              )}
-
               <div className="h-px bg-[#2A2A2A] my-4" />
               
               <div className="flex items-center justify-between pt-2">
@@ -385,7 +409,7 @@ export default function ConfirmationPage() {
           </Button>
         </div>
 
-        {/* Next Steps */}
+        {/* Next Steps - keeping your existing code */}
         <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
           <CardHeader>
             <CardTitle className="font-header text-xl text-[#F9FDFF]">
