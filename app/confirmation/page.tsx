@@ -87,10 +87,10 @@ export default function ConfirmationPage() {
           setOrderData({
             orderId: data.order_number,
             confirmationCode: data.order_number,
-            eventName: 'Event Name', // TODO: Join with events table
-            eventDate: new Date().toISOString(), // TODO: Get from event
-            venueName: 'Venue TBA',
-            venueAddress: 'Address TBA',
+            eventName: data.events?.name || 'Event', // ✅ Real event name
+            eventDate: data.events?.event_date || new Date().toISOString(), // ✅ Real date
+            venueName: data.events?.venues?.name || 'Venue TBA', // ✅ Real venue
+            venueAddress: data.events?.venues?.address || 'Address TBA', // ✅ Real address
             tickets: groupedTickets,
             boosters: [],
             total: data.total_amount,

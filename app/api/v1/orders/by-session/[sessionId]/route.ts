@@ -21,23 +21,7 @@ export async function GET(
     const { sessionId } = await params
     
     console.log('🔍 Looking for order with session_id:', sessionId)
-    console.log('🔑 Using service role key:', process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) + '...')
     
-    // First, try to find ANY orders (test RLS)
-    const { data: allOrders, error: allError } = await supabaseAdmin
-      .from('orders')
-      .select('order_number, transaction_id')
-      .limit(5)
-    
-    console.log('📊 Total orders in DB:', allOrders?.length || 0)
-    if (allOrders && allOrders.length > 0) {
-      console.log('📋 Recent orders:', allOrders.map(o => ({ 
-        order: o.order_number, 
-        txn: o.transaction_id?.substring(0, 20) + '...' 
-      })))
-    }
-    
-    // Now try to find the specific order
     const { data: order, error } = await supabaseAdmin
       .from('orders')
       .select(`
@@ -46,40 +30,49 @@ export async function GET(
         total_amount,
         customer_email,
         created_at,
+        event_id,
+        events!inner (
+          id,
+          name,
+          event_date,
+          flyer_image_url,
+          category,
+          venue_id,
+          venues!inner (
+            id,
+            name,
+            address
+          )
+        ),
         tickets (
           id,
           ticket_number,
           ticket_type,
           base_price,
-          qr_code_data
+          qr_code_data,
+          confirmation_code
         )
       `)
       .eq('transaction_id', sessionId)
       .single()
 
     if (error) {
-      console.log('❌ Query error:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      })
+      console.log('❌ Order not found:', error.message)
       return NextResponse.json(
         { 
           error: 'Order not found', 
           code: error.code,
-          message: error.message,
-          sessionId: sessionId
+          message: error.message
         },
         { status: 404 }
       )
     }
 
-    console.log('✅ Order found:', order.order_number, 'with', order.tickets?.length, 'tickets')
+    console.log('✅ Order found:', order.order_number, 'for event:', (order as any)['events']['name'])
     return NextResponse.json(order)
     
   } catch (error: any) {
-    console.error('❌ Exception:', error)
+    console.error('❌ Error fetching order:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
