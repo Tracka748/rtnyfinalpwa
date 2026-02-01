@@ -78,7 +78,7 @@ export const OrderConfirmationEmail: React.FC<OrderConfirmationEmailProps> = ({
             <p style={{ margin: '0', fontSize: '14px' }}>
               <strong>📱 View Your Tickets:</strong><br/>
               Log in to your RTNY account to view, download, and manage your tickets:<br/>
-              <a href="http://localhost:3000/dashboard/tickets" style={{ color: '#1AC8ED', textDecoration: 'none' }}>
+              <a href={`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/tickets`} style={{ color: '#1AC8ED', textDecoration: 'none' }}>
                 View My Tickets →
               </a>
             </p>

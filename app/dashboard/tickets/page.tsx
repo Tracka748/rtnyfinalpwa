@@ -17,7 +17,13 @@ export default async function MyTicketsPage() {
   const { data: tickets, error } = await supabase
     .from('tickets')
     .select(`
-      *,
+      id,
+      ticket_number,
+      ticket_type,
+      base_price,
+      confirmation_code,
+      qr_code_data,
+      purchase_date,
       events (
         id,
         name,

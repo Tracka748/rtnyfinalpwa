@@ -28,7 +28,7 @@ interface OrderData {
   eventDate: string
   venueName: string
   venueAddress: string
-  tickets: Array<{ type: string; quantity: number; price: number }>
+  tickets: Array<{ type: string; quantity: number; price: number; qrCodeData?: string[] }>
   boosters: Array<{ name: string; price: number }>
   total: number
   email: string
@@ -74,11 +74,13 @@ export default function ConfirmationPage() {
             if (existing) {
               existing.quantity += 1
               existing.price = ticket.base_price
+              existing.qrCodeData?.push(ticket.qr_code_data)
             } else {
               acc.push({
                 type: ticket.ticket_type,
                 quantity: 1,
-                price: ticket.base_price
+                price: ticket.base_price,
+                qrCodeData: [ticket.qr_code_data]
               })
             }
             return acc
@@ -357,9 +359,17 @@ export default function ConfirmationPage() {
                       key={`${idx}-${qIdx}`}
                       className="p-6 bg-[#F9FDFF] rounded-lg text-center"
                     >
-                      {/* Placeholder for QR code */}
-                      <div className="w-32 h-32 mx-auto mb-3 bg-[#121113] rounded-lg flex items-center justify-center">
-                        <p className="text-[#F9FDFF]/60 text-xs">QR Code</p>
+                      {/* QR Code Image */}
+                      <div className="w-32 h-32 mx-auto mb-3 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+                        {ticket.qrCodeData?.[qIdx] ? (
+                          <img 
+                            src={ticket.qrCodeData[qIdx]} 
+                            alt={`QR Code for ${ticket.type}`}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <p className="text-[#121113]/40 text-xs">QR Code</p>
+                        )}
                       </div>
                       <p className="font-sans text-sm font-semibold text-[#121113]">
                         {ticket.type} #{qIdx + 1}

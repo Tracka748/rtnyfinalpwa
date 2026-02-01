@@ -2,7 +2,6 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
 
 interface TicketCardProps {
   ticket: any
@@ -10,7 +9,6 @@ interface TicketCardProps {
 }
 
 export function TicketCard({ ticket, isPast }: TicketCardProps) {
-  const [showQR, setShowQR] = useState(false)
 
   const event = ticket.events
   const eventDate = new Date(event.event_date)
@@ -86,20 +84,12 @@ export function TicketCard({ ticket, isPast }: TicketCardProps) {
           {/* Actions */}
           <div className="flex flex-wrap gap-3">
             {!isPast && (
-              <>
-                <button
-                  onClick={() => setShowQR(!showQR)}
-                  className="rounded-lg border border-[#59FFA0] bg-[#59FFA0]/10 px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#59FFA0] transition-all hover:bg-[#59FFA0]/20"
-                >
-                  {showQR ? 'Hide QR Code' : 'Show QR Code'}
-                </button>
-                <Link
-                  href={`/events/${event.id}`}
-                  className="rounded-lg border border-[#2A2A2A] bg-[#2A2A2A] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#F9FDFF] transition-all hover:bg-[#3A3A3A]"
-                >
-                  View Event
-                </Link>
-              </>
+              <Link
+                href={`/events/${event.id}`}
+                className="rounded-lg border border-[#2A2A2A] bg-[#2A2A2A] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#F9FDFF] transition-all hover:bg-[#3A3A3A]"
+              >
+                View Event
+              </Link>
             )}
             {isPast && (
               <Link
@@ -111,19 +101,28 @@ export function TicketCard({ ticket, isPast }: TicketCardProps) {
             )}
           </div>
 
-          {/* QR Code Placeholder */}
-          {showQR && !isPast && (
-            <div className="mt-4 p-4 rounded-lg bg-white flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-48 h-48 bg-[#121113] rounded-lg flex items-center justify-center mb-2">
-                  <span className="text-[#59FFA0] text-sm">QR Code</span>
-                </div>
-                <p className="text-xs text-[#121113] font-[family-name:var(--font-rubik)]">
-                  Scan at venue entrance
-                </p>
+          {/* QR Code Display */}
+          <div className="mt-4 p-4 rounded-lg bg-white flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center mb-2 overflow-hidden">
+                {ticket.qr_code_data ? (
+                  <img
+                    src={ticket.qr_code_data}
+                    alt="Ticket QR Code"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <span className="text-gray-400 text-xs block">QR Code</span>
+                    <span className="text-gray-300 text-xs">Not available</span>
+                  </div>
+                )}
               </div>
+              <p className="text-xs text-[#121113] font-[family-name:var(--font-rubik)]">
+                Scan at venue entrance
+              </p>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import QRCode from 'qrcode'
 import { OrderConfirmationEmail } from '@/lib/emails/order-confirmation'
 
 // Upload snippet: For local testing in test mode, run this in terminal:
@@ -124,9 +125,34 @@ export async function POST(req: NextRequest) {
           for (let i = 0; i < item.quantity; i++) {
             const ticketNumber = `${orderNumber}-T${String(ticketsToCreate.length + 1).padStart(3, '0')}`
             
+            let qrCodeBase64 = ticketNumber // Fallback to just ticket number
+            
+            try {
+              // Try to generate QR code
+              const qrData = JSON.stringify({
+                ticketNumber: ticketNumber,
+                eventId: eventId,
+                orderId: order.id,
+                timestamp: new Date().toISOString()
+              })
+              
+              qrCodeBase64 = await QRCode.toDataURL(qrData, {
+                width: 300,
+                margin: 2,
+                color: {
+                  dark: '#000000',
+                  light: '#FFFFFF'
+                }
+              })
+              console.log('✅ QR code generated for', ticketNumber)
+            } catch (qrError) {
+              console.error('⚠️ QR generation failed, using fallback:', qrError)
+              // Will use ticketNumber as fallback
+            }
+            
             ticketsToCreate.push({
               event_id: eventId,
-              order_id: order.id, // ✅ Links ticket to order
+              order_id: order.id,
               ticket_type: item.name || 'General Admission',
               ticket_number: ticketNumber,
               base_price: parseFloat(item.price),
@@ -135,13 +161,13 @@ export async function POST(req: NextRequest) {
               purchase_date: new Date().toISOString(),
               payment_intent_id: session.payment_intent as string,
               confirmation_code: ticketNumber,
-              qr_code_data: ticketNumber,
+              qr_code_data: qrCodeBase64, // Will be QR or fallback
               status: 'purchased',
             })
           }
         }
 
-        console.log('🎫 Creating', ticketsToCreate.length, 'tickets')
+        console.log('🎫 Creating', ticketsToCreate.length, 'tickets with QR codes')
 
         const { data: createdTickets, error: ticketsError } = await supabaseAdmin
           .from('tickets')
@@ -174,10 +200,23 @@ export async function POST(req: NextRequest) {
           .eq('id', eventId)
           .single()
 
-        // Send confirmation email (async, don't await)
+        // Send confirmation email with QR codes as attachments
         if (eventData && session.customer_email) {
+          // Prepare attachments - one QR code per ticket
+          const attachments = createdTickets.map((ticket, index) => {
+            // Extract base64 from data URL (remove "data:image/png;base64," prefix)
+            const base64Data = ticket.qr_code_data.split(',')[1]
+            
+            return {
+              filename: `ticket-${index + 1}.png`,
+              content: base64Data,
+              contentType: 'image/png',
+              contentId: `qr-${ticket.id}` // Unique CID for each ticket
+            }
+          })
+
           resend.emails.send({
-            from: 'RTNY <onboarding@resend.dev>', // Using Resend test domain
+            from: 'RTNY <onboarding@resend.dev>',
             to: session.customer_email,
             subject: `Order Confirmed - ${eventData.name}`,
             html: `
@@ -191,8 +230,6 @@ export async function POST(req: NextRequest) {
                     .content { padding: 30px; }
                     .ticket { background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #59FFA0; }
                     .footer { background: #f4f4f4; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-                    h1 { margin: 0; font-size: 28px; }
-                    .total { font-size: 24px; font-weight: bold; color: #59FFA0; margin-top: 20px; }
                   </style>
                 </head>
                 <body>
@@ -224,23 +261,37 @@ export async function POST(req: NextRequest) {
                       </div>
 
                       <h3 style="color: #121113;">🎫 Your Tickets</h3>
-                      ${createdTickets.map(ticket => `
+                      ${createdTickets.map((ticket, index) => `
                         <div class="ticket">
                           <p style="margin: 0 0 5px 0; font-weight: bold;">${ticket.ticket_type}</p>
                           <p style="margin: 0; font-size: 12px; color: #666;">Ticket #${ticket.ticket_number}</p>
+                          
+                          <!-- QR Code using CID -->
+                          <div style="margin: 15px 0; text-align: center; background: white; padding: 10px; border-radius: 8px;">
+                            <img 
+                              src="cid:qr-${ticket.id}" 
+                              alt="QR Code" 
+                              width="200" 
+                              height="200"
+                              style="border: 2px solid #121113; border-radius: 8px; display: block; margin: 0 auto;"
+                            />
+                            <p style="font-size: 11px; color: #666; margin: 8px 0 0 0;">
+                              📱 Show this QR code at the venue
+                            </p>
+                          </div>
+                          
                           <p style="margin: 5px 0 0 0; color: #59FFA0; font-weight: bold;">$${ticket.purchase_price.toFixed(2)}</p>
                         </div>
                       `).join('')}
 
-                      <div class="total">
+                      <div style="font-size: 24px; font-weight: bold; color: #59FFA0; margin-top: 20px;">
                         Total Paid: $${order.total_amount.toFixed(2)}
                       </div>
 
                       <div style="margin-top: 30px; padding: 20px; background: #FFF9E6; border-radius: 8px; border-left: 4px solid #FFB800;">
                         <p style="margin: 0; font-size: 14px;">
                           <strong>📱 View Your Tickets:</strong><br/>
-                          Log in to your RTNY account to view, download, and manage your tickets:<br/>
-                          <a href="http://localhost:3000/dashboard/tickets" style="color: #1AC8ED; text-decoration: none;">
+                          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/tickets" style="color: #1AC8ED; text-decoration: none;">
                             View My Tickets →
                           </a>
                         </p>
@@ -249,12 +300,12 @@ export async function POST(req: NextRequest) {
 
                     <div class="footer">
                       <p>RTNY - Rochester's Premier Nightlife Ticketing Platform</p>
-                      <p>Questions? Contact us at support@rtny.com</p>
                     </div>
                   </div>
                 </body>
               </html>
-            `
+            `,
+            attachments: attachments // ✨ CID attachments!
           }).then(() => {
             console.log('✅ Confirmation email sent to', session.customer_email)
           }).catch((err) => {
