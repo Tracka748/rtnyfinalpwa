@@ -1,44 +1,72 @@
-"use client"
+'use client'
 
-import { useState, useMemo, useEffect } from "react"
-import { useRouter } from "next/navigation" // ADD THIS IMPORT
-import { AppNav } from "@/components/custom/layout/app-nav"
-import { EventGrid } from "@/components/custom/events/event-grid"
-import { SearchBar } from "@/components/custom/events/search-bar"
-import { EventFilters, type DateFilter } from "@/components/custom/events/event-filters"
-import { FilterChip } from "@/components/ui/filter-chip"
-import type { Event } from "@/types/event"
+import { useState, useEffect } from 'react'
+import { AppNav } from '@/components/custom/layout/app-nav'
+import { CategoryFilter } from '@/components/custom/events/category-filter'
+import { EventCard } from '@/components/custom/events/event-card'
+import type { EventCategory } from '@/types/database'
+
+interface Event {
+  id: string
+  name: string
+  description: string
+  category: string
+  event_date: string
+  venue_id: string
+  flyer_image_url: string | null
+  ticket_prices: any
+  total_tickets: number
+  tickets_sold: number
+  featured: boolean
+  venue_name: string | null
+  venue_address: string | null
+  ticket_types: any[]
+}
 
 export default function EventsPage() {
-  const router = useRouter() // ADD THIS LINE
-  
-  // State for events data
+  const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null)
   const [events, setEvents] = useState<Event[]>([])
+  const [categoryCounts, setCategoryCounts] = useState<Record<EventCategory, number>>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
-  // Filter states
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedDate, setSelectedDate] = useState<DateFilter>("all")
+  // Fetch category counts
+  useEffect(() => {
+    async function fetchCounts() {
+      try {
+        const res = await fetch('/api/v1/events/stats')
+        const data = await res.json()
+        if (data.success) {
+          setCategoryCounts(data.counts)
+        }
+      } catch (err) {
+        console.error('Error fetching category counts:', err)
+      }
+    }
+    fetchCounts()
+  }, [])
 
-  // Fetch events from API
+  // Fetch events with filters
   useEffect(() => {
     async function fetchEvents() {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/v1/events')
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch events')
-        }
+      setLoading(true)
+      setError(null)
 
-        const result = await response.json()
-        
-        if (result.success && result.data) {
-          setEvents(result.data)
+      try {
+        const params = new URLSearchParams()
+        if (selectedCategory) params.set('category', selectedCategory)
+        if (searchQuery) params.set('q', searchQuery)
+
+        const url = `/api/v1/events${params.toString() ? '?' + params.toString() : ''}`
+
+        const res = await fetch(url)
+        const data = await res.json()
+
+        if (data.success) {
+          setEvents(data.data || [])
         } else {
-          throw new Error(result.error || 'Unknown error')
+          throw new Error(data.error || 'Failed to fetch events')
         }
       } catch (err: any) {
         console.error('Error fetching events:', err)
@@ -49,76 +77,11 @@ export default function EventsPage() {
     }
 
     fetchEvents()
-  }, []) // Empty dependency array = fetch once on mount
+  }, [selectedCategory, searchQuery])
 
-  // Extract unique categories from real data
-  const categories = useMemo(() => {
-    return Array.from(new Set(events.map((e) => e.category))).sort()
-  }, [events])
-
-  // Filter events based on search and filters
-  const filteredEvents = useMemo(() => {
-    let filtered = events
-
-    // Search filter (name or venue)
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (event) =>
-          event.name.toLowerCase().includes(query) ||
-          (event.venue_name?.toLowerCase() || '').includes(query)
-      )
-    }
-
-    // Category filter
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter((event) => event.category === selectedCategory)
-    }
-
-    // Date filter
-    if (selectedDate !== "all") {
-      const now = new Date()
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      
-      filtered = filtered.filter((event) => {
-        const eventDate = new Date(event.event_date)
-        
-        switch (selectedDate) {
-          case "today":
-            return eventDate >= today && eventDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)
-          case "this-week":
-            const weekEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-            return eventDate >= today && eventDate < weekEnd
-          case "this-month":
-            const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-            return eventDate >= today && eventDate <= monthEnd
-          default:
-            return true
-        }
-      })
-    }
-
-    return filtered
-  }, [events, searchQuery, selectedCategory, selectedDate])
-
-  // Clear all filters
-  const handleClearAll = () => {
-    setSearchQuery("")
-    setSelectedCategory("all")
-    setSelectedDate("all")
-  }
-
-  // Count active filters
-  const activeFilterCount = [
-    searchQuery !== "",
-    selectedCategory !== "all",
-    selectedDate !== "all",
-  ].filter(Boolean).length
-
-  // FIXED: Navigate to event detail page
-  const handleEventClick = (event: Event) => {
-    console.log("Navigating to event:", event.name, event.id)
-    router.push(`/events/${event.id}`)
+  const handleClearFilters = () => {
+    setSelectedCategory(null)
+    setSearchQuery('')
   }
 
   return (
@@ -127,139 +90,118 @@ export default function EventsPage() {
       <AppNav />
 
       {/* Header */}
-      <div className="bg-gradient-to-b from-[#0A0A0A] to-[#121113] pb-8 pt-24 text-center">
-        <h1 className="font-[family-name:var(--font-rokkitt)] text-5xl font-bold text-[#F9FDFF] md:text-6xl">
-          Upcoming Events
-        </h1>
-        <p className="mt-4 font-[family-name:var(--font-rubik)] text-lg text-[#A0A0A0]">
-          Rochester's hottest nightlife events
-        </p>
+      <div className="bg-gradient-to-b from-[#0A0A0A] to-[#121113] border-b border-[#2A2A2A]">
+        <div className="mx-auto max-w-7xl px-4 py-12 pt-24 sm:px-6 lg:px-8">
+          <h1 className="font-[family-name:var(--font-rokkitt)] text-5xl font-bold text-[#F9FDFF] md:text-6xl">
+            Discover <span className="text-[#59FFA0]">Rochester</span>
+          </h1>
+          <p className="mt-4 font-[family-name:var(--font-rubik)] text-xl text-[#A0A0A0]">
+            Find nightlife, dining, arts, sports, and family events
+          </p>
+        </div>
       </div>
 
-      {/* Search and Filters Container */}
-      <div className="sticky top-16 z-10 border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="flex justify-center">
-              <SearchBar onSearch={setSearchQuery} />
-            </div>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Category Filter */}
+        <CategoryFilter
+          selected={selectedCategory}
+          onChange={setSelectedCategory}
+          counts={categoryCounts}
+        />
 
-            {/* Filters */}
-            <EventFilters
-              selectedCategory={selectedCategory}
-              selectedDate={selectedDate}
-              onCategoryChange={setSelectedCategory}
-              onDateChange={setSelectedDate}
-              categories={categories}
+        {/* Search Bar */}
+        <div className="mt-8 mb-6">
+          <div className="relative max-w-2xl">
+            <input
+              type="text"
+              placeholder="Search events by name or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-6 py-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-full text-lg text-[#F9FDFF] placeholder-[#6A6A6A] focus:outline-none focus:border-[#59FFA0] transition-colors font-[family-name:var(--font-rubik)]"
             />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl">
+              🔍
+            </div>
+          </div>
+        </div>
 
-            {/* Active Filters */}
-            {activeFilterCount > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
-                  {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active:
-                </span>
-
-                {searchQuery && (
-                  <FilterChip
-                    label="Search"
-                    value={searchQuery}
-                    onRemove={() => setSearchQuery("")}
-                  />
-                )}
-
-                {selectedCategory !== "all" && (
-                  <FilterChip
-                    label="Category"
-                    value={selectedCategory}
-                    onRemove={() => setSelectedCategory("all")}
-                  />
-                )}
-
-                {selectedDate !== "all" && (
-                  <FilterChip
-                    label="Date"
-                    value={
-                      selectedDate === "today"
-                        ? "Today"
-                        : selectedDate === "this-week"
-                        ? "This Week"
-                        : "This Month"
-                    }
-                    onRemove={() => setSelectedDate("all")}
-                  />
-                )}
-
-                <button
-                  onClick={handleClearAll}
-                  className="font-[family-name:var(--font-rubik)] text-sm text-[#59FFA0] underline-offset-2 transition-all hover:underline"
-                >
-                  Clear All
-                </button>
-              </div>
+        {/* Results Header */}
+        {!loading && !error && (
+          <div className="flex items-center justify-between mb-6">
+            <p className="font-[family-name:var(--font-rubik)] text-[#A0A0A0]">
+              {events.length} {events.length === 1 ? 'event' : 'events'}
+              {selectedCategory && ` in ${selectedCategory}`}
+              {searchQuery && ` matching "${searchQuery}"`}
+            </p>
+            {(selectedCategory || searchQuery) && (
+              <button
+                onClick={handleClearFilters}
+                className="text-[#59FFA0] hover:text-[#59FFA0]/80 text-sm font-medium font-[family-name:var(--font-rubik)]"
+              >
+                Clear filters
+              </button>
             )}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Loading State */}
-      {loading && (
-        <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#59FFA0] border-r-transparent"></div>
-          <p className="mt-4 font-[family-name:var(--font-rubik)] text-[#A0A0A0]">
-            Loading events...
-          </p>
-        </div>
-      )}
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-[500px] bg-[#1A1A1A] animate-pulse rounded-2xl" />
+            ))}
+          </div>
+        )}
 
-      {/* Error State */}
-      {error && !loading && (
-        <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
-          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-6">
-            <p className="font-[family-name:var(--font-rubik)] text-red-400">
-              Error loading events: {error}
+        {/* Error State */}
+        {error && !loading && (
+          <div className="text-center py-12">
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-6 max-w-md mx-auto">
+              <p className="font-[family-name:var(--font-rubik)] text-red-400">
+                Error loading events: {error}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 rounded-lg bg-[#59FFA0] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Events Grid */}
+        {!loading && !error && events.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+            {events.map(event => (
+              <EventCard key={event.id} event={event as any} />
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && events.length === 0 && (
+          <div className="text-center py-20">
+            <div className="text-8xl mb-6">🔍</div>
+            <h2 className="font-[family-name:var(--font-rokkitt)] text-3xl font-bold text-[#F9FDFF] mb-3">
+              No events found
+            </h2>
+            <p className="font-[family-name:var(--font-rubik)] text-[#A0A0A0] text-lg mb-6">
+              {selectedCategory
+                ? `No ${selectedCategory} events available right now`
+                : searchQuery
+                  ? `No events matching "${searchQuery}"`
+                  : 'No events available right now'}
             </p>
             <button
-              onClick={() => window.location.reload()}
-              className="mt-4 rounded-lg bg-[#59FFA0] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
+              onClick={handleClearFilters}
+              className="px-6 py-3 bg-[#59FFA0] text-[#121113] rounded-full font-semibold hover:bg-[#4DE08A] transition-colors font-[family-name:var(--font-rubik)]"
             >
-              Retry
+              View all events
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Results Count */}
-      {!loading && !error && (
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <p className="font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
-            {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
-          </p>
-        </div>
-      )}
-
-      {/* Event Grid */}
-      {!loading && !error && (
-        <EventGrid events={filteredEvents} onEventClick={handleEventClick} />
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && filteredEvents.length === 0 && (
-        <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
-          <p className="font-[family-name:var(--font-rubik)] text-lg text-[#A0A0A0]">
-            No events found matching your criteria
-          </p>
-          {activeFilterCount > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="mt-4 rounded-lg bg-[#59FFA0] px-4 py-2 font-[family-name:var(--font-rubik)] text-sm font-medium text-[#121113] transition-all hover:bg-[#4DE08A]"
-            >
-              Clear Filters
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </main>
   )
 }

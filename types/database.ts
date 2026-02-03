@@ -1144,3 +1144,8 @@ export const Constants = {
     },
   },
 } as const
+
+// Event categories
+export type EventCategory = 'nightlife' | 'family' | 'movies' | 'dining' | 'arts' | 'sports'
+
+export const EVENT_CATEGORIES: EventCategory[] = ['nightlife', 'family', 'movies', 'dining', 'arts', 'sports']
