@@ -52,21 +52,21 @@ export function EventFilters({
         />
       </button>
 
-      {/* Filter Content */}
+      {/* Filter Content - Centered and Grouped */}
       <div
-        className={`mt-4 space-y-4 md:mt-0 md:flex md:items-center md:gap-4 md:space-y-0 ${
+        className={`mt-4 space-y-4 md:mt-0 md:flex md:items-center md:justify-center md:gap-4 md:space-y-0 ${
           isOpen ? "block" : "hidden md:flex"
         }`}
       >
         {/* Category Filter */}
-        <div className="flex-1">
+        <div className="w-full md:w-[200px]">
           <Select value={selectedCategory} onValueChange={onCategoryChange}>
-            <SelectTrigger className="h-12 rounded-xl border-0 bg-[#1A1A1A] font-sans text-[#F9FDFF] focus:ring-2 focus:ring-[#59FFA0] focus:ring-offset-0">
+            <SelectTrigger className="h-12 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] font-sans text-[#F9FDFF] transition-colors hover:border-[#59FFA0] focus:ring-2 focus:ring-[#59FFA0] focus:ring-offset-0">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-0 bg-[#1A1A1A]">
-              <SelectItem 
-                value="all" 
+            <SelectContent className="rounded-xl border border-[#2A2A2A] bg-[#1A1A1A]">
+              <SelectItem
+                value="all"
                 className="font-sans text-[#F9FDFF] focus:bg-[#2A2A2A] focus:text-[#F9FDFF]"
               >
                 All Categories
@@ -85,15 +85,15 @@ export function EventFilters({
         </div>
 
         {/* Date Filter */}
-        <div className="flex-1">
+        <div className="w-full md:w-[200px]">
           <Select value={selectedDate} onValueChange={(val) => onDateChange(val as DateFilter)}>
-            <SelectTrigger className="h-12 rounded-xl border-0 bg-[#1A1A1A] font-sans text-[#F9FDFF] focus:ring-2 focus:ring-[#1AC8ED] focus:ring-offset-0">
+            <SelectTrigger className="h-12 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] font-sans text-[#F9FDFF] transition-colors hover:border-[#59FFA0] focus:ring-2 focus:ring-[#59FFA0] focus:ring-offset-0">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#1AC8ED]" />
                 <SelectValue placeholder="All Dates" />
               </div>
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-0 bg-[#1A1A1A]">
+            <SelectContent className="rounded-xl border border-[#2A2A2A] bg-[#1A1A1A]">
               {dateOptions.map((option) => (
                 <SelectItem
                   key={option.value}

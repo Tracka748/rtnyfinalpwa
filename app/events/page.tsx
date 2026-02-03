@@ -66,7 +66,7 @@ export default function EventsPage() {
       filtered = filtered.filter(
         (event) =>
           event.name.toLowerCase().includes(query) ||
-          event.venue_name.toLowerCase().includes(query)
+          (event.venue_name?.toLowerCase() || '').includes(query)
       )
     }
 

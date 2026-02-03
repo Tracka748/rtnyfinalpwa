@@ -52,16 +52,28 @@ export function AppNav() {
     <nav className="fixed top-0 z-50 w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
+          {/* Logo - Links to Homepage */}
           <Link
-            href="/events"
-            className="font-header text-2xl font-bold text-[#F9FDFF] transition-colors hover:text-[#59FFA0]"
+            href="/"
+            className="font-header text-2xl font-bold text-[#F9FDFF] transition-opacity hover:opacity-80"
           >
             RTNY
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden items-center gap-6 md:flex">
+            {/* Home Link */}
+            <Link
+              href="/"
+              className={`font-sans text-sm font-medium transition-colors ${
+                isActive("/")
+                  ? "text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:text-[#59FFA0]"
+              }`}
+            >
+              Home
+            </Link>
+
             {/* Events Link */}
             <Link
               href="/events"
@@ -92,9 +104,9 @@ export function AppNav() {
                     </Link>
 
                     <Link
-                      href="/profile"
+                      href="/dashboard/tickets"
                       className={`font-sans text-sm font-medium transition-colors ${
-                        isActive("/profile")
+                        isActive("/dashboard/tickets")
                           ? "text-[#59FFA0]"
                           : "text-[#F9FDFF] hover:text-[#59FFA0]"
                       }`}
@@ -158,6 +170,18 @@ export function AppNav() {
         <div className="border-t border-[#2A2A2A] bg-[#0A0A0A] md:hidden">
           <div className="space-y-1 px-4 pb-3 pt-2">
             <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
+                isActive("/")
+                  ? "bg-[#59FFA0]/10 text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
+              }`}
+            >
+              Home
+            </Link>
+
+            <Link
               href="/events"
               onClick={() => setMobileMenuOpen(false)}
               className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
@@ -186,10 +210,10 @@ export function AppNav() {
                     </Link>
 
                     <Link
-                      href="/profile"
+                      href="/dashboard/tickets"
                       onClick={() => setMobileMenuOpen(false)}
                       className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
-                        isActive("/profile")
+                        isActive("/dashboard/tickets")
                           ? "bg-[#59FFA0]/10 text-[#59FFA0]"
                           : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
                       }`}

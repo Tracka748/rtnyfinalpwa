@@ -25,30 +25,16 @@ export function EventGrid({ events, onEventClick }: EventGridProps) {
             <div className="mx-auto mt-2 h-1 w-24 rounded-full bg-gradient-to-r from-[#59FFA0] to-[#1AC8ED]" />
           </div>
 
-          {/* Featured Event Card - Centered with max-width */}
-          <div className="flex justify-center">
-            <div className="w-full max-w-[600px]">
-              <EventCard 
-                event={featuredEvents[0]} 
-                featured={true} 
-                onClick={() => onEventClick?.(featuredEvents[0])} 
+          {/* Featured Events Grid - Same layout as Upcoming Events */}
+          <div className="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {featuredEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onClick={() => onEventClick?.(event)}
               />
-            </div>
+            ))}
           </div>
-
-          {/* Show additional featured events in a row if there are more */}
-          {featuredEvents.length > 1 && (
-            <div className="mt-6 grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2">
-              {featuredEvents.slice(1).map((event) => (
-                <EventCard 
-                  key={event.id} 
-                  event={event} 
-                  featured={true}
-                  onClick={() => onEventClick?.(event)} 
-                />
-              ))}
-            </div>
-          )}
         </section>
       )}
 

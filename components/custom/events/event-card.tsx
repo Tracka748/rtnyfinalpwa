@@ -9,10 +9,9 @@ import Link from "next/link"  // ← ADD THIS
 interface EventCardProps {
   event: Event
   onClick?: () => void
-  featured?: boolean
 }
 
-export function EventCard({ event, onClick, featured }: EventCardProps) {
+export function EventCard({ event, onClick }: EventCardProps) {
   const [isPressed, setIsPressed] = useState(false)
 
   const formatDate = (dateString: string) => {
@@ -30,18 +29,12 @@ export function EventCard({ event, onClick, featured }: EventCardProps) {
     return `$${event.min_price} - $${event.max_price}`
   }
 
-  const isFeatured = featured ?? event.featured
-
   return (
     <Link href={`/events/${event.id}`} className="block">  {/* ← ADD THIS */}
       <article
-        className={`group relative w-full max-w-[320px] cursor-pointer select-none overflow-hidden rounded-2xl bg-[#1A1A1A] transition-all duration-400 ease-out hover:scale-[1.02] active:scale-[0.98] md:max-w-[360px] ${
-          isFeatured
-            ? "shadow-[0_16px_48px_rgba(89,255,160,0.2)] hover:shadow-[0_20px_56px_rgba(89,255,160,0.25)]"
-            : "shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_48px_rgba(89,255,160,0.15)]"
-        }`}
+        className="group relative w-full max-w-[320px] cursor-pointer select-none overflow-hidden rounded-2xl bg-[#1A1A1A] shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-400 ease-out hover:scale-[1.02] hover:shadow-[0_12px_48px_rgba(89,255,160,0.15)] active:scale-[0.98] md:max-w-[360px]"
         style={{
-          aspectRatio: isFeatured ? "3/4" : "4/5",
+          aspectRatio: "4/5",
         }}
         onClick={onClick}
         onMouseDown={() => setIsPressed(true)}
@@ -73,14 +66,6 @@ export function EventCard({ event, onClick, featured }: EventCardProps) {
             }}
           />
 
-          {isFeatured && (
-            <div className="absolute right-3 top-3 rounded-full bg-[#59FFA0]/20 px-3 py-1 backdrop-blur-md">
-              <span className="font-montserrat text-xs font-semibold uppercase tracking-wider text-[#59FFA0]">
-                Featured
-              </span>
-            </div>
-          )}
-
           {event.status === "sold_out" && (
             <div className="absolute left-3 top-3 rounded-full bg-[#FF6B6B]/20 px-3 py-1 backdrop-blur-md">
               <span className="font-montserrat text-xs font-semibold uppercase tracking-wider text-[#FF6B6B]">
@@ -109,9 +94,7 @@ export function EventCard({ event, onClick, featured }: EventCardProps) {
           <div className="relative z-10 flex h-full flex-col justify-between">
             <div className="space-y-1">
               <h2
-                className={`font-playfair font-bold leading-tight text-white transition-colors duration-300 group-hover:text-[#59FFA0] ${
-                  isFeatured ? "text-3xl md:text-[32px]" : "text-2xl md:text-[28px]"
-                }`}
+                className="font-playfair text-2xl font-bold leading-tight text-white transition-colors duration-300 group-hover:text-[#59FFA0] md:text-[28px]"
               >
                 {event.name}
               </h2>
