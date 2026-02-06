@@ -64,12 +64,12 @@ interface CategoryFilterProps {
 export function CategoryFilter({ selected, onChange, counts }: CategoryFilterProps) {
   return (
     <div className="space-y-6">
-      {/* Mobile: Horizontal scroll */}
-      <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 md:hidden scrollbar-hide">
+      {/* Mobile: Horizontal scroll with snap */}
+      <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 md:hidden scrollbar-hide snap-x snap-mandatory scroll-smooth">
         <button
           onClick={() => onChange(null)}
           className={cn(
-            "px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-semibold transition-all flex items-center gap-2 font-[family-name:var(--font-rubik)]",
+            "shrink-0 snap-start px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-semibold transition-all flex items-center gap-2 font-[family-name:var(--font-rubik)]",
             !selected
               ? "bg-[#59FFA0] text-[#121113] shadow-lg scale-105"
               : "bg-[#1A1A1A] text-[#F9FDFF] hover:bg-[#2A2A2A]"
@@ -92,7 +92,7 @@ export function CategoryFilter({ selected, onChange, counts }: CategoryFilterPro
             key={value}
             onClick={() => onChange(value)}
             className={cn(
-              "px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-semibold transition-all flex items-center gap-2 font-[family-name:var(--font-rubik)]",
+              "shrink-0 snap-start px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-semibold transition-all flex items-center gap-2 font-[family-name:var(--font-rubik)]",
               selected === value
                 ? "bg-[#59FFA0] text-[#121113] shadow-lg scale-105"
                 : "bg-[#1A1A1A] text-[#F9FDFF] hover:bg-[#2A2A2A]"

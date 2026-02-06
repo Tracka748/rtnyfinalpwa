@@ -1,138 +1,193 @@
-"use client"
+// components/custom/events/event-card.tsx
+'use client';
 
-import type { Event } from "@/types/event"
-import { Calendar, MapPin, Clock } from "lucide-react"
-import { useState } from "react"
-import { format } from "date-fns"
-import Link from "next/link"  // ← ADD THIS
+import { useState } from 'react';
+import Link from 'next/link';
+import { format } from 'date-fns';
+import { EventCategory } from '@/types/database';
+import { cn } from '@/lib/utils';
+
+const CATEGORY_CONFIG: Record<EventCategory, {
+  icon: string;
+  label: string;
+  gradient: string;
+}> = {
+  nightlife: {
+    icon: '🎉',
+    label: 'Nightlife',
+    gradient: 'from-purple-500/80 to-pink-500/80'
+  },
+  family: {
+    icon: '👨‍👩‍👧‍👦',
+    label: 'Family',
+    gradient: 'from-blue-500/80 to-cyan-500/80'
+  },
+  movies: {
+    icon: '🎬',
+    label: 'Movies',
+    gradient: 'from-red-500/80 to-orange-500/80'
+  },
+  dining: {
+    icon: '🍽️',
+    label: 'Dining',
+    gradient: 'from-orange-500/80 to-yellow-500/80'
+  },
+  arts: {
+    icon: '🎨',
+    label: 'Arts',
+    gradient: 'from-pink-500/80 to-purple-500/80'
+  },
+  sports: {
+    icon: '⚽',
+    label: 'Sports',
+    gradient: 'from-green-500/80 to-emerald-500/80'
+  },
+};
 
 interface EventCardProps {
-  event: Event
-  onClick?: () => void
+  event: {
+    id: string;
+    name: string;
+    description: string;
+    category: EventCategory;
+    event_date: string;
+    flyer_image_url: string | null;
+    ticket_prices: any;
+    total_tickets: number;
+    tickets_sold: number;
+    featured: boolean;
+    venues?: {
+      name: string;
+      address?: string;
+    };
+  };
 }
 
-export function EventCard({ event, onClick }: EventCardProps) {
-  const [isPressed, setIsPressed] = useState(false)
+export function EventCard({ event }: EventCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const categoryConfig = CATEGORY_CONFIG[event.category];
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "MMM d, yyyy")
-  }
+  // Calculate lowest price
+  const getLowestPrice = () => {
+    if (!event.ticket_prices) return null;
+    const prices = Object.values(event.ticket_prices).filter(p => typeof p === 'number');
+    return prices.length > 0 ? Math.min(...prices as number[]) : null;
+  };
 
-  const formatTime = (dateString: string) => {
-    return format(new Date(dateString), "h:mm a")
-  }
-
-  const formatPrice = () => {
-    if (event.min_price === event.max_price) {
-      return `$${event.min_price}`
-    }
-    return `$${event.min_price} - $${event.max_price}`
-  }
+  const lowestPrice = getLowestPrice();
+  const ticketsRemaining = event.total_tickets - event.tickets_sold;
+  const soldOutSoon = ticketsRemaining > 0 && ticketsRemaining <= 20;
+  const soldOut = ticketsRemaining === 0;
 
   return (
-    <Link href={`/events/${event.id}`} className="block">  {/* ← ADD THIS */}
-      <article
-        className="group relative w-full max-w-[320px] cursor-pointer select-none overflow-hidden rounded-2xl bg-[#1A1A1A] shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-400 ease-out hover:scale-[1.02] hover:shadow-[0_12px_48px_rgba(89,255,160,0.15)] active:scale-[0.98] md:max-w-[360px]"
-        style={{
-          aspectRatio: "4/5",
-        }}
-        onClick={onClick}
-        onMouseDown={() => setIsPressed(true)}
-        onMouseUp={() => setIsPressed(false)}
-        onMouseLeave={() => setIsPressed(false)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            onClick?.()
-          }
-        }}
-      >
-        {/* ALL YOUR EXISTING CODE STAYS THE SAME */}
-        {/* Just keeping it for reference - paste your full article content here */}
-        
-        {/* Image Container with Gradient Overlay */}
-        <div className="relative h-[55%] w-full overflow-hidden">
-          <img
-            src={event.flyer_image_url || "/placeholder.svg"}
-            alt={event.name}
-            className="h-full w-full object-cover transition-transform duration-400 ease-out group-hover:scale-105"
-          />
-          <div
-            className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#1A1A1A]"
-            style={{
-              background: "linear-gradient(180deg, rgba(26,26,26,0) 0%, rgba(26,26,26,0.3) 50%, rgba(26,26,26,1) 100%)",
-            }}
-          />
+    <Link
+      href={`/events/${event.id}`}
+      className="group block"
+    >
+      <article className="relative h-full bg-card rounded-2xl overflow-hidden border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-2xl hover:shadow-accent/10 hover:-translate-y-1">
 
-          {event.status === "sold_out" && (
-            <div className="absolute left-3 top-3 rounded-full bg-[#FF6B6B]/20 px-3 py-1 backdrop-blur-md">
-              <span className="font-montserrat text-xs font-semibold uppercase tracking-wider text-[#FF6B6B]">
-                Sold Out
-              </span>
+        {/* Image Container - Fixed Aspect Ratio */}
+        <div className="relative aspect-[3/4] overflow-hidden bg-secondary/10">
+          {!imageError && event.flyer_image_url ? (
+            <img
+              src={event.flyer_image_url}
+              alt={event.name}
+              onError={() => setImageError(true)}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className={cn(
+              "w-full h-full flex items-center justify-center bg-gradient-to-br",
+              categoryConfig.gradient
+            )}>
+              <span className="text-8xl opacity-50">{categoryConfig.icon}</span>
             </div>
           )}
-          {event.status === "cancelled" && (
-            <div className="absolute left-3 top-3 rounded-full bg-[#A0A0A0]/20 px-3 py-1 backdrop-blur-md">
-              <span className="font-montserrat text-xs font-semibold uppercase tracking-wider text-[#A0A0A0]">
-                Cancelled
+
+          {/* Gradient Overlay - Improves text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+
+          {/* Top Badges Row */}
+          <div className="absolute top-4 left-4 right-4 flex items-start justify-between gap-2">
+            {/* Featured Badge */}
+            {event.featured && (
+              <div className="bg-accent text-background px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">
+                ⭐ Featured
+              </div>
+            )}
+
+            {/* Category Badge */}
+            <div className="ml-auto bg-background/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-2">
+              <span className="text-sm">{categoryConfig.icon}</span>
+              <span className="text-xs font-semibold text-foreground/80">
+                {categoryConfig.label}
               </span>
-            </div>
-          )}
-        </div>
-
-        {/* Content Container */}
-        <div className="relative h-[45%] p-5">
-          <div
-            className="absolute inset-0 bg-gradient-to-b from-[rgba(42,42,42,0.6)] to-[rgba(26,26,26,0.9)] backdrop-blur-xl"
-            style={{
-              background: "linear-gradient(180deg, rgba(42,42,42,0.6) 0%, rgba(26,26,26,0.9) 100%)",
-            }}
-          />
-
-          <div className="relative z-10 flex h-full flex-col justify-between">
-            <div className="space-y-1">
-              <h2
-                className="font-playfair text-2xl font-bold leading-tight text-white transition-colors duration-300 group-hover:text-[#59FFA0] md:text-[28px]"
-              >
-                {event.name}
-              </h2>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[#E0E0E0]">
-                <Calendar className="h-4 w-4 text-[#59FFA0]" />
-                <span className="font-rubik text-sm font-medium">{formatDate(event.event_date)}</span>
-                <Clock className="ml-2 h-4 w-4 text-[#59FFA0]" />
-                <span className="font-rubik text-sm font-medium">{formatTime(event.event_date)}</span>
-              </div>
-
-              <div className="flex items-start gap-2 text-[#E0E0E0]">
-                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#1AC8ED]" />
-                <div className="flex-1">
-                  <p className="font-rubik text-sm font-semibold leading-tight">{event.venue_name}</p>
-                  {event.venue_address && <p className="font-rubik text-xs text-[#A0A0A0]">{event.venue_address}</p>}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-white/10 pt-2">
-                <span className="font-montserrat text-xs font-medium uppercase tracking-wider text-[#A0A0A0]">Price</span>
-                <span className="font-rokkitt text-base font-semibold text-[#59FFA0]">{formatPrice()}</span>
-              </div>
             </div>
           </div>
 
-          <div
-            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-400 group-hover:opacity-100"
-            style={{
-              background: "linear-gradient(135deg, transparent 0%, rgba(89,255,160,0.05) 50%, transparent 100%)",
-            }}
-          />
-        </div>
+          {/* Bottom Content - Event Info */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 space-y-2 md:space-y-3">
+            {/* Event Title */}
+            <h3 className="font-slab-serif font-bold text-xl md:text-2xl leading-tight text-foreground line-clamp-2 group-hover:text-accent transition-colors">
+              {event.name}
+            </h3>
 
-        <div className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-transparent ring-offset-2 ring-offset-[#0A0A0A] transition-all duration-300 focus-visible:ring-[#59FFA0]" />
+            {/* Metadata Grid */}
+            <div className="space-y-1.5 md:space-y-2">
+              {/* Date & Time */}
+              <div className="flex items-center gap-2 text-xs md:text-sm text-foreground/90">
+                <span className="text-sm md:text-base">📅</span>
+                <time className="font-medium">
+                  {format(new Date(event.event_date), 'EEE, MMM d • h:mm a')}
+                </time>
+              </div>
+
+              {/* Venue */}
+              {event.venues?.name && (
+                <div className="flex items-center gap-2 text-xs md:text-sm text-foreground/90">
+                  <span className="text-sm md:text-base">📍</span>
+                  <span className="font-medium line-clamp-1">{event.venues.name}</span>
+                </div>
+              )}
+
+              {/* Price & Availability - Single Row */}
+              <div className="flex items-center justify-between pt-2 border-t border-foreground/10">
+                {/* Price */}
+                <div className="flex items-center gap-1.5 md:gap-2">
+                  {lowestPrice !== null ? (
+                    <>
+                      <span className="text-[10px] md:text-xs text-foreground/60 font-medium">From</span>
+                      <span className="font-serif font-bold text-lg md:text-xl text-accent">
+                        ${lowestPrice.toFixed(2)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs md:text-sm text-foreground/60">Price TBA</span>
+                  )}
+                </div>
+
+                {/* Availability Badge */}
+                <div className={cn(
+                  "px-2.5 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold",
+                  soldOut
+                    ? "bg-red-500/20 text-red-400"
+                    : soldOutSoon
+                    ? "bg-orange-500/20 text-orange-400"
+                    : "bg-accent/20 text-accent"
+                )}>
+                  {soldOut ? (
+                    "Sold Out"
+                  ) : soldOutSoon ? (
+                    <span><span className="hidden md:inline">Only </span>{ticketsRemaining} left</span>
+                  ) : (
+                    <span>{ticketsRemaining} <span className="md:hidden">avail</span><span className="hidden md:inline">available</span></span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </article>
-    </Link>  
-  )
+    </Link>
+  );
 }

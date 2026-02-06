@@ -25,6 +25,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { ShareButton } from '@/components/custom/events/share-button'
+import { format } from 'date-fns'
 
 // Types matching your actual database schema
 interface TicketType {
@@ -524,15 +526,22 @@ export default function EventDetailPage({
                       ${subtotal.toFixed(2)}
                     </p>
                   </div>
-                  <Button 
-                    size="lg"
-                    onClick={handleCheckout}
-                    disabled={totalTickets === 0}
-                    className="w-full sm:w-auto bg-[#59FFA0] hover:bg-[#59FFA0]/90 text-[#121113] font-semibold text-lg px-8 py-6 rounded-xl group disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span>{totalTickets === 0 ? 'Select Tickets' : 'Proceed to Checkout'}</span>
-                    <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </Button>
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <Button
+                      size="lg"
+                      onClick={handleCheckout}
+                      disabled={totalTickets === 0}
+                      className="flex-1 bg-[#59FFA0] hover:bg-[#59FFA0]/90 text-[#121113] font-semibold text-lg px-8 py-6 rounded-xl group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span>{totalTickets === 0 ? 'Select Tickets' : 'Proceed to Checkout'}</span>
+                      <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                    <ShareButton
+                      eventId={event.id}
+                      eventName={event.name}
+                      eventDate={format(new Date(event.event_date), 'MMMM d, yyyy')}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
