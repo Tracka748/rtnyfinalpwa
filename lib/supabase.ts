@@ -1,5 +1,5 @@
 // lib/supabase.ts
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -42,7 +42,7 @@ export async function createSupabaseServer() {
 
 // Admin client for privileged operations (server-side only)
 export function createSupabaseAdmin() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
+  return createSupabaseClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
@@ -52,3 +52,6 @@ export function createSupabaseAdmin() {
 
 // Legacy browser client (for compatibility)
 export const supabase = createSupabaseBrowser()
+
+// Alias for server-side usage (matches common pattern)
+export const createClient = createSupabaseServer

@@ -1,8 +1,8 @@
 // app/promoter/events/create/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { EventCategory } from '@/types/database';
 
 // Multi-step wizard steps
@@ -22,10 +22,14 @@ interface TicketType {
   price: number;
 }
 
-export default function CreateEventPage() {
+function CreateEventForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftId = searchParams.get('draft');
+
   const [currentStep, setCurrentStep] = useState<WizardStep>('basics');
   const [loading, setLoading] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(!!draftId);
   const [venues, setVenues] = useState<any[]>([]);
 
   // Form data
@@ -61,6 +65,48 @@ export default function CreateEventPage() {
       .then(res => res.json())
       .then(data => setVenues(data.data || []));
   }, []);
+
+  // Load existing draft if editing
+  useEffect(() => {
+    if (!draftId) return;
+
+    setLoadingDraft(true);
+    fetch(`/api/v1/promoter/events/draft/${draftId}`, { method: 'GET' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          const draft = data.data;
+          const eventDate = draft.event_date ? new Date(draft.event_date) : null;
+
+          // Convert ticket_prices object back to ticket_types array
+          const ticketTypes: TicketType[] = draft.ticket_prices
+            ? Object.entries(draft.ticket_prices).map(([name, price]) => ({
+                name: name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                price: price as number,
+              }))
+            : [{ name: 'General Admission', price: 25 }];
+
+          setFormData(prev => ({
+            ...prev,
+            name: draft.name || '',
+            category: draft.category || 'nightlife',
+            event_date: eventDate ? eventDate.toISOString().split('T')[0] : '',
+            event_time: eventDate ? eventDate.toTimeString().slice(0, 5) : '',
+            description: draft.description || '',
+            venue_id: draft.venue_id || '',
+            custom_venue_name: draft.venue_name || '',
+            custom_venue_address: '',
+            total_tickets: draft.total_tickets || 100,
+            ticket_types: ticketTypes,
+            sale_start_date: draft.sale_start_date || '',
+            sale_end_date: draft.sale_end_date || '',
+            flyer_preview: draft.flyer_image_url || '',
+          }));
+        }
+      })
+      .catch(err => console.error('Failed to load draft:', err))
+      .finally(() => setLoadingDraft(false));
+  }, [draftId]);
 
   // Step navigation
   const steps: WizardStep[] = ['basics', 'details', 'tickets', 'image', 'review'];
@@ -142,13 +188,36 @@ export default function CreateEventPage() {
         const uploadFormData = new FormData();
         uploadFormData.append('file', formData.flyer_image);
 
-        const uploadRes = await fetch('/api/v1/upload/flyer', {
-          method: 'POST',
-          body: uploadFormData,
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadData.success) throw new Error('Image upload failed');
-        flyer_image_url = uploadData.url;
+        try {
+          const uploadRes = await fetch('/api/v1/upload/flyer', {
+            method: 'POST',
+            body: uploadFormData,
+          });
+
+          if (!uploadRes.ok) {
+            const errorData = await uploadRes.json().catch(() => ({}));
+            console.error('Upload endpoint error:', uploadRes.status, errorData);
+            throw new Error(errorData.error || `Upload failed (${uploadRes.status})`);
+          }
+
+          const uploadData = await uploadRes.json();
+          if (!uploadData.success) {
+            throw new Error(uploadData.error || 'Image upload failed');
+          }
+          flyer_image_url = uploadData.data?.url || uploadData.url || '';
+        } catch (uploadError) {
+          console.error('Image upload error:', uploadError);
+          if (uploadError instanceof TypeError && uploadError.message.includes('fetch')) {
+            // Network error - endpoint unreachable
+            const skipImage = confirm('Image upload service unavailable. Continue without image?');
+            if (!skipImage) {
+              setLoading(false);
+              return;
+            }
+          } else {
+            throw uploadError;
+          }
+        }
       }
 
       // 2. Create event draft
@@ -174,18 +243,29 @@ export default function CreateEventPage() {
         },
       };
 
-      const res = await fetch('/api/v1/promoter/events/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(eventData),
-      });
+      let res;
+      if (draftId) {
+        // Update existing draft
+        res = await fetch(`/api/v1/promoter/events/draft/${draftId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+      } else {
+        // Create new draft
+        res = await fetch('/api/v1/promoter/events/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+      }
 
       const data = await res.json();
 
       if (data.success) {
         router.push('/promoter/dashboard?created=true');
       } else {
-        alert(data.error || 'Failed to create event');
+        alert(data.error || 'Failed to save event');
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -200,9 +280,16 @@ export default function CreateEventPage() {
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Create Event</h1>
-          <p className="text-secondary">Fill out the details below to list your event</p>
+          <h1 className="text-4xl font-bold mb-2">{draftId ? 'Edit Event Draft' : 'Create Event'}</h1>
+          <p className="text-secondary">{draftId ? 'Update your draft and save changes' : 'Fill out the details below to list your event'}</p>
         </div>
+
+        {loadingDraft && (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-[#59FFA0] border-t-transparent rounded-full animate-spin" />
+            <span className="ml-3 text-gray-400">Loading draft...</span>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="mb-8">
@@ -626,5 +713,18 @@ export default function CreateEventPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrap in Suspense for useSearchParams
+export default function CreateEventPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#59FFA0] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <CreateEventForm />
+    </Suspense>
   );
 }
