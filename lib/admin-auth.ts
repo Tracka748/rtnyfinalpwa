@@ -1,32 +1,62 @@
-import { createSupabaseServer } from '@/lib/supabase'
-import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-// Temporary whitelist for development
-const ADMIN_EMAILS = [
-  'tracka748@gmail.com',
-]
+/**
+ * Create Supabase client for server components
+ */
+async function createClient() {
+  const cookieStore = await cookies();
 
-export async function checkIsAdmin() {
-  const supabase = await createSupabaseServer()
-  
-  const { data: { user }, error } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    return {
-      error: true,
-      response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
     }
+  );
+}
+
+/**
+ * Check if user is an admin
+ * Development: Uses email whitelist
+ * Production TODO: Query app_admins table
+ */
+export async function isAdmin(email?: string): Promise<boolean> {
+  if (!email) return false;
+
+  // Admin whitelist
+  const adminEmails = [
+    'admin@rtny.com',
+    'tracka748@gmail.com',
+  ];
+
+  return adminEmails.includes(email.toLowerCase());
+}
+
+/**
+ * Get current user's admin status
+ */
+export async function checkAdminAccess() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { isAdmin: false, user: null, error: 'Not authenticated' };
   }
 
-  // Check if user is admin (whitelist for dev)
-  const isAdmin = ADMIN_EMAILS.includes(user.email || '')
+  const adminStatus = await isAdmin(user.email);
 
-  if (!isAdmin) {
-    return {
-      error: true,
-      response: NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
-    }
-  }
-
-  return { error: false, user }
+  return {
+    isAdmin: adminStatus,
+    user,
+    error: adminStatus ? null : 'Not authorized - admin access required',
+  };
 }
