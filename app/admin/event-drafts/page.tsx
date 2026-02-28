@@ -66,7 +66,7 @@ export default function AdminEventDraftsPage() {
 
       const data = await response.json()
 
-      if (data.success) {
+      if (response.ok && data.success) {
         alert('Event approved and published successfully!')
         fetchDrafts()
       } else {

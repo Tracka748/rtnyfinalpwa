@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServer } from '@/lib/supabase'
+import { createSupabaseAdmin } from '@/lib/supabase'
 import { checkIsAdmin } from '@/lib/admin-auth'
 
 // POST /api/v1/admin/promoter-applications/[id]/approve
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createSupabaseServer()
-
     const adminCheck = await checkIsAdmin()
     if (adminCheck.error) return adminCheck.response
 
-    const { id } = params
+    const supabase = createSupabaseAdmin()
+    const { id } = await params
 
     // Check if application exists and is pending
     const { data: application, error: fetchError } = await supabase
@@ -41,7 +40,6 @@ export async function POST(
       .from('promoter_applications')
       .update({
         status: 'approved',
-        updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()

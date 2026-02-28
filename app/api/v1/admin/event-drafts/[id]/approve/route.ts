@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServer } from '@/lib/supabase'
+import { createSupabaseAdmin } from '@/lib/supabase'
 import { checkIsAdmin } from '@/lib/admin-auth'
 
 // POST /api/v1/admin/event-drafts/[id]/approve
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createSupabaseServer()
-
     const adminCheck = await checkIsAdmin()
     if (adminCheck.error) return adminCheck.response
 
-    const { id } = params
+    const supabase = createSupabaseAdmin()
+    const { id } = await params
 
     // Fetch the draft with venue info
     const { data: draft, error: fetchError } = await supabase
@@ -60,24 +59,27 @@ export async function POST(
     }
 
     // 2. Publish to events table
-    const eventData = {
-      name: draft.name,
-      description: draft.description,
-      category: draft.category,
-      event_date: draft.event_date,
-      venue_id: draft.venue_id,
-      flyer_image_url: draft.flyer_image_url,
-      ticket_prices: draft.ticket_prices,
-      tier_discounts: draft.tier_discounts,
-      total_tickets: 100, // Default capacity
-      tickets_sold: 0,
-      status: 'active',
-      featured: false
-    }
-
     const { data: publishedEvent, error: publishError } = await supabase
       .from('events')
-      .insert([eventData])
+      .insert({
+        name: draft.name,
+        description: draft.description,
+        category: draft.category || 'nightlife',
+        event_date: draft.event_date,
+        venue_id: draft.venue_id,
+        flyer_image_url: draft.flyer_image_url,
+        ticket_prices: draft.ticket_prices,
+        tier_discounts: draft.tier_discounts,
+        total_tickets: draft.total_tickets || 100,
+        tickets_sold: 0,
+        status: 'active',
+        featured: false,
+        sale_start_date: draft.sale_start_date || new Date().toISOString(),
+        sale_end_date: draft.sale_end_date || draft.event_date,
+        age_restriction: draft.age_restriction || '18+',
+        parking_info: draft.parking_info || null,
+        refund_policy: draft.refund_policy || 'No refunds',
+      })
       .select()
       .single()
 

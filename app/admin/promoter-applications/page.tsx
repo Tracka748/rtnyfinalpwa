@@ -5,24 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CheckCircle, XCircle, Clock, Mail, Phone, Building } from 'lucide-react'
+import { CheckCircle, XCircle, Mail, Phone, Building } from 'lucide-react'
 
 interface PromoterApplication {
   id: string
   user_id: string
   business_name: string
-  business_type: string
   contact_email: string
-  contact_phone: string | null
-  experience_description: string | null
+  phone: string | null
+  website: string | null
+  instagram_handle: string | null
+  description: string | null
+  expected_events_per_month: number | null
   status: 'pending' | 'approved' | 'rejected'
-  created_at: string
-  updated_at: string
 }
 
 export default function AdminPromoterApplicationsPage() {
   const [applications, setApplications] = useState<PromoterApplication[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending')
   const [processing, setProcessing] = useState<string | null>(null)
 
@@ -33,15 +34,21 @@ export default function AdminPromoterApplicationsPage() {
   async function fetchApplications() {
     try {
       setLoading(true)
+      setFetchError(null)
       const params = filter !== 'all' ? `?status=${filter}` : ''
       const response = await fetch(`/api/v1/admin/promoter-applications${params}`)
       const data = await response.json()
 
       if (data.success) {
         setApplications(data.data)
+      } else {
+        setFetchError(data.error || data.details || `HTTP ${response.status}`)
+        setApplications([])
       }
     } catch (error) {
       console.error('Failed to fetch applications:', error)
+      setFetchError(error instanceof Error ? error.message : 'Network error')
+      setApplications([])
     } finally {
       setLoading(false)
     }
@@ -94,7 +101,7 @@ export default function AdminPromoterApplicationsPage() {
   const getStatusBadge = (status: PromoterApplication['status']) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="bg-yellow-50"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+        return <Badge variant="outline" className="bg-yellow-50">Pending</Badge>
       case 'approved':
         return <Badge variant="outline" className="bg-green-50"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>
       case 'rejected':
@@ -120,6 +127,13 @@ export default function AdminPromoterApplicationsPage() {
 
       {loading ? (
         <div className="text-center py-12">Loading applications...</div>
+      ) : fetchError ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-red-500 font-medium mb-1">Failed to load applications</p>
+            <p className="text-sm text-muted-foreground font-mono">{fetchError}</p>
+          </CardContent>
+        </Card>
       ) : applications.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -139,33 +153,36 @@ export default function AdminPromoterApplicationsPage() {
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-4 mb-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Type:</span>
-                    <span className="capitalize">{app.business_type.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Email:</span>
                     <span>{app.contact_email}</span>
                   </div>
-                  {app.contact_phone && (
+                  {app.phone && (
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Phone:</span>
-                      <span>{app.contact_phone}</span>
+                      <span>{app.phone}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Applied:</span>
-                    <span>{new Date(app.created_at).toLocaleDateString()}</span>
-                  </div>
+                  {app.expected_events_per_month != null && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Events/month:</span>
+                      <span>{app.expected_events_per_month}</span>
+                    </div>
+                  )}
+                  {app.instagram_handle && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium">Instagram:</span>
+                      <span>@{app.instagram_handle}</span>
+                    </div>
+                  )}
                 </div>
 
-                {app.experience_description && (
+                {app.description && (
                   <div className="mb-4 p-4 bg-muted rounded-lg">
-                    <p className="text-sm font-medium mb-2">Experience:</p>
-                    <p className="text-sm text-muted-foreground">{app.experience_description}</p>
+                    <p className="text-sm font-medium mb-2">Description:</p>
+                    <p className="text-sm text-muted-foreground">{app.description}</p>
                   </div>
                 )}
 

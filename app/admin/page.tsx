@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { StatsCard } from '@/components/admin/StatsCard';
 import { SalesChart } from '@/components/admin/SalesChart';
 import { RecentActivity } from '@/components/admin/RecentActivity';
-import { RevenueVsTicketsChart } from '@/components/admin/RevenueVsTicketsChart';
 import { TopEventsChart } from '@/components/admin/TopEventsChart';
+import { VenuePerformanceTable } from '@/components/admin/VenuePerformanceTable';
+import { PromoterPerformanceTable } from '@/components/admin/PromoterPerformanceTable';
 import { ExportButton } from '@/components/admin/ExportButton';
 import { DashboardSkeleton } from '@/components/admin/DashboardSkeleton';
 
@@ -29,6 +30,8 @@ export default function AdminDashboardPage() {
   const [salesTrend, setSalesTrend] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [topEvents, setTopEvents] = useState<TopEvent[]>([]);
+  const [venuePerformance, setVenuePerformance] = useState<any[]>([]);
+  const [promoterPerformance, setPromoterPerformance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -36,6 +39,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchAnalyticsData();
   }, []);
 
   useEffect(() => {
@@ -67,6 +71,24 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function fetchAnalyticsData() {
+    try {
+      const res = await fetch('/api/v1/admin/analytics');
+      const data = await res.json();
+      console.log('[admin page] analytics response:', data);
+      if (data.success) {
+        console.log('[admin page] venuePerformance:', data.data.venuePerformance);
+        console.log('[admin page] promoterPerformance:', data.data.promoterPerformance);
+        setVenuePerformance(data.data.venuePerformance || []);
+        setPromoterPerformance(data.data.promoterPerformance || []);
+      } else {
+        console.error('[admin page] analytics API returned non-success:', data);
+      }
+    } catch (err) {
+      console.error('Analytics fetch error:', err);
+    }
+  }
+
   if (loading) return <DashboardSkeleton />;
 
   if (error) {
@@ -89,12 +111,6 @@ export default function AdminDashboardPage() {
     amount: item.total_amount,
     status: item.status,
     date: new Date(item.created_at).toLocaleDateString(),
-  }));
-
-  const revenueVsTicketsData = salesTrend.map(d => ({
-    date: d.date,
-    revenue: d.revenue,
-    tickets: d.count,
   }));
 
   return (
@@ -268,10 +284,13 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Row 2: Revenue vs Tickets + Top Events */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-          <RevenueVsTicketsChart data={revenueVsTicketsData} />
-          <TopEventsChart events={topEvents} />
+        {/* Row 2: Top Events */}
+        <TopEventsChart events={topEvents} />
+
+        {/* Row 3: Ranked Performance Tables */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+          <VenuePerformanceTable data={venuePerformance} />
+          <PromoterPerformanceTable data={promoterPerformance} />
         </div>
       </section>
 

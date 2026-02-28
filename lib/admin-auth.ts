@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 /**
  * Create Supabase client for server components
@@ -35,6 +36,39 @@ export async function isAdmin(email?: string): Promise<boolean> {
   ];
 
   return adminEmails.includes(email.toLowerCase());
+}
+
+/**
+ * Used in API routes to gate admin-only endpoints.
+ * Returns { error: false } if admin, or { error: true, response } to return immediately.
+ */
+export async function checkIsAdmin(): Promise<
+  { error: false; response: null } | { error: true; response: NextResponse }
+> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      error: true,
+      response: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }),
+    };
+  }
+
+  const adminStatus = await isAdmin(user.email);
+
+  if (!adminStatus) {
+    return {
+      error: true,
+      response: NextResponse.json({ error: 'Admin access required' }, { status: 403 }),
+    };
+  }
+
+  return { error: false, response: null };
 }
 
 /**
