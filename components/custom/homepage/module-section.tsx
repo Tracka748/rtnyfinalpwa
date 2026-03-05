@@ -8,7 +8,7 @@ interface ModuleSectionProps {
 
 export function ModuleSection({ module }: ModuleSectionProps) {
   return (
-    <section className="mx-auto w-full max-w-[1200px] px-4 py-4">
+    <section className="mx-auto w-full max-w-[1200px] px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-bold text-text-primary">
           {module.icon} {module.title.toUpperCase()}

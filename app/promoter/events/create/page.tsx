@@ -4,6 +4,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EventCategory } from '@/types/database';
+import { AIQuickBuildFlow } from '@/components/AIQuickBuildFlow';
 
 // Multi-step wizard steps
 type WizardStep = 'basics' | 'details' | 'tickets' | 'image' | 'review';
@@ -26,6 +27,9 @@ function CreateEventForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const draftId = searchParams.get('draft');
+
+  // Mode selection: null = show mode picker, 'ai' = AI builder, 'manual' = existing wizard
+  const [mode, setMode] = useState<'ai' | 'manual' | null>(draftId ? 'manual' : null);
 
   const [currentStep, setCurrentStep] = useState<WizardStep>('basics');
   const [loading, setLoading] = useState(false);
@@ -275,6 +279,61 @@ function CreateEventForm() {
     }
   };
 
+  // Mode picker screen
+  if (!mode) {
+    return (
+      <div className="min-h-screen py-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold mb-2">Create Event</h1>
+            <p className="text-secondary">How would you like to create your event?</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* AI Quick Build */}
+            <button
+              onClick={() => setMode('ai')}
+              className="p-8 bg-gradient-to-br from-[#59FFA0]/10 to-[#007BFF]/10 border-2 border-[#59FFA0]/40 rounded-2xl hover:border-[#59FFA0] transition-all text-left group"
+            >
+              <div className="text-5xl mb-4">✨</div>
+              <h3 className="text-2xl font-bold text-white mb-2">AI Quick Build</h3>
+              <p className="text-secondary mb-4">
+                Tell AI your event details and get a complete package — titles, description,
+                pricing, and a generated flyer background — in under 60 seconds.
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#59FFA0] bg-[#59FFA0]/10 border border-[#59FFA0]/30 px-3 py-1 rounded-full">
+                  Recommended
+                </span>
+                <span className="text-xs text-secondary">Fastest</span>
+              </div>
+            </button>
+
+            {/* Manual Wizard */}
+            <button
+              onClick={() => setMode('manual')}
+              className="p-8 bg-card border-2 border-border rounded-2xl hover:border-accent/50 transition-all text-left"
+            >
+              <div className="text-5xl mb-4">✏️</div>
+              <h3 className="text-2xl font-bold text-white mb-2">Build Manually</h3>
+              <p className="text-secondary mb-4">
+                Fill out each detail yourself using the step-by-step wizard. Full control
+                over every field from start to finish.
+              </p>
+              <div className="text-xs text-secondary">5-step wizard • Full control</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // AI Quick Build mode
+  if (mode === 'ai') {
+    return <AIQuickBuildFlow onBack={() => setMode(null)} />;
+  }
+
+  // Manual wizard mode
   return (
     <div className="min-h-screen py-12">
       <div className="container mx-auto px-4 max-w-4xl">

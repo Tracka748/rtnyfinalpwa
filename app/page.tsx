@@ -33,7 +33,6 @@ function getPlaceholderImage(category: string) {
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [allEvents, setAllEvents] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
 
   // Fetch events from API
   useEffect(() => {
@@ -42,17 +41,11 @@ export default function HomePage() {
         const response = await fetch('/api/v1/events')
         const result = await response.json()
 
-        console.log('📥 API Response:', result)
-
         if (result.success && result.data) {
-          console.log('✅ Events fetched successfully:', result.data.length)
-          console.log('📅 Sample event dates:', result.data.slice(0, 3).map((e: any) => ({ name: e.name, date: e.event_date })))
           setAllEvents(result.data)
         }
       } catch (error) {
-        console.error('❌ Failed to fetch events:', error)
-      } finally {
-        setLoading(false)
+        console.error('Failed to fetch events:', error)
       }
     }
 
@@ -76,8 +69,11 @@ export default function HomePage() {
     }
   }
 
+  // Deduplicate API events by ID to prevent triple-rendering from API duplicates
+  const uniqueEvents = [...new Map(allEvents.map(e => [e.id, e])).values()]
+
   // Filter featured events (featured=true, limit 10)
-  const featuredEvents: Event[] = allEvents
+  const featuredEvents: Event[] = uniqueEvents
     .filter(event => event.featured === true)
     .slice(0, 10)
     .map(mapEventToEventType)
@@ -86,27 +82,12 @@ export default function HomePage() {
   const now = new Date()
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
 
-  console.log('🔍 DEBUG - All events count:', allEvents.length)
-  console.log('🔍 DEBUG - Current date:', now)
-  console.log('🔍 DEBUG - Tomorrow (24h from now):', tomorrow)
-
-  const tonightEvents: Event[] = allEvents
+  const tonightEvents: Event[] = uniqueEvents
     .filter(event => {
       const eventDate = new Date(event.event_date)
-      const isInNext24Hours = eventDate >= now && eventDate < tomorrow
-
-      console.log('🌙 Tonight filter:', {
-        eventName: event.name,
-        eventDate: eventDate.toISOString(),
-        now: now.toISOString(),
-        isInNext24Hours
-      })
-
-      return isInNext24Hours
+      return eventDate >= now && eventDate < tomorrow
     })
     .map(mapEventToEventType)
-
-  console.log('🌙 Tonight events found:', tonightEvents.length)
 
   // Mock user data for PointsFeedback
   const userData = {
@@ -121,7 +102,7 @@ export default function HomePage() {
       id: "1",
       title: "🎬 Free Kids Movies Weekend",
       subtitle: "Dec 15-20 • All Rochester Theaters",
-      image: "/movie-theater-kids-family.jpg",
+      image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200&h=600&fit=crop",
       points: 300,
       cta: "View Showtimes",
       link: "/movies",
@@ -130,7 +111,7 @@ export default function HomePage() {
       id: "2",
       title: "🎸 Rochester Music Festival",
       subtitle: "Live bands every night • Downtown venues",
-      image: "/live-music-festival-night.jpg",
+      image: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1200&h=600&fit=crop",
       points: 500,
       cta: "Get Tickets",
       link: "/festivals",
@@ -139,7 +120,7 @@ export default function HomePage() {
       id: "3",
       title: "🍹 Holiday Food & Wine Walk",
       subtitle: "Taste Rochester • Over 25 restaurants",
-      image: "/restaurant-food-wine-tasting.jpg",
+      image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=600&fit=crop",
       points: 250,
       cta: "Reserve Spot",
       link: "/dining",
@@ -396,7 +377,7 @@ export default function HomePage() {
     .sort((a, b) => b.priority - a.priority)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background divide-y divide-white/5">
       {/* Section 1: Hero Promo */}
       <HeroPromo promos={promos} />
 

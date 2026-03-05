@@ -50,9 +50,15 @@ export function TonightSection({ events, deals }: TonightSectionProps) {
         </div>
 
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
-          {deals.map((deal) => (
-            <EventCard key={deal.id} event={deal} size="medium" />
-          ))}
+          {deals.length === 0 ? (
+            <div className="w-full text-center py-8 text-text-secondary">
+              No deals available tonight. Check back soon!
+            </div>
+          ) : (
+            deals.map((deal) => (
+              <EventCard key={deal.id} event={deal} size="medium" />
+            ))
+          )}
         </div>
       </div>
     </section>

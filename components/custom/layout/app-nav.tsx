@@ -52,15 +52,25 @@ export function AppNav() {
     <nav className="fixed top-0 z-50 w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo - Links to Homepage */}
-          <Link
-            href="/"
-            className="font-header text-2xl font-bold text-[#F9FDFF] transition-opacity hover:opacity-80"
-          >
-            RTNY
-          </Link>
+          {/* Left group: RTNY + RocTicketNy */}
+          <div className="flex items-center">
+            <Link
+              href="/"
+              className="font-header text-2xl font-bold text-[#59FFA0] transition-opacity hover:opacity-80"
+            >
+              RTNY
+            </Link>
+            <div
+              className="hidden items-center font-header md:flex"
+              style={{ marginLeft: '40px', marginRight: '60px' }}
+            >
+              <span className="text-3xl font-black text-[#1AC8ED]">Roc</span>
+              <span className="text-3xl font-black text-[#F9FDFF]">Ticket</span>
+              <span className="text-3xl font-black text-[#59FFA0]">Ny</span>
+            </div>
+          </div>
 
-          {/* Desktop Navigation */}
+          {/* Right group: Desktop Navigation */}
           <div className="hidden items-center gap-6 md:flex">
             {/* Home Link */}
             <Link
