@@ -1,6 +1,7 @@
 import type { Module } from "@/lib/homepage/types"
 import { Button } from "@/components/ui/button"
 import { ChevronRight } from "lucide-react"
+import { DEFAULT_EVENT_IMAGE, getEventImage } from "@/lib/image-utils"
 
 interface ModuleCardProps {
   module: Module
@@ -19,9 +20,12 @@ export function ModuleCard({ module }: ModuleCardProps) {
         {module.events.slice(0, 3).map((event) => (
           <div key={event.id} className="flex items-center gap-3 p-4 transition-colors hover:bg-surface-elevated">
             <img
-              src={event.image || "/placeholder.svg"}
+              src={getEventImage(event.image, event.category)}
               alt={event.title}
               className="h-[60px] w-[60px] shrink-0 rounded-lg object-cover"
+              onError={(e) => {
+                e.currentTarget.src = DEFAULT_EVENT_IMAGE
+              }}
             />
             <div className="min-w-0 flex-1">
               <h4 className="mb-0.5 truncate text-sm font-semibold text-text-primary">{event.title}</h4>

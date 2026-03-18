@@ -35,6 +35,7 @@ function CreateEventForm() {
   const [loading, setLoading] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(!!draftId);
   const [venues, setVenues] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -61,6 +62,9 @@ function CreateEventForm() {
     // Image
     flyer_image: null as File | null,
     flyer_preview: '',
+
+    // Group
+    group_id: '' as string | null,
   });
 
   // Load venues on mount
@@ -68,6 +72,9 @@ function CreateEventForm() {
     fetch('/api/v1/venues')
       .then(res => res.json())
       .then(data => setVenues(data.data || []));
+    fetch('/api/v1/groups')
+      .then(res => res.json())
+      .then(data => setGroups(data.data || []));
   }, []);
 
   // Load existing draft if editing
@@ -241,6 +248,7 @@ function CreateEventForm() {
         sale_start_date: formData.sale_start_date,
         sale_end_date: formData.sale_end_date,
         flyer_image_url,
+        group_id: formData.group_id || null,
         tier_discounts: {
           basic: 10,
           promoter: 15,
@@ -481,6 +489,28 @@ function CreateEventForm() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Exclusive Group */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Exclusive Group (optional)
+                </label>
+                <select
+                  value={formData.group_id || ''}
+                  onChange={(e) => setFormData({ ...formData, group_id: e.target.value || null })}
+                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
+                >
+                  <option value="">None (public event)</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-secondary mt-1">
+                  Selecting a group makes this event visible only to group members
+                </p>
               </div>
 
               {/* Custom Venue */}

@@ -2,6 +2,7 @@ import type { Event } from "@/lib/homepage/types"
 import { ChevronRight, Calendar, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { DEFAULT_EVENT_IMAGE, getEventImage } from "@/lib/image-utils"
 
 interface FeaturedEventsProps {
   events: Event[]
@@ -56,9 +57,12 @@ export function FeaturedEvents({ events }: FeaturedEventsProps) {
             {/* Image Container with Gradient Overlay */}
             <div className="relative h-[160px] overflow-hidden md:h-[180px]">
               <img
-                src={event.image || "/placeholder.svg"}
+                src={getEventImage(event.image, event.category)}
                 alt={event.title}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.src = DEFAULT_EVENT_IMAGE
+                }}
               />
               <div
                 className="absolute inset-0"

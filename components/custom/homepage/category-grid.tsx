@@ -12,17 +12,19 @@ export function CategoryGrid() {
   ]
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-6">
-      <h2 className="mb-4 text-lg font-bold text-text-primary">Explore More</h2>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+    <div className="bg-white/[0.02] rounded-2xl mx-4 px-4 py-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-header text-xl font-bold text-white">🧭 Explore More</h2>
+      </div>
+      <div className="grid grid-cols-3 gap-2 md:grid-cols-3">
         {categories.map((category) => (
           <button
             key={category.id}
-            className="flex flex-col items-center justify-center gap-2 rounded-xl bg-surface p-6 transition-all hover:border-accent-secondary hover:bg-surface-elevated hover:shadow-lg hover:shadow-accent-secondary/20"
+            className="flex flex-col items-center justify-center gap-1.5 rounded-xl bg-surface p-4 transition-all hover:bg-surface-elevated"
           >
-            <span className="text-4xl">{category.icon}</span>
-            <span className="text-sm font-semibold text-text-primary">{category.label}</span>
-            <span className="text-xs text-text-muted">{category.count} tonight</span>
+            <span className="text-2xl">{category.icon}</span>
+            <span className="text-xs font-semibold text-text-primary">{category.label}</span>
+            <span className="text-[10px] text-text-muted">{category.count} tonight</span>
           </button>
         ))}
       </div>

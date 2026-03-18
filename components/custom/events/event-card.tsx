@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { EventCategory } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { DEFAULT_EVENT_IMAGE, getEventImage } from '@/lib/image-utils';
 
 const CATEGORY_CONFIG: Record<EventCategory, {
   icon: string;
@@ -88,11 +89,17 @@ export function EventCard({ event }: EventCardProps) {
 
         {/* Image Container - Fixed Aspect Ratio */}
         <div className="relative aspect-[3/4] overflow-hidden bg-secondary/10">
-          {!imageError && event.flyer_image_url ? (
+          {!imageError ? (
             <img
-              src={event.flyer_image_url}
+              src={getEventImage(event.flyer_image_url, event.category)}
               alt={event.name}
-              onError={() => setImageError(true)}
+              onError={(e) => {
+                if (e.currentTarget.src !== DEFAULT_EVENT_IMAGE) {
+                  e.currentTarget.src = DEFAULT_EVENT_IMAGE;
+                  return;
+                }
+                setImageError(true);
+              }}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (

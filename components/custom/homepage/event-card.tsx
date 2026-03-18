@@ -1,7 +1,11 @@
+"use client"
+
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import type { Event } from "@/lib/homepage/types"
 import { getCategoryColor } from "@/lib/homepage/utils"
+import { DEFAULT_EVENT_IMAGE, getEventImage } from "@/lib/image-utils"
 
 interface EventCardProps {
   event: Event
@@ -9,6 +13,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, size = "small" }: EventCardProps) {
+  const [imageSrc, setImageSrc] = useState(() => getEventImage(event.image, event.category))
   const cardWidth = size === "small" ? "w-[220px]" : "w-[280px]"
   const imageHeight = size === "small" ? "h-[120px]" : "h-[180px]"
   const cardHeight = size === "small" ? "h-[240px]" : "h-[320px]"
@@ -21,10 +26,13 @@ export function EventCard({ event, size = "small" }: EventCardProps) {
         {/* Image */}
         <div className={`relative ${imageHeight} w-full overflow-hidden bg-surface-elevated`}>
           <Image
-            src={event.image || "/placeholder.svg"}
+            src={imageSrc}
             alt={event.title}
             fill
             className="object-cover transition-transform group-hover:scale-105"
+            onError={() => {
+              setImageSrc(DEFAULT_EVENT_IMAGE)
+            }}
           />
 
           {/* Category badge */}

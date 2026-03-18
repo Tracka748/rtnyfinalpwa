@@ -96,6 +96,18 @@ export function AppNav() {
               Events
             </Link>
 
+            {/* Groups Link */}
+            <Link
+              href="/groups"
+              className={`font-sans text-sm font-medium transition-colors ${
+                pathname.startsWith("/groups")
+                  ? "text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:text-[#59FFA0]"
+              }`}
+            >
+              Groups
+            </Link>
+
             {/* Conditional Links based on Auth State */}
             {!loading && (
               <>
@@ -201,6 +213,18 @@ export function AppNav() {
               }`}
             >
               Events
+            </Link>
+
+            <Link
+              href="/groups"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
+                pathname.startsWith("/groups")
+                  ? "bg-[#59FFA0]/10 text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
+              }`}
+            >
+              Groups
             </Link>
 
             {!loading && (

@@ -12,23 +12,8 @@ import { CategoryGrid } from "@/components/custom/homepage/category-grid"
 import { PointsFeedback } from "@/components/custom/homepage/points-feedback"
 import { Footer } from "@/components/custom/homepage/footer"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
+import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
-
-// Helper function to get category-specific placeholder images
-function getPlaceholderImage(category: string) {
-  const placeholders: Record<string, string> = {
-    dining: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=800&fit=crop',
-    nightlife: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=800&fit=crop',
-    music: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=800&fit=crop',
-    movies: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=800&fit=crop',
-    family: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=600&h=800&fit=crop',
-    festivals: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=800&fit=crop',
-    sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=600&h=800&fit=crop',
-    arts: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=600&h=800&fit=crop',
-    default: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=800&fit=crop'
-  }
-  return placeholders[category] || placeholders.default
-}
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
@@ -60,7 +45,7 @@ export default function HomePage() {
       id: apiEvent.id,
       title: apiEvent.name,
       category: category,
-      image: apiEvent.image_url || getPlaceholderImage(category),
+      image: getEventImage(apiEvent.flyer_image_url || apiEvent.image_url, category),
       venue: apiEvent.venue_name || "TBA",
       time: new Date(apiEvent.event_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       price: lowestPrice > 0 ? `$${lowestPrice}` : "Free",

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
+  const date = searchParams.get('date')
   const category = searchParams.get('category')
   const search = searchParams.get('q')
 
@@ -14,18 +15,28 @@ export async function GET(req: NextRequest) {
       .from('events')
       .select(`
         *,
-        venues (
+        venues!inner (
           name,
           address
-        )
+        ),
+        ticket_types (*)
       `)
       .eq('status', 'active')
-      .order('event_date', { ascending: true })
+
+    // Filter by date
+    if (date) {
+      // Use date string directly to avoid timezone shift
+      query = query
+        .gte('event_date', `${date}T00:00:00`)
+        .lte('event_date', `${date}T23:59:59`)
+    }
 
     // Filter by category
-    if (category) {
+    if (category && category !== 'all') {
       query = query.eq('category', category)
     }
+
+    query = query.order('event_date', { ascending: true })
 
     // Search by name or description
     if (search) {
@@ -42,28 +53,9 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Fetch ticket types for all events
-    const { data: ticketTypes, error: ticketTypesError } = await supabase
-      .from('ticket_types')
-      .select('*')
-
-    if (ticketTypesError) {
-      console.error('Ticket types error:', ticketTypesError)
-    }
-
-    // Group ticket types by event_id
-    const ticketTypesByEvent = (ticketTypes || []).reduce((acc, ticket) => {
-      if (!acc[ticket.event_id]) {
-        acc[ticket.event_id] = []
-      }
-      acc[ticket.event_id].push(ticket)
-      return acc
-    }, {} as Record<string, any[]>)
-
-    // Attach ticket types and venue info to each event
+    // Attach venue info to each event (ticket_types already joined)
     const eventsWithData = (events || []).map(event => ({
       ...event,
-      ticket_types: ticketTypesByEvent[event.id] || [],
       venue_name: event.venues?.name || null,
       venue_address: event.venues?.address || null,
     }))

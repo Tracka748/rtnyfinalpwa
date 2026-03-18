@@ -1,12 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
-interface DateTabsProps {
-  onDateChange: (date: string) => void
-}
-
-export function DateTabs({ onDateChange }: DateTabsProps) {
+export function DateTabs() {
+  const router = useRouter()
   const [activeDate, setActiveDate] = useState("today")
 
   const dates = []
@@ -33,7 +31,7 @@ export function DateTabs({ onDateChange }: DateTabsProps) {
 
   const handleDateClick = (date: (typeof dates)[0]) => {
     setActiveDate(date.id)
-    onDateChange(date.value)
+    router.push(`/events?date=${date.value}`)
   }
 
   return (

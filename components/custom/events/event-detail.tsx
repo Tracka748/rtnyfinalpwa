@@ -6,6 +6,7 @@ import { ArrowLeft, Share2, MapPin, Calendar, Clock, Users, Music } from "lucide
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { DEFAULT_EVENT_IMAGE, getEventImage } from "@/lib/image-utils"
 
 interface TicketType {
   id: string
@@ -134,15 +135,14 @@ export function EventDetail({
         </div>
 
         {/* Event Image */}
-        {event.flyer_image_url ? (
-          <img
-            src={event.flyer_image_url}
-            alt={event.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#1A1A1A] to-[#121113]" />
-        )}
+        <img
+          src={getEventImage(event.flyer_image_url, event.category)}
+          alt={event.name}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = DEFAULT_EVENT_IMAGE
+          }}
+        />
 
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#121113] via-[#121113]/60 to-transparent" />
