@@ -30,7 +30,7 @@ export function CollapsibleChart({
           {icon && <span className="mr-1.5">{icon}</span>}
           {title}
         </span>
-        <span className="text-gray-500 text-xs ml-2">
+        <span className="text-[#7DD8E8] text-xs ml-2">
           {isExpanded ? '▲' : '▼'}
         </span>
       </button>

@@ -74,7 +74,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                 RTNY Admin
               </p>
               {userEmail && (
-                <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[150px]">
+                <p className="text-xs text-[#7DD8E8] mt-0.5 truncate max-w-[150px]">
                   {userEmail}
                 </p>
               )}
@@ -98,7 +98,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-[#59FFA0]/10 text-[#59FFA0] border border-[#59FFA0]/20'
-                    : 'text-gray-400 hover:bg-white/8 hover:text-white',
+                    : 'text-[#7DD8E8] hover:bg-white/8 hover:text-white',
                 ].join(' ')}
               >
                 <span className="text-lg shrink-0">{item.icon}</span>
@@ -112,7 +112,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
         <div className="p-3 border-t border-white/10 shrink-0">
           <a
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-white/8 hover:text-[#007BFF] transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#7DD8E8] hover:bg-white/8 hover:text-[#007BFF] transition-colors"
           >
             <span className="text-lg">←</span>
             <span>Back to Site</span>
@@ -139,7 +139,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                 {pageTitle}
               </h2>
             </div>
-            <span className="text-xs text-gray-500 hidden sm:inline">
+            <span className="text-xs text-[#7DD8E8] hidden sm:inline">
               {userEmail}
             </span>
           </div>

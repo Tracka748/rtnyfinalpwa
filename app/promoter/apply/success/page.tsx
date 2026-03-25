@@ -9,7 +9,7 @@ export default function ApplicationSuccessPage() {
         <h1 className="text-4xl font-bold mb-4">
           Application Submitted!
         </h1>
-        <p className="text-xl text-secondary mb-8">
+        <p className="text-xl text-[#7DD8E8] mb-8">
           We've received your promoter application. Our team will review it within 24-48 hours and send you an email with next steps.
         </p>
         
@@ -20,21 +20,21 @@ export default function ApplicationSuccessPage() {
               <span className="text-2xl">1️⃣</span>
               <div>
                 <div className="font-semibold mb-1">Review</div>
-                <div className="text-sm text-secondary">Our team reviews your application</div>
+                <div className="text-sm text-[#7DD8E8]">Our team reviews your application</div>
               </div>
             </div>
             <div className="flex gap-4">
               <span className="text-2xl">2️⃣</span>
               <div>
                 <div className="font-semibold mb-1">Approval</div>
-                <div className="text-sm text-secondary">You'll receive an approval email</div>
+                <div className="text-sm text-[#7DD8E8]">You'll receive an approval email</div>
               </div>
             </div>
             <div className="flex gap-4">
               <span className="text-2xl">3️⃣</span>
               <div>
                 <div className="font-semibold mb-1">Create Events</div>
-                <div className="text-sm text-secondary">Access your promoter dashboard</div>
+                <div className="text-sm text-[#7DD8E8]">Access your promoter dashboard</div>
               </div>
             </div>
           </div>

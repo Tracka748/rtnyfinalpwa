@@ -22,7 +22,7 @@ export function PointsFeedback({ points, currentBadge, nextBadge, progress }: Po
         {/* Progress bar */}
         <div className="mb-4">
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="text-text-secondary">Progress to {nextBadge}</span>
+            <span className="text-[#7DD8E8]">Progress to {nextBadge}</span>
             <span className="font-semibold text-accent-primary">{progress}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-elevated">
@@ -33,7 +33,7 @@ export function PointsFeedback({ points, currentBadge, nextBadge, progress }: Po
         {/* Earn opportunities */}
         <div className="mb-4">
           <h4 className="mb-2 text-sm font-semibold text-text-primary">🎁 Ways to earn today:</h4>
-          <ul className="space-y-1.5 text-sm text-text-secondary">
+          <ul className="space-y-1.5 text-sm text-[#7DD8E8]">
             <li className="flex items-center gap-2">
               <span>•</span>
               <span>

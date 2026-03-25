@@ -30,7 +30,7 @@ export function SalesChart({ data }: SalesChartProps) {
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="md:hidden p-1 text-gray-500 text-xs"
+          className="md:hidden p-1 text-[#7DD8E8] text-xs"
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >
           {isExpanded ? '▲' : '▼'}
@@ -41,8 +41,8 @@ export function SalesChart({ data }: SalesChartProps) {
         {data.length === 0 ? (
           <div className="h-[180px] flex flex-col items-center justify-center text-center gap-2">
             <div className="text-4xl">📊</div>
-            <p className="text-gray-400 font-medium text-sm">No sales data yet</p>
-            <p className="text-xs text-gray-500">Charts will appear once you have orders</p>
+            <p className="text-[#7DD8E8] font-medium text-sm">No sales data yet</p>
+            <p className="text-xs text-[#7DD8E8]">Charts will appear once you have orders</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -62,8 +62,8 @@ export function SalesChart({ data }: SalesChartProps) {
                     />
                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black/90 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 pointer-events-none">
                       <div className="font-bold">${point.revenue.toFixed(2)}</div>
-                      <div className="text-gray-400">{point.count} orders</div>
-                      <div className="text-gray-500">
+                      <div className="text-[#7DD8E8]">{point.count} orders</div>
+                      <div className="text-[#7DD8E8]">
                         {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </div>
@@ -72,7 +72,7 @@ export function SalesChart({ data }: SalesChartProps) {
               })}
             </div>
 
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex justify-between text-xs text-[#7DD8E8]">
               {data.filter((_, i) => i % 5 === 0).map((point, index) => (
                 <span key={index}>
                   {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

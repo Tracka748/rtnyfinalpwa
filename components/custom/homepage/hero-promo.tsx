@@ -35,7 +35,7 @@ export function HeroPromo({ promos }: HeroPromoProps) {
               </span>
             </div>
             <h2 className="mb-2 text-2xl font-bold text-text-primary md:text-3xl">{promos[activeIndex].title}</h2>
-            <p className="mb-4 text-sm text-text-secondary md:text-base">{promos[activeIndex].subtitle}</p>
+            <p className="mb-4 text-sm text-[#7DD8E8] md:text-base">{promos[activeIndex].subtitle}</p>
             <div className="flex gap-3">
               <Button className="bg-accent-primary text-background hover:bg-accent-primary/90">
                 {promos[activeIndex].cta}

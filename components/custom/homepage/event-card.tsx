@@ -45,8 +45,8 @@ export function EventCard({ event, size = "small" }: EventCardProps) {
         <div className="flex h-[140px] flex-col justify-between p-3">
           <div>
             <h3 className="line-clamp-2 text-[15px] font-bold leading-tight text-text-primary">{event.title}</h3>
-            <p className="mt-1 text-[13px] text-text-secondary">{event.venue}</p>
-            <p className="text-[13px] text-text-secondary">
+            <p className="mt-1 text-[13px] text-[#7DD8E8]">{event.venue}</p>
+            <p className="text-[13px] text-[#7DD8E8]">
               {event.time} • {event.price}
             </p>
           </div>

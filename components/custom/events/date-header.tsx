@@ -31,14 +31,14 @@ export function DateHeader({ selectedDate, eventCount = 0, isAllDates }: DateHea
           <h1 className="font-header text-4xl md:text-5xl font-black text-white">
             All Events
           </h1>
-          <p className="text-secondary text-sm mt-1">Rochester, NY</p>
+          <p className="text-[#7DD8E8] text-sm mt-1">Rochester, NY</p>
         </div>
       ) : (
         <div>
           <h1 className="font-header text-4xl md:text-5xl font-black text-white">
             {format(parseISO(selectedDate), 'EEEE, MMMM d')}
           </h1>
-          <p className="text-secondary text-sm mt-1">
+          <p className="text-[#7DD8E8] text-sm mt-1">
             {eventCount > 0
               ? `${eventCount} events scheduled`
               : "Nothing scheduled — explore what's coming up"}
@@ -51,9 +51,9 @@ export function DateHeader({ selectedDate, eventCount = 0, isAllDates }: DateHea
         <span suppressHydrationWarning>{currentTime}</span>
         {weather && (
           <>
-            <span className="text-white/40">•</span>
+            <span className="text-[#7DD8E8]">•</span>
             <span>{weather.temp}</span>
-            <span className="text-white/40">•</span>
+            <span className="text-[#7DD8E8]">•</span>
             <span>{weather.description}</span>
             <span>{weather.emoji}</span>
           </>

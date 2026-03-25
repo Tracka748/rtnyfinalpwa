@@ -294,7 +294,7 @@ function CreateEventForm() {
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="mb-10">
             <h1 className="text-4xl font-bold mb-2">Create Event</h1>
-            <p className="text-secondary">How would you like to create your event?</p>
+            <p className="text-[#7DD8E8]">How would you like to create your event?</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -305,7 +305,7 @@ function CreateEventForm() {
             >
               <div className="text-5xl mb-4">✨</div>
               <h3 className="text-2xl font-bold text-white mb-2">AI Quick Build</h3>
-              <p className="text-secondary mb-4">
+              <p className="text-[#7DD8E8] mb-4">
                 Tell AI your event details and get a complete package — titles, description,
                 pricing, and a generated flyer background — in under 60 seconds.
               </p>
@@ -313,7 +313,7 @@ function CreateEventForm() {
                 <span className="text-xs font-semibold text-[#59FFA0] bg-[#59FFA0]/10 border border-[#59FFA0]/30 px-3 py-1 rounded-full">
                   Recommended
                 </span>
-                <span className="text-xs text-secondary">Fastest</span>
+                <span className="text-xs text-[#7DD8E8]">Fastest</span>
               </div>
             </button>
 
@@ -324,11 +324,11 @@ function CreateEventForm() {
             >
               <div className="text-5xl mb-4">✏️</div>
               <h3 className="text-2xl font-bold text-white mb-2">Build Manually</h3>
-              <p className="text-secondary mb-4">
+              <p className="text-[#7DD8E8] mb-4">
                 Fill out each detail yourself using the step-by-step wizard. Full control
                 over every field from start to finish.
               </p>
-              <div className="text-xs text-secondary">5-step wizard • Full control</div>
+              <div className="text-xs text-[#7DD8E8]">5-step wizard • Full control</div>
             </button>
           </div>
         </div>
@@ -348,13 +348,13 @@ function CreateEventForm() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">{draftId ? 'Edit Event Draft' : 'Create Event'}</h1>
-          <p className="text-secondary">{draftId ? 'Update your draft and save changes' : 'Fill out the details below to list your event'}</p>
+          <p className="text-[#7DD8E8]">{draftId ? 'Update your draft and save changes' : 'Fill out the details below to list your event'}</p>
         </div>
 
         {loadingDraft && (
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-2 border-[#59FFA0] border-t-transparent rounded-full animate-spin" />
-            <span className="ml-3 text-gray-400">Loading draft...</span>
+            <span className="ml-3 text-[#7DD8E8]">Loading draft...</span>
           </div>
         )}
 
@@ -362,7 +362,7 @@ function CreateEventForm() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold capitalize">{currentStep.replace('_', ' ')}</span>
-            <span className="text-sm text-secondary">Step {stepIndex + 1} of {steps.length}</span>
+            <span className="text-sm text-[#7DD8E8]">Step {stepIndex + 1} of {steps.length}</span>
           </div>
           <div className="h-2 bg-secondary/20 rounded-full overflow-hidden">
             <div 
@@ -467,7 +467,7 @@ function CreateEventForm() {
                   placeholder="Describe your event... What can attendees expect? What makes it special?"
                   className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors resize-none"
                 />
-                <p className="text-xs text-secondary mt-1">
+                <p className="text-xs text-[#7DD8E8] mt-1">
                   {formData.description.length} characters
                 </p>
               </div>
@@ -508,7 +508,7 @@ function CreateEventForm() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-secondary mt-1">
+                <p className="text-xs text-[#7DD8E8] mt-1">
                   Selecting a group makes this event visible only to group members
                 </p>
               </div>
@@ -592,7 +592,7 @@ function CreateEventForm() {
                         className="flex-1 px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
                       />
                       <div className="flex items-center gap-2 px-4 py-3 bg-background border border-border rounded-xl">
-                        <span className="text-secondary">$</span>
+                        <span className="text-[#7DD8E8]">$</span>
                         <input
                           type="number"
                           required
@@ -658,7 +658,7 @@ function CreateEventForm() {
                 <label className="block text-sm font-semibold mb-2">
                   Upload Event Flyer
                 </label>
-                <p className="text-sm text-secondary mb-4">
+                <p className="text-sm text-[#7DD8E8] mb-4">
                   JPG or PNG, max 5MB. Recommended: 1080x1350px (4:5 ratio)
                 </p>
 
@@ -689,7 +689,7 @@ function CreateEventForm() {
                     <div className="h-full flex flex-col items-center justify-center text-center p-8">
                       <div className="text-6xl mb-4">📸</div>
                       <div className="font-semibold mb-2">Click to upload flyer</div>
-                      <div className="text-sm text-secondary">or drag and drop</div>
+                      <div className="text-sm text-[#7DD8E8]">or drag and drop</div>
                     </div>
                   </label>
                 )}
@@ -705,7 +705,7 @@ function CreateEventForm() {
               <div className="space-y-4">
                 {/* Basics */}
                 <div className="p-4 bg-background rounded-xl">
-                  <div className="text-sm font-semibold text-secondary mb-2">EVENT BASICS</div>
+                  <div className="text-sm font-semibold text-[#7DD8E8] mb-2">EVENT BASICS</div>
                   <div className="space-y-1">
                     <div><strong>Name:</strong> {formData.name}</div>
                     <div><strong>Category:</strong> {CATEGORY_CONFIG[formData.category].icon} {CATEGORY_CONFIG[formData.category].label}</div>
@@ -715,10 +715,10 @@ function CreateEventForm() {
 
                 {/* Details */}
                 <div className="p-4 bg-background rounded-xl">
-                  <div className="text-sm font-semibold text-secondary mb-2">DETAILS</div>
+                  <div className="text-sm font-semibold text-[#7DD8E8] mb-2">DETAILS</div>
                   <div className="space-y-1">
                     <div><strong>Description:</strong></div>
-                    <div className="text-sm text-secondary">{formData.description}</div>
+                    <div className="text-sm text-[#7DD8E8]">{formData.description}</div>
                     <div className="mt-2">
                       <strong>Venue:</strong> {
                         formData.venue_id 
@@ -731,7 +731,7 @@ function CreateEventForm() {
 
                 {/* Tickets */}
                 <div className="p-4 bg-background rounded-xl">
-                  <div className="text-sm font-semibold text-secondary mb-2">TICKETS</div>
+                  <div className="text-sm font-semibold text-[#7DD8E8] mb-2">TICKETS</div>
                   <div className="space-y-1">
                     <div><strong>Total Capacity:</strong> {formData.total_tickets} tickets</div>
                     <div><strong>Ticket Types:</strong></div>
@@ -747,7 +747,7 @@ function CreateEventForm() {
                 {/* Image */}
                 {formData.flyer_preview && (
                   <div className="p-4 bg-background rounded-xl">
-                    <div className="text-sm font-semibold text-secondary mb-2">FLYER IMAGE</div>
+                    <div className="text-sm font-semibold text-[#7DD8E8] mb-2">FLYER IMAGE</div>
                     <img
                       src={formData.flyer_preview}
                       alt="Flyer"

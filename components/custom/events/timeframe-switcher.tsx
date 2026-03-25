@@ -25,7 +25,7 @@ export function TimeframeSwitcher({ active, onChange }: TimeframeSwitcherProps) 
           className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
             active === tf.value
               ? 'bg-[#59FFA0] text-black'
-              : 'bg-white/5 text-secondary border border-white/10 hover:bg-white/10'
+              : 'bg-white/5 text-[#7DD8E8] border border-white/10 hover:bg-white/10'
           }`}
         >
           {tf.label}

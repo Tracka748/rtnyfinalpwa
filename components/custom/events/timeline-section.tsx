@@ -61,7 +61,7 @@ export function TimelineSection({ events, selectedDate, selectedCategory }: Time
           <h3 className="font-header text-lg text-white mb-2">
             Nothing scheduled for {format(parseISO(selectedDate), 'MMMM d')}
           </h3>
-          <p className="text-text-secondary text-sm">
+          <p className="text-[#7DD8E8] text-sm">
             Check Featured Events above or explore what&apos;s coming up below
           </p>
         </div>
@@ -97,7 +97,7 @@ export function TimelineSection({ events, selectedDate, selectedCategory }: Time
                   <div className="flex items-center gap-3 mt-8 mb-3">
                     <span
                       className={`font-label text-base font-bold uppercase tracking-wider ${
-                        isNow ? 'text-[#59FFA0]' : isPast ? 'text-text-muted' : 'text-white'
+                        isNow ? 'text-[#59FFA0]' : isPast ? 'text-[#7DD8E8]' : 'text-white'
                       }`}
                     >
                       {time}
@@ -138,7 +138,7 @@ export function TimelineSection({ events, selectedDate, selectedCategory }: Time
                           )}
 
                           {/* Showtime phrase */}
-                          <p className="text-white/40 text-xs font-medium">
+                          <p className="text-[#7DD8E8] text-xs font-medium">
                             {isHappeningNow(event)
                               ? 'Happening Now'
                               : `Happening ${format(new Date(event.event_date), 'h:mm a')}`}

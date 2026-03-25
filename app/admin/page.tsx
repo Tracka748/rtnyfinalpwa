@@ -121,16 +121,16 @@ export default function AdminDashboardPage() {
           <h1 className="text-2xl lg:text-3xl font-header font-bold text-white mb-1">
             Dashboard Overview
           </h1>
-          <p className="text-sm text-gray-400">Real-time insights into platform performance</p>
+          <p className="text-sm text-[#7DD8E8]">Real-time insights into platform performance</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</span>
+          <span className="text-xs text-[#7DD8E8]">Updated {lastUpdated.toLocaleTimeString()}</span>
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
               autoRefresh
                 ? 'bg-[#59FFA0]/20 text-[#59FFA0] border border-[#59FFA0]/30'
-                : 'bg-white/5 text-gray-400 border border-white/10'
+                : 'bg-white/5 text-[#7DD8E8] border border-white/10'
             }`}
           >
             {autoRefresh ? '🔄 Auto-refresh ON' : '⏸️ Auto-refresh OFF'}
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
 
       {/* Mobile: mini refresh bar */}
       <div className="flex md:hidden items-center justify-between">
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[#7DD8E8]">
           Updated {lastUpdated.toLocaleTimeString()}
         </span>
         <button
@@ -171,7 +171,7 @@ export default function AdminDashboardPage() {
                 <p className="text-xl md:text-2xl font-bold text-yellow-300">
                   {stats?.pendingApplications}
                 </p>
-                <p className="text-xs md:text-sm text-gray-400">Promoter Applications</p>
+                <p className="text-xs md:text-sm text-[#7DD8E8]">Promoter Applications</p>
                 <a
                   href="/admin/promoter-applications"
                   className="text-xs md:text-sm text-yellow-400 hover:text-yellow-300 underline mt-1 inline-block"
@@ -185,7 +185,7 @@ export default function AdminDashboardPage() {
                 <p className="text-xl md:text-2xl font-bold text-yellow-300">
                   {stats?.pendingDrafts}
                 </p>
-                <p className="text-xs md:text-sm text-gray-400">Event Drafts</p>
+                <p className="text-xs md:text-sm text-[#7DD8E8]">Event Drafts</p>
                 <a
                   href="/admin/event-drafts"
                   className="text-xs md:text-sm text-yellow-400 hover:text-yellow-300 underline mt-1 inline-block"
@@ -263,21 +263,21 @@ export default function AdminDashboardPage() {
                   className="shrink-0 md:shrink p-3 bg-[#59FFA0]/10 border border-[#59FFA0]/30 rounded-lg hover:bg-[#59FFA0]/20 transition-colors min-w-[180px] md:min-w-0"
                 >
                   <div className="font-medium text-[#59FFA0] text-sm">Review Drafts</div>
-                  <div className="text-xs text-gray-400 mt-0.5">Approve pending events</div>
+                  <div className="text-xs text-[#7DD8E8] mt-0.5">Approve pending events</div>
                 </a>
                 <a
                   href="/admin/promoter-applications"
                   className="shrink-0 md:shrink p-3 bg-[#007BFF]/10 border border-[#007BFF]/30 rounded-lg hover:bg-[#007BFF]/20 transition-colors min-w-[180px] md:min-w-0"
                 >
                   <div className="font-medium text-[#007BFF] text-sm">Applications</div>
-                  <div className="text-xs text-gray-400 mt-0.5">Review promoter requests</div>
+                  <div className="text-xs text-[#7DD8E8] mt-0.5">Review promoter requests</div>
                 </a>
                 <a
                   href="/admin/events"
                   className="shrink-0 md:shrink p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors min-w-[180px] md:min-w-0"
                 >
                   <div className="font-medium text-white text-sm">Manage Events</div>
-                  <div className="text-xs text-gray-400 mt-0.5">View all live events</div>
+                  <div className="text-xs text-[#7DD8E8] mt-0.5">View all live events</div>
                 </a>
               </div>
             </div>

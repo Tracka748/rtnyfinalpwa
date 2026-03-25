@@ -204,14 +204,14 @@ function EventsContent() {
               placeholder="Search events..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-surface border border-border rounded-full focus:outline-none focus:border-accent-primary transition-colors text-text-primary placeholder:text-text-muted"
+              className="w-full pl-9 pr-4 py-2 text-sm bg-surface border border-border rounded-full focus:outline-none focus:border-accent-primary transition-colors text-text-primary placeholder:text-[#7DD8E8]"
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">🔍</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7DD8E8] text-sm">🔍</span>
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => handleSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7DD8E8] hover:text-text-primary text-xs"
               >
                 ✕
               </button>
@@ -230,7 +230,7 @@ function EventsContent() {
                   className={`shrink-0 snap-start flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
                     active
                       ? 'bg-accent-primary text-background'
-                      : 'bg-surface text-text-secondary border border-border hover:border-accent-primary/50'
+                      : 'bg-surface text-[#7DD8E8] border border-border hover:border-accent-primary/50'
                   }`}
                 >
                   <span>{cat.icon}</span>
@@ -272,7 +272,7 @@ function EventsContent() {
                         {event.name}
                       </h3>
                       <div className="flex items-center justify-between">
-                        <p className="text-secondary text-xs truncate">
+                        <p className="text-[#7DD8E8] text-xs truncate">
                           📍 {event.venue_name || 'TBA'}
                         </p>
                         <span className="font-serif text-[#59FFA0] font-bold text-sm ml-2">
@@ -283,7 +283,7 @@ function EventsContent() {
                   </div>
                 ))}
                 <div style={{ minWidth: '120px', maxWidth: '120px', flexShrink: 0, height: '285px' }} className="rounded-2xl bg-white/5 border border-white/10 hover:border-[#59FFA0]/40 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 p-4">
-                  <span className="text-3xl text-white/40">→</span>
+                  <span className="text-3xl text-[#7DD8E8]">→</span>
                   <span className="font-label text-xs text-[#59FFA0] uppercase tracking-widest text-center">View All</span>
                 </div>
               </div>
@@ -304,7 +304,7 @@ function EventsContent() {
                     className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all ${
                       selectedMonth === month
                         ? 'bg-[#59FFA0] text-black'
-                        : 'bg-white/5 text-secondary border border-white/10 hover:border-[#59FFA0]/30'
+                        : 'bg-white/5 text-[#7DD8E8] border border-white/10 hover:border-[#59FFA0]/30'
                     }`}
                   >
                     {month}
@@ -339,7 +339,7 @@ function EventsContent() {
                       {event.name}
                     </h3>
                     <div className="flex items-center justify-between">
-                      <p className="text-secondary text-xs truncate">
+                      <p className="text-[#7DD8E8] text-xs truncate">
                         📍 {event.venue_name || 'TBA'}
                       </p>
                       <span className="font-serif text-[#59FFA0] font-bold text-sm ml-2">
@@ -377,7 +377,7 @@ function EventsContent() {
                       {event.name}
                     </h3>
                     <div className="flex items-center justify-between">
-                      <p className="text-secondary text-xs truncate">
+                      <p className="text-[#7DD8E8] text-xs truncate">
                         📍 {event.venue_name || 'TBA'}
                       </p>
                       <span className="font-serif text-[#59FFA0] font-bold text-sm ml-2">
@@ -432,7 +432,7 @@ function EventsContent() {
                 </div>
               ))}
               <div style={{ minWidth: '120px', maxWidth: '120px', flexShrink: 0, height: '192px' }} className="rounded-2xl bg-white/5 border border-white/10 hover:border-[#59FFA0]/40 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 p-4">
-                <span className="text-3xl text-white/40">→</span>
+                <span className="text-3xl text-[#7DD8E8]">→</span>
                 <span className="font-label text-xs text-[#59FFA0] uppercase tracking-widest text-center">View All</span>
               </div>
             </div>
@@ -469,7 +469,7 @@ function EventsContent() {
                 </div>
               ))}
               <div style={{ minWidth: '120px', maxWidth: '120px', flexShrink: 0, height: '168px' }} className="rounded-2xl bg-white/5 border border-white/10 hover:border-[#59FFA0]/40 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 p-4">
-                <span className="text-3xl text-white/40">→</span>
+                <span className="text-3xl text-[#7DD8E8]">→</span>
                 <span className="font-label text-xs text-[#59FFA0] uppercase tracking-widest text-center">View All</span>
               </div>
             </div>
@@ -570,7 +570,7 @@ export default function EventsPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-[#121113]">
-          <div className="text-text-muted">Loading events…</div>
+          <div className="text-[#7DD8E8]">Loading events…</div>
         </div>
       }
     >

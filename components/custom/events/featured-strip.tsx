@@ -66,7 +66,7 @@ export function FeaturedStrip({ events }: { events: Event[] }) {
                   {event.name}
                 </p>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-white/70">
+                  <p className="text-xs text-[#7DD8E8]">
                     {format(parseISO(event.event_date), 'MMM d · h:mm a')}
                   </p>
                   <p className="text-xs font-semibold text-accent-primary">

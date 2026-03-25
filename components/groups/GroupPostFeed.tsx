@@ -22,7 +22,7 @@ function PostTypeBadge({ type }: { type: GroupPost['post_type'] }) {
     )
   }
   return (
-    <span className="text-[10px] font-label uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/50">
+    <span className="text-[10px] font-label uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-white/10 text-[#7DD8E8]">
       Update
     </span>
   )

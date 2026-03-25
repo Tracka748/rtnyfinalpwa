@@ -30,7 +30,7 @@ export function TopEventsChart({ events }: TopEventsChartProps) {
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="md:hidden p-1 text-gray-500 text-xs"
+          className="md:hidden p-1 text-[#7DD8E8] text-xs"
         >
           {isExpanded ? '▲' : '▼'}
         </button>
@@ -40,8 +40,8 @@ export function TopEventsChart({ events }: TopEventsChartProps) {
         {topEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center py-6 gap-2">
             <div className="text-3xl">🏆</div>
-            <p className="text-gray-400 text-sm font-medium">No events yet</p>
-            <p className="text-xs text-gray-500">Top performers will appear here</p>
+            <p className="text-[#7DD8E8] text-sm font-medium">No events yet</p>
+            <p className="text-xs text-[#7DD8E8]">Top performers will appear here</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -61,7 +61,7 @@ export function TopEventsChart({ events }: TopEventsChartProps) {
                       <div className="text-[#59FFA0] font-bold">
                         ${event.revenue.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-[#7DD8E8]">
                         {event.tickets_sold} tickets
                       </div>
                     </div>

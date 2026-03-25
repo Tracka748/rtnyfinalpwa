@@ -24,7 +24,7 @@ export function CategoryGrid() {
           >
             <span className="text-2xl">{category.icon}</span>
             <span className="text-xs font-semibold text-text-primary">{category.label}</span>
-            <span className="text-[10px] text-text-muted">{category.count} tonight</span>
+            <span className="text-[10px] text-[#7DD8E8]">{category.count} tonight</span>
           </button>
         ))}
       </div>

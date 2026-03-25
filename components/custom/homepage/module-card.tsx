@@ -29,12 +29,12 @@ export function ModuleCard({ module }: ModuleCardProps) {
             />
             <div className="min-w-0 flex-1">
               <h4 className="mb-0.5 truncate text-sm font-semibold text-text-primary">{event.title}</h4>
-              <p className="mb-1 text-xs text-text-secondary">{event.venue}</p>
+              <p className="mb-1 text-xs text-[#7DD8E8]">{event.venue}</p>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-text-secondary">{event.time}</span>
-                <span className="text-text-secondary">•</span>
+                <span className="text-[#7DD8E8]">{event.time}</span>
+                <span className="text-[#7DD8E8]">•</span>
                 <span className="font-medium text-text-primary">{event.price}</span>
-                <span className="text-text-secondary">•</span>
+                <span className="text-[#7DD8E8]">•</span>
                 <span className="font-semibold text-accent-primary">+{event.points}pts</span>
               </div>
             </div>

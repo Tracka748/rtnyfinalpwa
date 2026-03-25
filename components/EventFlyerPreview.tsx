@@ -53,7 +53,7 @@ export function EventFlyerPreview({
         <div className="bg-black/60 backdrop-blur-md rounded-2xl p-6 border border-white/10">
           <div className="flex items-center justify-between mb-4">
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+              <p className="text-xs text-[#7DD8E8] uppercase tracking-wider mb-1">
                 Location
               </p>
               <p className="text-lg text-white font-medium truncate">
@@ -62,7 +62,7 @@ export function EventFlyerPreview({
             </div>
 
             <div className="text-right ml-4 shrink-0">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+              <p className="text-xs text-[#7DD8E8] uppercase tracking-wider mb-1">
                 From
               </p>
               <p className="text-3xl text-[#59FFA0] font-bold">
@@ -78,7 +78,7 @@ export function EventFlyerPreview({
 
         {/* RTNY Branding */}
         <div className="flex items-center justify-center gap-2 mt-4">
-          <span className="text-xs text-gray-500">Powered by</span>
+          <span className="text-xs text-[#7DD8E8]">Powered by</span>
           <span className="text-sm font-bold text-[#59FFA0]">RTNY</span>
         </div>
       </div>

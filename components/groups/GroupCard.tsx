@@ -61,7 +61,7 @@ export function GroupCard({ group }: GroupCardProps) {
             {group.name}
           </h3>
           {group.tagline && (
-            <p className="font-sans text-xs text-white/60 mt-1 line-clamp-2">{group.tagline}</p>
+            <p className="font-sans text-xs text-[#7DD8E8] mt-1 line-clamp-2">{group.tagline}</p>
           )}
         </div>
       </article>

@@ -30,17 +30,17 @@ export function RevenueVsTicketsChart({ data }: RevenueVsTicketsChartProps) {
           <div className="hidden md:flex gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 bg-[#59FFA0] rounded-sm" />
-              <span className="text-xs text-gray-400">Revenue</span>
+              <span className="text-xs text-[#7DD8E8]">Revenue</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 bg-[#007BFF] rounded-sm" />
-              <span className="text-xs text-gray-400">Tickets</span>
+              <span className="text-xs text-[#7DD8E8]">Tickets</span>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="md:hidden p-1 text-gray-500 text-xs"
+            className="md:hidden p-1 text-[#7DD8E8] text-xs"
           >
             {isExpanded ? '▲' : '▼'}
           </button>
@@ -51,8 +51,8 @@ export function RevenueVsTicketsChart({ data }: RevenueVsTicketsChartProps) {
         {data.length === 0 ? (
           <div className="h-[160px] flex flex-col items-center justify-center text-center gap-2">
             <div className="text-3xl">📉</div>
-            <p className="text-gray-400 text-sm font-medium">No data yet</p>
-            <p className="text-xs text-gray-500">Will populate with order history</p>
+            <p className="text-[#7DD8E8] text-sm font-medium">No data yet</p>
+            <p className="text-xs text-[#7DD8E8]">Will populate with order history</p>
           </div>
         ) : (
           <div
@@ -80,7 +80,7 @@ export function RevenueVsTicketsChart({ data }: RevenueVsTicketsChartProps) {
                   <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black/90 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 pointer-events-none">
                     <div className="font-bold text-[#59FFA0]">${point.revenue.toFixed(2)}</div>
                     <div className="font-bold text-[#007BFF]">{point.tickets} tickets</div>
-                    <div className="text-gray-400">
+                    <div className="text-[#7DD8E8]">
                       {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </div>
                   </div>

@@ -44,7 +44,7 @@ export function HappeningNow({ events }: { events: Event[] }) {
                 {event.name}
               </h3>
               {event.venue_name && (
-                <p className="text-[10px] text-text-muted line-clamp-1">📍 {event.venue_name}</p>
+                <p className="text-[10px] text-[#7DD8E8] line-clamp-1">📍 {event.venue_name}</p>
               )}
               <p className="text-[10px] font-semibold text-accent-primary">{formatPrice(event)}</p>
             </div>

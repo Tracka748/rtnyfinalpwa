@@ -163,13 +163,13 @@ export function EventCard({ event }: EventCardProps) {
                 <div className="flex items-center gap-1.5 md:gap-2">
                   {lowestPrice !== null ? (
                     <>
-                      <span className="text-[10px] md:text-xs text-foreground/60 font-medium">From</span>
+                      <span className="text-[10px] md:text-xs text-[#7DD8E8] font-medium">From</span>
                       <span className="font-serif font-bold text-lg md:text-xl text-accent">
                         ${lowestPrice.toFixed(2)}
                       </span>
                     </>
                   ) : (
-                    <span className="text-xs md:text-sm text-foreground/60">Price TBA</span>
+                    <span className="text-xs md:text-sm text-[#7DD8E8]">Price TBA</span>
                   )}
                 </div>
 

@@ -35,7 +35,7 @@ export function AnnouncementStrip({
         {/* Text content */}
         <div className="relative z-10 flex w-full items-end justify-between p-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">{subtitle}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#7DD8E8]">{subtitle}</p>
             <h3 className="mt-1 text-2xl font-bold text-white sm:text-3xl">{title}</h3>
             <p className="mt-1 text-sm font-medium text-yellow-300">{highlight}</p>
           </div>

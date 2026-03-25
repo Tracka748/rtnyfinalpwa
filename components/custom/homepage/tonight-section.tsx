@@ -25,7 +25,7 @@ export function TonightSection({ events, deals }: TonightSectionProps) {
 
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
           {events.length === 0 ? (
-            <div className="w-full text-center py-8 text-text-secondary">
+            <div className="w-full text-center py-8 text-[#7DD8E8]">
               No events found for tonight. Check back soon! 🎉
             </div>
           ) : (
@@ -51,7 +51,7 @@ export function TonightSection({ events, deals }: TonightSectionProps) {
 
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
           {deals.length === 0 ? (
-            <div className="w-full text-center py-8 text-text-secondary">
+            <div className="w-full text-center py-8 text-[#7DD8E8]">
               No deals available tonight. Check back soon!
             </div>
           ) : (

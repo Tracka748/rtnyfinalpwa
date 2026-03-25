@@ -56,10 +56,10 @@ function MiniEventCard({ event }: { event: Event }) {
           {event.name}
         </h4>
         {event.venue_name && (
-          <p className="text-xs text-text-muted line-clamp-1">📍 {event.venue_name}</p>
+          <p className="text-xs text-[#7DD8E8] line-clamp-1">📍 {event.venue_name}</p>
         )}
         <div className="flex items-center justify-between mt-0.5">
-          <p className="text-xs text-text-secondary">
+          <p className="text-xs text-[#7DD8E8]">
             {format(new Date(event.event_date), "h:mm a")}
           </p>
           <p className="text-xs font-semibold text-accent-primary">{formatPrice(event)}</p>
@@ -81,7 +81,7 @@ export function ComingUpSection({ events }: ComingUpSectionProps) {
         {days.map(({ dateKey, label, events: dayEvents }) => (
           <div key={dateKey}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base font-semibold text-text-secondary">{label}</h3>
+              <h3 className="text-base font-semibold text-[#7DD8E8]">{label}</h3>
               <Link
                 href={`/events?date=${dateKey}`}
                 className="text-xs text-accent-primary hover:underline font-medium"

@@ -113,7 +113,7 @@ export default function AdminPromoterApplicationsPage() {
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Promoter Applications</h1>
-        <p className="text-muted-foreground">Review and approve promoter account requests</p>
+        <p className="text-[#7DD8E8]">Review and approve promoter account requests</p>
       </div>
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)} className="mb-6">
@@ -131,12 +131,12 @@ export default function AdminPromoterApplicationsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-red-500 font-medium mb-1">Failed to load applications</p>
-            <p className="text-sm text-muted-foreground font-mono">{fetchError}</p>
+            <p className="text-sm text-[#7DD8E8] font-mono">{fetchError}</p>
           </CardContent>
         </Card>
       ) : applications.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+          <CardContent className="py-12 text-center text-[#7DD8E8]">
             No {filter !== 'all' ? filter : ''} applications found
           </CardContent>
         </Card>
@@ -153,20 +153,20 @@ export default function AdminPromoterApplicationsPage() {
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-4 mb-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <Mail className="h-4 w-4 text-[#7DD8E8]" />
                     <span className="font-medium">Email:</span>
                     <span>{app.contact_email}</span>
                   </div>
                   {app.phone && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <Phone className="h-4 w-4 text-[#7DD8E8]" />
                       <span className="font-medium">Phone:</span>
                       <span>{app.phone}</span>
                     </div>
                   )}
                   {app.expected_events_per_month != null && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Building className="h-4 w-4 text-muted-foreground" />
+                      <Building className="h-4 w-4 text-[#7DD8E8]" />
                       <span className="font-medium">Events/month:</span>
                       <span>{app.expected_events_per_month}</span>
                     </div>
@@ -182,7 +182,7 @@ export default function AdminPromoterApplicationsPage() {
                 {app.description && (
                   <div className="mb-4 p-4 bg-muted rounded-lg">
                     <p className="text-sm font-medium mb-2">Description:</p>
-                    <p className="text-sm text-muted-foreground">{app.description}</p>
+                    <p className="text-sm text-[#7DD8E8]">{app.description}</p>
                   </div>
                 )}
 

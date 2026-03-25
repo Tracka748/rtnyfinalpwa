@@ -26,7 +26,7 @@ class ErrorBoundary extends React.Component<
         <div className="min-h-screen bg-[#121113] text-white flex items-center justify-center p-8">
           <div className="max-w-md text-center">
             <h1 className="text-2xl font-bold text-red-400 mb-4">Dashboard Error</h1>
-            <p className="text-gray-400 mb-4">
+            <p className="text-[#7DD8E8] mb-4">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
             <button
@@ -230,11 +230,11 @@ function EventDraftCard({ draft, onDraftUpdate }: { draft: EventDraft; onDraftUp
         {draft.name}
       </h3>
 
-      <div className="space-y-1.5 text-sm text-gray-400 mb-3">
+      <div className="space-y-1.5 text-sm text-[#7DD8E8] mb-3">
         <div className="flex items-center gap-2">
           <span>📅</span>
           <span>{eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-          <span className="text-gray-600">•</span>
+          <span className="text-[#7DD8E8]">•</span>
           <span>{eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
         </div>
         {draft.venue_name && (
@@ -444,7 +444,7 @@ function DashboardContent() {
       <div className="min-h-screen bg-[#121113] flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[#59FFA0] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading dashboard...</p>
+          <p className="text-[#7DD8E8]">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -461,12 +461,12 @@ function DashboardContent() {
               <span className="text-2xl">🎉</span>
               <div>
                 <p className="font-semibold text-[#59FFA0]">Event submitted successfully!</p>
-                <p className="text-sm text-gray-400">Your event has been saved and will be reviewed by our team.</p>
+                <p className="text-sm text-[#7DD8E8]">Your event has been saved and will be reviewed by our team.</p>
               </div>
             </div>
             <button
               onClick={() => setShowCreatedBanner(false)}
-              className="text-gray-500 hover:text-white transition-colors"
+              className="text-[#7DD8E8] hover:text-white transition-colors"
             >
               ✕
             </button>
@@ -477,7 +477,7 @@ function DashboardContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-header font-bold">Promoter Dashboard</h1>
-            <p className="text-gray-400 mt-1">Manage your events and track performance</p>
+            <p className="text-[#7DD8E8] mt-1">Manage your events and track performance</p>
           </div>
           <Link
             href="/promoter/events/create"
@@ -492,19 +492,19 @@ function DashboardContent() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-white">{stats.total}</p>
-            <p className="text-xs text-gray-400 mt-1">Total Events</p>
+            <p className="text-xs text-[#7DD8E8] mt-1">Total Events</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-yellow-400">{stats.pending}</p>
-            <p className="text-xs text-gray-400 mt-1">Pending Review</p>
+            <p className="text-xs text-[#7DD8E8] mt-1">Pending Review</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-[#59FFA0]">{stats.approved}</p>
-            <p className="text-xs text-gray-400 mt-1">Approved</p>
+            <p className="text-xs text-[#7DD8E8] mt-1">Approved</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-gray-400">{stats.drafts}</p>
-            <p className="text-xs text-gray-400 mt-1">Drafts</p>
+            <p className="text-2xl font-bold text-[#7DD8E8]">{stats.drafts}</p>
+            <p className="text-xs text-[#7DD8E8] mt-1">Drafts</p>
           </div>
         </div>
 
@@ -517,7 +517,7 @@ function DashboardContent() {
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.key
                   ? 'bg-[#59FFA0]/20 text-[#59FFA0] border border-[#59FFA0]/30'
-                  : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                  : 'bg-white/5 text-[#7DD8E8] border border-white/10 hover:bg-white/10'
               }`}
             >
               {tab.label}
@@ -547,7 +547,7 @@ function DashboardContent() {
             <h3 className="text-lg font-semibold mb-2">
               {activeTab === 'all' ? 'No events yet' : `No ${tabs.find(t => t.key === activeTab)?.label.toLowerCase()} events`}
             </h3>
-            <p className="text-gray-400 mb-4">
+            <p className="text-[#7DD8E8] mb-4">
               {activeTab === 'all'
                 ? 'Create your first event to get started!'
                 : 'Events will appear here when their status changes.'}
@@ -572,7 +572,7 @@ function DashboardContent() {
             <span className="text-2xl">🎪</span>
             <div>
               <p className="font-medium text-white">Create Event</p>
-              <p className="text-xs text-gray-400">Add a new event listing</p>
+              <p className="text-xs text-[#7DD8E8]">Add a new event listing</p>
             </div>
           </Link>
           <Link
@@ -582,7 +582,7 @@ function DashboardContent() {
             <span className="text-2xl">🔍</span>
             <div>
               <p className="font-medium text-white">Browse Events</p>
-              <p className="text-xs text-gray-400">See all live events</p>
+              <p className="text-xs text-[#7DD8E8]">See all live events</p>
             </div>
           </Link>
           <Link
@@ -592,7 +592,7 @@ function DashboardContent() {
             <span className="text-2xl">📋</span>
             <div>
               <p className="font-medium text-white">Application Status</p>
-              <p className="text-xs text-gray-400">Check your promoter application</p>
+              <p className="text-xs text-[#7DD8E8]">Check your promoter application</p>
             </div>
           </Link>
         </div>

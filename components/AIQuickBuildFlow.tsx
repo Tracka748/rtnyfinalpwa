@@ -178,13 +178,13 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
         <div className="container mx-auto px-4 max-w-2xl">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm text-secondary hover:text-white transition-colors mb-8"
+            className="flex items-center gap-2 text-sm text-[#7DD8E8] hover:text-white transition-colors mb-8"
           >
             ← Back to options
           </button>
 
           <h1 className="text-3xl font-bold mb-2">AI Quick Build</h1>
-          <p className="text-secondary mb-8">
+          <p className="text-[#7DD8E8] mb-8">
             Tell us about your event and AI will create a complete package in seconds.
           </p>
 
@@ -268,7 +268,7 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
             <div>
               <label className="block text-sm font-semibold mb-2">
                 Vibe / Atmosphere{' '}
-                <span className="text-secondary font-normal">(optional)</span>
+                <span className="text-[#7DD8E8] font-normal">(optional)</span>
               </label>
               <input
                 type="text"
@@ -304,7 +304,7 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
             <div className="absolute inset-0 flex items-center justify-center text-3xl">✨</div>
           </div>
           <h2 className="text-2xl font-bold mb-3">Creating Your Event...</h2>
-          <p className="text-secondary">AI is crafting titles, descriptions, and pricing</p>
+          <p className="text-[#7DD8E8]">AI is crafting titles, descriptions, and pricing</p>
         </div>
       </div>
     );
@@ -329,11 +329,11 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-1">Your Event is Ready!</h1>
-            <p className="text-secondary">Review and customize below, then save as draft</p>
+            <p className="text-[#7DD8E8]">Review and customize below, then save as draft</p>
           </div>
           <button
             onClick={() => setStep('input')}
-            className="text-sm text-secondary hover:text-white transition-colors"
+            className="text-sm text-[#7DD8E8] hover:text-white transition-colors"
           >
             ← Edit Details
           </button>
@@ -381,7 +381,7 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
                     className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
                       selectedTitleIndex === i
                         ? 'border-accent bg-accent/10 text-white'
-                        : 'border-border hover:border-accent/50 text-secondary'
+                        : 'border-border hover:border-accent/50 text-[#7DD8E8]'
                     }`}
                   >
                     {title}
@@ -393,7 +393,7 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
             {/* Description */}
             <div className="bg-card border border-border rounded-2xl p-6">
               <h3 className="font-bold mb-3">AI-Generated Description</h3>
-              <p className="text-secondary text-sm leading-relaxed">
+              <p className="text-[#7DD8E8] text-sm leading-relaxed">
                 {generatedContent.description}
               </p>
             </div>
@@ -403,7 +403,7 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
               <h3 className="font-bold mb-3">Event Highlights</h3>
               <ul className="space-y-2">
                 {generatedContent.highlights.map((h, i) => (
-                  <li key={i} className="text-sm text-secondary">
+                  <li key={i} className="text-sm text-[#7DD8E8]">
                     {h}
                   </li>
                 ))}
@@ -415,19 +415,19 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
               <h3 className="font-bold mb-4">Suggested Pricing</h3>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="bg-background rounded-xl p-3">
-                  <div className="text-xs text-secondary mb-1">Early Bird</div>
+                  <div className="text-xs text-[#7DD8E8] mb-1">Early Bird</div>
                   <div className="text-xl font-bold text-[#59FFA0]">
                     ${generatedContent.pricing.early_bird}
                   </div>
                 </div>
                 <div className="bg-background rounded-xl p-3 border border-accent/30">
-                  <div className="text-xs text-secondary mb-1">General</div>
+                  <div className="text-xs text-[#7DD8E8] mb-1">General</div>
                   <div className="text-xl font-bold text-white">
                     ${generatedContent.pricing.general}
                   </div>
                 </div>
                 <div className="bg-background rounded-xl p-3">
-                  <div className="text-xs text-secondary mb-1">VIP</div>
+                  <div className="text-xs text-[#7DD8E8] mb-1">VIP</div>
                   <div className="text-xl font-bold text-[#1AC8ED]">
                     ${generatedContent.pricing.vip}
                   </div>
@@ -440,7 +440,7 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
               <h3 className="font-bold mb-3">Marketing Copy</h3>
               <div className="space-y-3">
                 <div>
-                  <div className="text-xs text-secondary uppercase tracking-wider mb-1">
+                  <div className="text-xs text-[#7DD8E8] uppercase tracking-wider mb-1">
                     Instagram Caption
                   </div>
                   <p className="text-sm bg-background rounded-lg p-3">
@@ -448,7 +448,7 @@ export function AIQuickBuildFlow({ onBack }: { onBack: () => void }) {
                   </p>
                 </div>
                 <div>
-                  <div className="text-xs text-secondary uppercase tracking-wider mb-1">
+                  <div className="text-xs text-[#7DD8E8] uppercase tracking-wider mb-1">
                     Email Subject Line
                   </div>
                   <p className="text-sm bg-background rounded-lg p-3">

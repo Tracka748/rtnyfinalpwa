@@ -45,14 +45,14 @@ export function DateTabs() {
               className={`shrink-0 rounded-lg border-2 transition-all snap-start ${
                 activeDate === date.id
                   ? "bg-accent-primary text-background border-accent-primary"
-                  : "bg-surface text-text-secondary border-border hover:border-accent-primary/50"
+                  : "bg-surface text-[#7DD8E8] border-border hover:border-accent-primary/50"
               }`}
               style={{ width: "80px", padding: "8px 16px" }}
             >
               <div className="flex flex-col items-center gap-0.5">
                 <div
                   className={`text-[11px] font-semibold uppercase tracking-wide ${
-                    activeDate === date.id ? "text-background/70" : "text-text-muted"
+                    activeDate === date.id ? "text-background/70" : "text-[#7DD8E8]"
                   }`}
                 >
                   {date.month}
@@ -66,7 +66,7 @@ export function DateTabs() {
                 </div>
                 <div
                   className={`text-[11px] leading-none ${
-                    activeDate === date.id ? "text-background/80" : "text-text-secondary"
+                    activeDate === date.id ? "text-background/80" : "text-[#7DD8E8]"
                   }`}
                 >
                   {date.dayName}

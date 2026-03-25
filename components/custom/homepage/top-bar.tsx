@@ -32,7 +32,7 @@ export function TopBar({ points, badge, isLoggedIn }: TopBarProps) {
               {/* Badge */}
               <div className="flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-sm">
                 <span className="text-xl">{badge === "Explorer" ? "🏅" : badge === "Night Owl" ? "🦉" : "💎"}</span>
-                <span className="hidden text-text-secondary sm:inline">{badge}</span>
+                <span className="hidden text-[#7DD8E8] sm:inline">{badge}</span>
               </div>
 
               {/* Notifications */}

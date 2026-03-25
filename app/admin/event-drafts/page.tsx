@@ -123,7 +123,7 @@ export default function AdminEventDraftsPage() {
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Event Drafts Review</h1>
-        <p className="text-muted-foreground">Review and approve event submissions from promoters</p>
+        <p className="text-[#7DD8E8]">Review and approve event submissions from promoters</p>
       </div>
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)} className="mb-6">
@@ -141,7 +141,7 @@ export default function AdminEventDraftsPage() {
         <div className="text-center py-12">Loading event drafts...</div>
       ) : drafts.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+          <CardContent className="py-12 text-center text-[#7DD8E8]">
             No {filter !== 'all' ? filter.replace('_', ' ') : ''} event drafts found
           </CardContent>
         </Card>
@@ -160,7 +160,7 @@ export default function AdminEventDraftsPage() {
                       className="object-cover rounded-l-lg"
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="flex items-center justify-center h-full text-[#7DD8E8]">
                       No Image
                     </div>
                   )}
@@ -174,18 +174,18 @@ export default function AdminEventDraftsPage() {
                   </div>
 
                   {draft.description && (
-                    <p className="text-muted-foreground mb-4">{draft.description}</p>
+                    <p className="text-[#7DD8E8] mb-4">{draft.description}</p>
                   )}
 
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <Calendar className="h-4 w-4 text-[#7DD8E8]" />
                       <span className="font-medium">Date:</span>
                       <span>{new Date(draft.event_date).toLocaleString()}</span>
                     </div>
                     {draft.venues && (
                       <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <MapPin className="h-4 w-4 text-[#7DD8E8]" />
                         <span className="font-medium">Venue:</span>
                         <span>{draft.venues.name}</span>
                       </div>

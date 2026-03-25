@@ -41,8 +41,8 @@ export function RecentActivity({ items, exportButton }: RecentActivityProps) {
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
           <div className="text-4xl">📭</div>
-          <p className="text-gray-400 font-medium">No recent orders</p>
-          <p className="text-sm text-gray-500">Check back soon for activity</p>
+          <p className="text-[#7DD8E8] font-medium">No recent orders</p>
+          <p className="text-sm text-[#7DD8E8]">Check back soon for activity</p>
         </div>
       ) : (
         <>
@@ -58,7 +58,7 @@ export function RecentActivity({ items, exportButton }: RecentActivityProps) {
                     <p className="font-medium text-white text-sm truncate">
                       {item.events?.name || 'Unknown Event'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">
+                    <p className="text-xs text-[#7DD8E8] mt-0.5 truncate">
                       {item.users?.email || 'Guest'}
                     </p>
                   </div>
@@ -67,7 +67,7 @@ export function RecentActivity({ items, exportButton }: RecentActivityProps) {
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                  <span className="text-xs text-gray-500">{formatDate(item.created_at)}</span>
+                  <span className="text-xs text-[#7DD8E8]">{formatDate(item.created_at)}</span>
                   <span className="text-base font-bold text-[#59FFA0]">
                     ${item.total_amount.toFixed(2)}
                   </span>
@@ -92,7 +92,7 @@ export function RecentActivity({ items, exportButton }: RecentActivityProps) {
                       {item.status}
                     </span>
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-[#7DD8E8]">
                     {item.users?.email || 'Guest'}
                   </div>
                 </div>
@@ -101,7 +101,7 @@ export function RecentActivity({ items, exportButton }: RecentActivityProps) {
                   <div className="text-lg font-bold text-[#59FFA0]">
                     ${item.total_amount.toFixed(2)}
                   </div>
-                  <div className="text-xs text-gray-500">{formatDate(item.created_at)}</div>
+                  <div className="text-xs text-[#7DD8E8]">{formatDate(item.created_at)}</div>
                 </div>
               </div>
             ))}

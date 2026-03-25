@@ -113,7 +113,7 @@ export function TicketCard({ ticket, isPast }: TicketCardProps) {
                   />
                 ) : (
                   <div className="text-center">
-                    <span className="text-gray-400 text-xs block">QR Code</span>
+                    <span className="text-[#7DD8E8] text-xs block">QR Code</span>
                     <span className="text-gray-300 text-xs">Not available</span>
                   </div>
                 )}

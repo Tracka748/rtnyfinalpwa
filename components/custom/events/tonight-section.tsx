@@ -41,7 +41,7 @@ export function TonightSection({ events }: { events: Event[] }) {
               <p className="font-bold text-xs text-text-primary line-clamp-1 group-hover:text-accent-primary transition-colors">
                 {event.name}
               </p>
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-[10px] text-[#7DD8E8] mt-0.5">
                 {format(parseISO(event.event_date), 'h:mm a')}
               </p>
               <p className="text-xs font-semibold text-accent-primary mt-0.5">{formatPrice(event)}</p>

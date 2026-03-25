@@ -119,7 +119,7 @@ export default function PromoterApplicationPage() {
               <span className="text-[#59FFA0]">🚀</span> Build Your{' '}
               <span className="text-[#007BFF]">RTNY Toolkit</span>
             </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            <p className="text-xl text-[#7DD8E8] max-w-2xl mx-auto">
               Access powerful features designed for promoters, venue owners, and
               event organizers
             </p>
@@ -128,14 +128,14 @@ export default function PromoterApplicationPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Card 1 */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 relative hover:bg-white/[0.07] transition-all hover:border-[#59FFA0]/30 group">
-              <div className="absolute top-4 right-4 text-gray-500 group-hover:text-[#59FFA0] transition-colors">
+              <div className="absolute top-4 right-4 text-[#7DD8E8] group-hover:text-[#59FFA0] transition-colors">
                 {lockIcon}
               </div>
               <div className="text-4xl mb-4">📊</div>
               <h3 className="text-xl font-header font-bold text-white mb-2">
                 Event Analytics Dashboard
               </h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[#7DD8E8] text-sm">
                 Real-time tracking of sales, attendee demographics, and
                 performance metrics
               </p>
@@ -146,14 +146,14 @@ export default function PromoterApplicationPage() {
 
             {/* Card 2 */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 relative hover:bg-white/[0.07] transition-all hover:border-[#007BFF]/30 group">
-              <div className="absolute top-4 right-4 text-gray-500 group-hover:text-[#007BFF] transition-colors">
+              <div className="absolute top-4 right-4 text-[#7DD8E8] group-hover:text-[#007BFF] transition-colors">
                 {lockIcon}
               </div>
               <div className="text-4xl mb-4">🎫</div>
               <h3 className="text-xl font-header font-bold text-white mb-2">
                 Instant QR Ticket Generator
               </h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[#7DD8E8] text-sm">
                 Fast-entry technology for seamless venue check-ins and crowd
                 management
               </p>
@@ -164,14 +164,14 @@ export default function PromoterApplicationPage() {
 
             {/* Card 3 */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 relative hover:bg-white/[0.07] transition-all hover:border-[#59FFA0]/30 group">
-              <div className="absolute top-4 right-4 text-gray-500 group-hover:text-[#59FFA0] transition-colors">
+              <div className="absolute top-4 right-4 text-[#7DD8E8] group-hover:text-[#59FFA0] transition-colors">
                 {lockIcon}
               </div>
               <div className="text-4xl mb-4">🎰</div>
               <h3 className="text-xl font-header font-bold text-white mb-2">
                 Sweepstakes Booster
               </h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[#7DD8E8] text-sm">
                 Run viral contests and giveaways to maximize reach and
                 engagement
               </p>
@@ -182,14 +182,14 @@ export default function PromoterApplicationPage() {
 
             {/* Card 4 */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 relative hover:bg-white/[0.07] transition-all hover:border-[#007BFF]/30 group">
-              <div className="absolute top-4 right-4 text-gray-500 group-hover:text-[#007BFF] transition-colors">
+              <div className="absolute top-4 right-4 text-[#7DD8E8] group-hover:text-[#007BFF] transition-colors">
                 {lockIcon}
               </div>
               <div className="text-4xl mb-4">💰</div>
               <h3 className="text-xl font-header font-bold text-white mb-2">
                 Revenue Split Tracker
               </h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[#7DD8E8] text-sm">
                 Automated profit sharing and transparent accounting for
                 multi-partner events
               </p>
@@ -200,14 +200,14 @@ export default function PromoterApplicationPage() {
 
             {/* Card 5 */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 relative hover:bg-white/[0.07] transition-all hover:border-[#59FFA0]/30 group">
-              <div className="absolute top-4 right-4 text-gray-500 group-hover:text-[#59FFA0] transition-colors">
+              <div className="absolute top-4 right-4 text-[#7DD8E8] group-hover:text-[#59FFA0] transition-colors">
                 {lockIcon}
               </div>
               <div className="text-4xl mb-4">📲</div>
               <h3 className="text-xl font-header font-bold text-white mb-2">
                 Push Notification Blasts
               </h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[#7DD8E8] text-sm">
                 Direct-to-phone marketing campaigns to engage your followers
                 instantly
               </p>
@@ -218,14 +218,14 @@ export default function PromoterApplicationPage() {
 
             {/* Card 6 */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 relative hover:bg-white/[0.07] transition-all hover:border-[#007BFF]/30 group">
-              <div className="absolute top-4 right-4 text-gray-500 group-hover:text-[#007BFF] transition-colors">
+              <div className="absolute top-4 right-4 text-[#7DD8E8] group-hover:text-[#007BFF] transition-colors">
                 {lockIcon}
               </div>
               <div className="text-4xl mb-4">🤝</div>
               <h3 className="text-xl font-header font-bold text-white mb-2">
                 Multi-Promoter Collaboration
               </h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[#7DD8E8] text-sm">
                 Partner with other promoters to share audiences, risks, and
                 profits
               </p>
@@ -243,7 +243,7 @@ export default function PromoterApplicationPage() {
               <span className="text-[#59FFA0]">🔥</span> The{' '}
               <span className="text-[#007BFF]">RTNY</span> Loyalty & Marketing Ecosystem
             </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            <p className="text-xl text-[#7DD8E8] max-w-2xl mx-auto">
               More than just tools — join a community-driven platform where
               success is rewarded
             </p>
@@ -350,25 +350,25 @@ export default function PromoterApplicationPage() {
                 <div className="text-3xl font-bold text-[#59FFA0] mb-1">
                   10K+
                 </div>
-                <div className="text-sm text-gray-400">Active Users</div>
+                <div className="text-sm text-[#7DD8E8]">Active Users</div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-[#007BFF] mb-1">
                   500+
                 </div>
-                <div className="text-sm text-gray-400">Partner Venues</div>
+                <div className="text-sm text-[#7DD8E8]">Partner Venues</div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-[#59FFA0] mb-1">
                   2K+
                 </div>
-                <div className="text-sm text-gray-400">Events Hosted</div>
+                <div className="text-sm text-[#7DD8E8]">Events Hosted</div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-[#007BFF] mb-1">
                   $2M+
                 </div>
-                <div className="text-sm text-gray-400">Tickets Sold</div>
+                <div className="text-sm text-[#7DD8E8]">Tickets Sold</div>
               </div>
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function PromoterApplicationPage() {
               <span className="text-[#59FFA0]">🚀</span>{' '}
               <span className="text-[#007BFF]">Launch</span> Your Partnership
             </h2>
-            <p className="text-xl text-gray-400">
+            <p className="text-xl text-[#7DD8E8]">
               Tell us about your events and we'll unlock your custom toolkit
             </p>
           </div>
@@ -554,7 +554,7 @@ export default function PromoterApplicationPage() {
                         />
                         <div>
                           <div className="text-white font-medium">{label}</div>
-                          <div className="text-sm text-gray-400">{desc}</div>
+                          <div className="text-sm text-[#7DD8E8]">{desc}</div>
                         </div>
                       </label>
                     ))}
@@ -601,7 +601,7 @@ export default function PromoterApplicationPage() {
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-[#59FFA0] focus:ring-1 focus:ring-[#59FFA0] focus:outline-none transition-colors resize-none"
                     placeholder="What makes your events special? Are you looking to collaborate with other promoters? Tell us about your vision..."
                   />
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-[#7DD8E8]">
                     Share your event style, target audience, unique selling
                     points, or collaboration interests
                   </div>
@@ -629,7 +629,7 @@ export default function PromoterApplicationPage() {
                 )}
               </button>
 
-              <p className="mt-4 text-sm text-gray-400">
+              <p className="mt-4 text-sm text-[#7DD8E8]">
                 Our team reviews applications within 24–48 hours to ensure the
                 best fit for the RTNY ecosystem
               </p>

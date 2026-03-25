@@ -49,7 +49,7 @@ export function GroupPollWidget({ poll, groupSlug: _groupSlug, accentColor = '#5
       <div className="flex items-center justify-between gap-2 mb-3">
         <h3 className="font-header font-semibold text-base text-white">{localPoll.question}</h3>
         {isClosed && (
-          <span className="text-[10px] font-label uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/40 shrink-0">
+          <span className="text-[10px] font-label uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-white/10 text-[#7DD8E8] shrink-0">
             Poll closed
           </span>
         )}

@@ -61,9 +61,9 @@ export function GroupHero({ group, isMember, onMembershipChange }: GroupHeroProp
             {group.name}
           </h1>
           {group.tagline && (
-            <p className="font-sans text-sm md:text-base text-white/60 mt-1">{group.tagline}</p>
+            <p className="font-sans text-sm md:text-base text-[#7DD8E8] mt-1">{group.tagline}</p>
           )}
-          <p className="font-label text-xs text-white/40 mt-2 uppercase tracking-wide">
+          <p className="font-label text-xs text-[#7DD8E8] mt-2 uppercase tracking-wide">
             {formatMemberCount(group.member_count)}
           </p>
         </div>

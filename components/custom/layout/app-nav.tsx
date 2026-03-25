@@ -50,7 +50,7 @@ export function AppNav() {
 
   return (
     <nav className="fixed top-0 z-50 w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Left group: RTNY + RocTicketNy */}
           <div className="flex items-center">
@@ -115,17 +115,6 @@ export function AppNav() {
                   // Logged In State
                   <>
                     <Link
-                      href="/dashboard"
-                      className={`font-sans text-sm font-medium transition-colors ${
-                        isActive("/dashboard")
-                          ? "text-[#59FFA0]"
-                          : "text-[#F9FDFF] hover:text-[#59FFA0]"
-                      }`}
-                    >
-                      Dashboard
-                    </Link>
-
-                    <Link
                       href="/dashboard/tickets"
                       className={`font-sans text-sm font-medium transition-colors ${
                         isActive("/dashboard/tickets")
@@ -138,9 +127,25 @@ export function AppNav() {
 
                     {/* User Menu */}
                     <div className="flex items-center gap-4">
-                      <span className="font-sans text-sm text-[#A0A0A0]">
+                      <Link
+                        href="/dashboard"
+                        className={`flex items-center gap-1.5 font-sans text-sm transition-colors ${
+                          isActive("/dashboard")
+                            ? "text-[#59FFA0]"
+                            : "text-[#A0A0A0] hover:text-[#59FFA0]"
+                        }`}
+                      >
+                        <svg
+                          className="h-4 w-4 shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                        </svg>
                         {user.email}
-                      </span>
+                      </Link>
                       <button
                         onClick={handleLogout}
                         className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-2 font-sans text-sm text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10"

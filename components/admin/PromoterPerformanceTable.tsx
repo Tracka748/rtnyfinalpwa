@@ -76,7 +76,7 @@ export function PromoterPerformanceTable({ data }: PromoterPerformanceTableProps
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-12 text-center">
         <div className="text-4xl mb-4">👥</div>
-        <p className="text-gray-400">No approved promoter events yet</p>
+        <p className="text-[#7DD8E8]">No approved promoter events yet</p>
       </div>
     );
   }
@@ -102,29 +102,29 @@ export function PromoterPerformanceTable({ data }: PromoterPerformanceTableProps
         <table className="w-full">
           <thead className="bg-white/5 border-b border-white/10">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-gray-400 w-14">
+              <th className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-[#7DD8E8] w-14">
                 Rank
               </th>
               <th
-                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-gray-400 cursor-pointer hover:text-white transition-colors"
+                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-[#7DD8E8] cursor-pointer hover:text-white transition-colors"
                 onClick={() => handleSort('promoter_name')}
               >
                 Promoter{getSortIndicator('promoter_name')}
               </th>
               <th
-                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-gray-400 cursor-pointer hover:text-white transition-colors"
+                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-[#7DD8E8] cursor-pointer hover:text-white transition-colors"
                 onClick={() => handleSort('total_events')}
               >
                 Events{getSortIndicator('total_events')}
               </th>
               <th
-                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-gray-400 cursor-pointer hover:text-white transition-colors"
+                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-[#7DD8E8] cursor-pointer hover:text-white transition-colors"
                 onClick={() => handleSort('total_tickets_sold')}
               >
                 Tickets{getSortIndicator('total_tickets_sold')}
               </th>
               <th
-                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-gray-400 cursor-pointer hover:text-white transition-colors"
+                className="px-4 py-3 text-left text-xs font-label uppercase tracking-wider text-[#7DD8E8] cursor-pointer hover:text-white transition-colors"
                 onClick={() => handleSort('total_revenue')}
               >
                 Revenue{getSortIndicator('total_revenue')}
@@ -161,7 +161,7 @@ export function PromoterPerformanceTable({ data }: PromoterPerformanceTableProps
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="p-4 border-t border-white/10 flex items-center justify-between">
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-[#7DD8E8]">
             {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, sortedData.length)} of {sortedData.length}
           </span>
           <div className="flex gap-2">
@@ -172,7 +172,7 @@ export function PromoterPerformanceTable({ data }: PromoterPerformanceTableProps
             >
               Prev
             </button>
-            <span className="px-3 py-1 text-xs text-gray-400">
+            <span className="px-3 py-1 text-xs text-[#7DD8E8]">
               {currentPage} / {totalPages}
             </span>
             <button

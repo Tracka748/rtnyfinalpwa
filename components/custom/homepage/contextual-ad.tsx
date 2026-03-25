@@ -7,7 +7,7 @@ export function ContextualAd() {
           alt="Advertisement"
           className="h-full w-full object-cover"
         />
-        <span className="absolute bottom-2 right-2 text-xs text-gray-500 bg-white/70 px-1 rounded">
+        <span className="absolute bottom-2 right-2 text-xs text-[#7DD8E8] bg-white/70 px-1 rounded">
           Sponsored
         </span>
       </a>

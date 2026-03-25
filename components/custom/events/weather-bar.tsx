@@ -19,7 +19,7 @@ export function WeatherBar() {
 
   return (
     <div className="px-4 pb-4 mx-auto max-w-[1200px]">
-      <p className="text-sm text-text-secondary">
+      <p className="text-sm text-[#7DD8E8]">
         {format(time, 'h:mm a')}
         {weather && (
           <span className="ml-2 text-text-primary">
