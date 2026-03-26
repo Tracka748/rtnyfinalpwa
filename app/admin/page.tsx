@@ -305,6 +305,13 @@ export default function AdminDashboardPage() {
                   <div className="font-medium text-white text-sm">Manage Events</div>
                   <div className="text-xs text-[#7DD8E8] mt-0.5">View all live events</div>
                 </a>
+                <a
+                  href="/admin/events/create"
+                  className="shrink-0 md:shrink p-3 bg-[#59FFA0]/10 border border-[#59FFA0]/30 rounded-lg hover:bg-[#59FFA0]/20 transition-colors min-w-[180px] md:min-w-0"
+                >
+                  <div className="font-medium text-[#59FFA0] text-sm">Create Event</div>
+                  <div className="text-xs text-[#7DD8E8] mt-0.5">Add a new event</div>
+                </a>
                 <button
                   type="button"
                   onClick={recalculateAudienceData}

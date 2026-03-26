@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npx next:*)",
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(find /c/Users/Stock/rtnyfinalpwa/app/api/v1/ -name *route.ts -o -name *route.js)"
     ],
     "deny": [],
     "ask": []
