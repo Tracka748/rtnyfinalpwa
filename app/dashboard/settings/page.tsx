@@ -52,7 +52,8 @@ const VIBE_OPTIONS = [
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ProfileForm {
-  display_name: string
+  first_name: string
+  last_name: string
   phone: string
   neighborhood: string
   age_range: string
@@ -94,7 +95,8 @@ const selectClass =
 export default function SettingsPage() {
   const router = useRouter()
   const [form, setForm] = useState<ProfileForm>({
-    display_name: '',
+    first_name: '',
+    last_name: '',
     phone: '',
     neighborhood: '',
     age_range: '',
@@ -121,7 +123,8 @@ export default function SettingsPage() {
         if (json.success && json.data) {
           const d = json.data
           setForm({
-            display_name: d.display_name ?? '',
+            first_name: d.first_name ?? '',
+            last_name: d.last_name ?? '',
             phone: d.phone ?? '',
             neighborhood: d.neighborhood ?? '',
             age_range: d.age_range ?? '',
@@ -159,9 +162,10 @@ export default function SettingsPage() {
     setSavedMsg('')
     setErrorMsg('')
 
-    // Send nulls for empty selects so DB doesn't store empty string
+    // Send nulls for empty fields so DB doesn't store empty strings
     const payload = {
-      display_name: form.display_name || null,
+      first_name: form.first_name || null,
+      last_name: form.last_name || null,
       phone: form.phone || null,
       neighborhood: form.neighborhood || null,
       age_range: form.age_range || null,
@@ -205,6 +209,7 @@ export default function SettingsPage() {
       <div className="border-b border-[#2A2A2A] bg-[#0A0A0A] sticky top-0 z-10">
         <div className="mx-auto max-w-2xl px-4 py-5 flex items-center gap-4">
           <button
+            type="button"
             onClick={() => router.back()}
             className="text-[#A0A0A0] hover:text-[#F9FDFF] transition-colors"
             aria-label="Go back"
@@ -237,8 +242,8 @@ export default function SettingsPage() {
                 <FieldLabel>Display Name <span className="ml-2 text-xs text-[#555]">Optional</span></FieldLabel>
                 <input
                   type="text"
-                  value={form.display_name}
-                  onChange={(e) => setField('display_name', e.target.value)}
+                  value={form.first_name}
+                  onChange={(e) => setField('first_name', e.target.value)}
                   placeholder="How you want to be known"
                   className={inputClass}
                 />
@@ -268,6 +273,7 @@ export default function SettingsPage() {
                     value={form.neighborhood}
                     onChange={(e) => setField('neighborhood', e.target.value)}
                     className={selectClass}
+                    aria-label="Neighborhood"
                   >
                     <option value="">Select…</option>
                     {NEIGHBORHOOD_OPTIONS.map((o) => (
@@ -285,6 +291,7 @@ export default function SettingsPage() {
                     value={form.age_range}
                     onChange={(e) => setField('age_range', e.target.value)}
                     className={selectClass}
+                    aria-label="Age range"
                   >
                     <option value="">Select…</option>
                     {AGE_RANGE_OPTIONS.map((o) => (
@@ -302,6 +309,7 @@ export default function SettingsPage() {
                     value={form.gender}
                     onChange={(e) => setField('gender', e.target.value)}
                     className={selectClass}
+                    aria-label="Gender"
                   >
                     <option value="">Select…</option>
                     {GENDER_OPTIONS.map((o) => (
@@ -319,6 +327,7 @@ export default function SettingsPage() {
                     value={form.relationship_status}
                     onChange={(e) => setField('relationship_status', e.target.value)}
                     className={selectClass}
+                    aria-label="Relationship status"
                   >
                     <option value="">Select…</option>
                     {RELATIONSHIP_OPTIONS.map((o) => (
@@ -344,7 +353,8 @@ export default function SettingsPage() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={form.is_parent}
+                aria-checked={form.is_parent ? 'true' : 'false'}
+                aria-label="I'm a parent"
                 onClick={() => setField('is_parent', !form.is_parent)}
                 className={[
                   'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent',
