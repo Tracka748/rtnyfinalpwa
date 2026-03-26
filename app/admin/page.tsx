@@ -36,6 +36,8 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalcToast, setRecalcToast] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -71,6 +73,26 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function recalculateAudienceData() {
+    try {
+      setRecalculating(true);
+      setRecalcToast(null);
+      const res = await fetch('/api/v1/admin/behavior-snapshot', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setRecalcToast(`${data.data.users_processed} users processed`);
+      } else {
+        setRecalcToast('Recalculation failed');
+      }
+    } catch (err) {
+      console.error('Recalculate error:', err);
+      setRecalcToast('Recalculation failed');
+    } finally {
+      setRecalculating(false);
+      setTimeout(() => setRecalcToast(null), 4000);
+    }
+  }
+
   async function fetchAnalyticsData() {
     try {
       const res = await fetch('/api/v1/admin/analytics');
@@ -96,6 +118,7 @@ export default function AdminDashboardPage() {
       <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-8 text-center">
         <p className="text-red-400 mb-4">Failed to load dashboard: {error}</p>
         <button
+          type="button"
           onClick={() => fetchDashboardData()}
           className="px-4 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors"
         >
@@ -126,6 +149,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-3">
           <span className="text-xs text-[#7DD8E8]">Updated {lastUpdated.toLocaleTimeString()}</span>
           <button
+            type="button"
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
               autoRefresh
@@ -136,6 +160,7 @@ export default function AdminDashboardPage() {
             {autoRefresh ? '🔄 Auto-refresh ON' : '⏸️ Auto-refresh OFF'}
           </button>
           <button
+            type="button"
             onClick={() => fetchDashboardData()}
             disabled={loading}
             className="px-3 py-2 bg-[#007BFF]/20 text-[#007BFF] border border-[#007BFF]/30 rounded-lg text-xs font-medium hover:bg-[#007BFF]/30 transition-colors disabled:opacity-50"
@@ -151,6 +176,7 @@ export default function AdminDashboardPage() {
           Updated {lastUpdated.toLocaleTimeString()}
         </span>
         <button
+          type="button"
           onClick={() => fetchDashboardData()}
           disabled={loading}
           className="px-3 py-1.5 bg-[#007BFF]/20 text-[#007BFF] border border-[#007BFF]/30 rounded-lg text-xs font-medium hover:bg-[#007BFF]/30 transition-colors disabled:opacity-50"
@@ -279,6 +305,19 @@ export default function AdminDashboardPage() {
                   <div className="font-medium text-white text-sm">Manage Events</div>
                   <div className="text-xs text-[#7DD8E8] mt-0.5">View all live events</div>
                 </a>
+                <button
+                  type="button"
+                  onClick={recalculateAudienceData}
+                  disabled={recalculating}
+                  className="shrink-0 md:shrink p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 transition-colors min-w-[180px] md:min-w-0 text-left disabled:opacity-50"
+                >
+                  <div className="font-medium text-purple-300 text-sm">
+                    {recalculating ? 'Recalculating...' : 'Recalculate Audience'}
+                  </div>
+                  <div className="text-xs text-[#7DD8E8] mt-0.5">
+                    {recalcToast ?? 'Update behavior snapshots'}
+                  </div>
+                </button>
               </div>
             </div>
           </div>
