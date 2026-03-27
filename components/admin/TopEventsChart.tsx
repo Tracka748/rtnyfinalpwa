@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 interface TopEvent {
+  id: string;
   name: string;
   tickets_sold: number;
   revenue: number;
@@ -53,9 +54,12 @@ export function TopEventsChart({ events }: TopEventsChartProps) {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-base shrink-0">{medals[index]}</span>
-                      <span className="text-white font-medium truncate">
+                      <a
+                        href={`/admin/events/${event.id}`}
+                        className="text-white font-medium truncate hover:text-[#59FFA0] transition-colors"
+                      >
                         {event.name}
-                      </span>
+                      </a>
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <div className="text-[#59FFA0] font-bold">

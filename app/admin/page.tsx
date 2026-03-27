@@ -20,6 +20,7 @@ interface DashboardStats {
 }
 
 interface TopEvent {
+  id: string;
   name: string;
   tickets_sold: number;
   revenue: number;

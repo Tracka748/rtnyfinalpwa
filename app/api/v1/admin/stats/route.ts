@@ -123,6 +123,7 @@ export async function GET() {
         const revenue = eventOrders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
 
         return {
+          id: event.id,
           name: event.name,
           tickets_sold: event.tickets_sold || 0,
           revenue,

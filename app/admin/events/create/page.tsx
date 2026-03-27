@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { PromoCodeGenerator } from '@/app/components/admin/PromoCodeGenerator';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -111,6 +112,9 @@ export default function AdminCreateEventPage() {
   const [promoters, setPromoters] = useState<Promoter[]>([]);
   const [promoterId, setPromoterId] = useState('');
 
+  // Promo code
+  const [generatedPromoCode, setGeneratedPromoCode] = useState<string | null>(null);
+
   // Submit
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -204,7 +208,7 @@ export default function AdminCreateEventPage() {
 
       if (data.success) {
         setToast({ type: 'success', message: 'Event created successfully!' });
-        setTimeout(() => router.push('/admin/events'), 1500);
+        setTimeout(() => router.push(`/admin/events/${data.data.event_id}`), 1500);
       } else {
         const msg = data.details ? `${data.error}: ${data.details}` : (data.error ?? 'Failed to create event');
         setToast({ type: 'error', message: msg });
@@ -578,6 +582,31 @@ export default function AdminCreateEventPage() {
                 ))}
               </div>
             </div>
+
+            {/* Promo Code Generator */}
+            {/* TODO: pass real event_id after creation flow is updated */}
+            <PromoCodeGenerator
+              eventId=""
+              targetNeighborhoods={selectedNeighborhoods}
+              targetVibes={selectedVibes}
+              targetAgeRanges={selectedAgeRanges}
+              onCodeGenerated={(code) => setGeneratedPromoCode(code)}
+            />
+
+            {/* Generated promo code notice */}
+            {generatedPromoCode && (
+              <div className="bg-[#1a1a1d] border border-[#2a2a2a] rounded-2xl p-4">
+                <p className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium mb-2">
+                  Promo Code
+                </p>
+                <p className="font-mono text-[#59FFA0] text-sm font-bold tracking-widest">
+                  {generatedPromoCode}
+                </p>
+                <p className="text-xs text-white/40 mt-1">
+                  Promo code will be linked to this event on creation
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </form>
