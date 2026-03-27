@@ -10,6 +10,23 @@ interface Venue {
   address?: string;
 }
 
+interface VenueOption {
+  id: string;
+  name: string;
+}
+
+interface EventForm {
+  name: string;
+  category: string;
+  event_date: string;  // YYYY-MM-DD
+  event_time: string;  // HH:MM
+  venue_id: string;
+  status: string;
+  total_tickets: string;
+  flyer_image_url: string;
+  featured: boolean;
+}
+
 interface InviteRun {
   id: string;
   sent_count: number;
@@ -51,7 +68,7 @@ const NEIGHBORHOODS = ['park_ave', 'east_end', 'monroe_ave', 'southwest', 'urban
 const VIBES = ['hip_hop', 'reggae_dancehall', 'spanish_vibes', 'lgbtq', 'music_junkie', 'r_and_b', 'latin', 'afrobeats'];
 const AGE_RANGES = ['18-20', '21-25', '26-30', '31-35', '36-45', '46+'];
 
-type Preset = 'free' | 'general' | 'vip' | 'early_bird' | 'custom';
+type Preset = 'free' | 'general' | 'vip' | 'early_bird';
 
 interface NewTicketForm {
   preset: Preset | null;
@@ -72,6 +89,9 @@ const EMPTY_FORM: NewTicketForm = {
   available_from: '',
   available_until: '',
 };
+
+const CATEGORIES = ['nightlife', 'family', 'movies', 'dining', 'arts', 'sports'];
+const STATUSES = ['active', 'cancelled', 'sold_out', 'postponed'];
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-[#59FFA0]/10 text-[#59FFA0] border-[#59FFA0]/30',
@@ -104,6 +124,21 @@ function pillLabel(v: string) {
   return v.replace(/_/g, ' ');
 }
 
+function eventToForm(e: EventDetail): EventForm {
+  const dt = e.event_date ?? '';
+  return {
+    name: e.name ?? '',
+    category: e.category ?? '',
+    event_date: dt.split('T')[0] ?? '',
+    event_time: dt.includes('T') ? (dt.split('T')[1]?.slice(0, 5) ?? '') : '',
+    venue_id: e.venue?.id ?? '',
+    status: e.status ?? 'active',
+    total_tickets: String(e.total_tickets ?? ''),
+    flyer_image_url: e.flyer_image_url ?? '',
+    featured: false, // not stored on EventDetail — defaulting; update if added to type
+  };
+}
+
 function toggle(arr: string[], val: string): string[] {
   return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 }
@@ -113,17 +148,22 @@ function toggle(arr: string[], val: string): string[] {
 function SectionCard({
   title,
   subtitle,
+  action,
   children,
 }: {
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="bg-[#1a1a1c] border border-[#2a2a2a] rounded-xl p-5 md:p-6">
-      <div className="mb-5">
-        <h2 className="text-base font-header font-bold text-white">{title}</h2>
-        {subtitle && <p className="text-xs text-white/40 mt-0.5">{subtitle}</p>}
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h2 className="text-base font-header font-bold text-white">{title}</h2>
+          {subtitle && <p className="text-xs text-white/40 mt-0.5">{subtitle}</p>}
+        </div>
+        {action && <div className="flex-shrink-0">{action}</div>}
       </div>
       {children}
     </div>
@@ -297,6 +337,17 @@ export default function AdminEventDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Event details form ───────────────────────────────────────────────────────
+  const [eventForm, setEventForm] = useState<EventForm | null>(null);
+  const [eventFormDirty, setEventFormDirty] = useState(false);
+  const [eventSaving, setEventSaving] = useState(false);
+  const [eventSaveStatus, setEventSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [eventSaveError, setEventSaveError] = useState<string | null>(null);
+
+  // ── Venues list ─────────────────────────────────────────────────────────────
+  const [venues, setVenues] = useState<VenueOption[]>([]);
+  const [venuesError, setVenuesError] = useState(false);
+
   // ── Admissions ──────────────────────────────────────────────────────────────
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [admissionsLoading, setAdmissionsLoading] = useState(true);
@@ -334,6 +385,31 @@ export default function AdminEventDetailPage({
       .catch(() => setError('Failed to load event'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // ── Init form when event loads ───────────────────────────────────────────────
+
+  useEffect(() => {
+    if (event && !eventForm) setEventForm(eventToForm(event));
+  }, [event, eventForm]);
+
+  // ── Fetch venues ─────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    fetch('/api/v1/admin/venues')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          setVenues(d.data.venues as VenueOption[]);
+        } else {
+          console.error('Venues fetch failed:', d.error);
+          setVenuesError(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Venues fetch error:', err);
+        setVenuesError(true);
+      });
+  }, []);
 
   // ── Fetch ticket types ──────────────────────────────────────────────────────
 
@@ -377,14 +453,60 @@ export default function AdminEventDetailPage({
     };
   }, [selNeighborhoods, selVibes, selAges, fetchReach]);
 
+  // ── Save event details ───────────────────────────────────────────────────────
+
+  async function handleSaveDetails() {
+    if (!eventForm) return;
+    setEventSaving(true);
+    setEventSaveStatus('idle');
+    setEventSaveError(null);
+    try {
+      // Combine date + time back into ISO string
+      const combinedDate = eventForm.event_time
+        ? `${eventForm.event_date}T${eventForm.event_time}:00`
+        : eventForm.event_date;
+
+      const res = await fetch(`/api/v1/admin/events/${id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: eventForm.name,
+          category: eventForm.category,
+          event_date: combinedDate,
+          venue_id: eventForm.venue_id || undefined,
+          status: eventForm.status,
+          total_tickets: eventForm.total_tickets ? Number(eventForm.total_tickets) : undefined,
+          flyer_image_url: eventForm.flyer_image_url || null,
+          featured: eventForm.featured,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEvent((prev) => prev ? { ...prev, ...data.data.event } : prev);
+        setEventFormDirty(false);
+        setEventSaveStatus('saved');
+        setTimeout(() => setEventSaveStatus('idle'), 2000);
+      } else {
+        setEventSaveStatus('error');
+        setEventSaveError(data.error ?? 'Failed to save');
+      }
+    } catch {
+      setEventSaveStatus('error');
+      setEventSaveError('Unexpected error. Please try again.');
+    } finally {
+      setEventSaving(false);
+    }
+  }
+
+  function setField<K extends keyof EventForm>(key: K, value: EventForm[K]) {
+    setEventForm((f) => f ? { ...f, [key]: value } : f);
+    setEventFormDirty(true);
+  }
+
   // ── Add ticket type ───────────────────────────────────────────────────────────
 
   function applyPreset(preset: Preset) {
-    if (preset === 'custom') {
-      setNewTicket({ ...EMPTY_FORM, preset: 'custom' });
-      return;
-    }
-    const defaults: Record<Exclude<Preset, 'custom'>, Partial<NewTicketForm>> = {
+    const defaults: Record<Preset, Partial<NewTicketForm>> = {
       free: { name: 'Free Admission', price: '0' },
       general: { name: 'General Admission', price: '' },
       vip: { name: 'VIP', price: '' },
@@ -512,61 +634,182 @@ export default function AdminEventDetailPage({
       </div>
 
       {/* ── Event Details ────────────────────────────────────────────────────── */}
-      <SectionCard title="Event Details">
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-          <div>
-            <dt className="text-[#7DD8E8] text-xs mb-0.5">Status</dt>
-            <dd>
-              <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${statusCls}`}>
-                {event.status}
-              </span>
-            </dd>
+      <SectionCard
+        title="Event Details"
+        action={
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={handleSaveDetails}
+              disabled={!eventFormDirty || eventSaving}
+              className="px-4 py-1.5 bg-[#59FFA0] text-[#121113] font-semibold text-xs rounded-lg hover:bg-[#4de891] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {eventSaving
+                ? 'Saving…'
+                : eventSaveStatus === 'saved'
+                ? '✓ Saved'
+                : 'Save Changes'}
+            </button>
+            {eventSaveStatus === 'error' && eventSaveError && (
+              <p className="text-xs text-red-400 text-right">{eventSaveError}</p>
+            )}
           </div>
-          <div>
-            <dt className="text-[#7DD8E8] text-xs mb-0.5">Category</dt>
-            <dd className="text-white capitalize">{event.category}</dd>
-          </div>
-          <div>
-            <dt className="text-[#7DD8E8] text-xs mb-0.5">Date</dt>
-            <dd className="text-white">{formatDate(event.event_date)}</dd>
-          </div>
-          <div>
-            <dt className="text-[#7DD8E8] text-xs mb-0.5">Time</dt>
-            <dd className="text-white">{formatTime(event.event_date)}</dd>
-          </div>
-          <div>
-            <dt className="text-[#7DD8E8] text-xs mb-0.5">Venue</dt>
-            <dd className="text-white">{venueName}</dd>
-          </div>
-          <div>
-            <dt className="text-[#7DD8E8] text-xs mb-0.5">Ticket Price</dt>
-            <dd className="text-white">
-              {ticketPrice != null && ticketPrice > 0 ? `$${ticketPrice}` : 'Free'}
-            </dd>
-          </div>
-          {(event.total_tickets ?? 0) > 0 && (
-            <div>
-              <dt className="text-[#7DD8E8] text-xs mb-0.5">Tickets</dt>
-              <dd className="text-white">
-                {event.tickets_sold ?? 0} / {event.total_tickets} sold
-              </dd>
+        }
+      >
+        {eventForm && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
+
+            {/* Name — full width */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs text-white/40 mb-1">Event Name</label>
+              <input
+                type="text"
+                value={eventForm.name}
+                onChange={(e) => setField('name', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+              />
             </div>
-          )}
-        </dl>
+
+            {/* Category */}
+            <div>
+              <label className="block text-xs text-white/40 mb-1">Category</label>
+              <select
+                value={eventForm.category}
+                onChange={(e) => setField('category', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors appearance-none"
+              >
+                <option value="">Select category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c} className="bg-[#1a1a1c]">
+                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs text-white/40 mb-1">Status</label>
+              <select
+                value={eventForm.status}
+                onChange={(e) => setField('status', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors appearance-none"
+              >
+                {STATUSES.map((s) => (
+                  <option key={s} value={s} className="bg-[#1a1a1c]">
+                    {s.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="block text-xs text-white/40 mb-1">Event Date</label>
+              <input
+                type="date"
+                value={eventForm.event_date}
+                onChange={(e) => setField('event_date', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+              />
+            </div>
+
+            {/* Time */}
+            <div>
+              <label className="block text-xs text-white/40 mb-1">Start Time</label>
+              <input
+                type="time"
+                value={eventForm.event_time}
+                onChange={(e) => setField('event_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+              />
+            </div>
+
+            {/* Venue */}
+            <div>
+              <label className="block text-xs text-white/40 mb-1">Venue</label>
+              {venuesError ? (
+                <select
+                  disabled
+                  className="w-full bg-white/5 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-red-400/70 focus:outline-none appearance-none opacity-70"
+                >
+                  <option>Error loading venues</option>
+                </select>
+              ) : (
+                <select
+                  value={eventForm.venue_id}
+                  onChange={(e) => setField('venue_id', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors appearance-none"
+                >
+                  <option value="">No venue / TBA</option>
+                  {venues.map((v) => (
+                    <option key={v.id} value={v.id} className="bg-[#1a1a1c]">
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Total Tickets */}
+            <div>
+              <label className="block text-xs text-white/40 mb-1">Total Tickets</label>
+              <input
+                type="number"
+                min="0"
+                value={eventForm.total_tickets}
+                onChange={(e) => setField('total_tickets', e.target.value)}
+                placeholder="0"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+              />
+            </div>
+
+            {/* Flyer Image URL — full width */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs text-white/40 mb-1">Flyer Image URL</label>
+              <input
+                type="text"
+                value={eventForm.flyer_image_url}
+                onChange={(e) => setField('flyer_image_url', e.target.value)}
+                placeholder="https://..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+              />
+            </div>
+
+            {/* Featured toggle */}
+            <div className="sm:col-span-2 flex items-center justify-between py-1">
+              <div>
+                <p className="text-sm text-white/70">Featured</p>
+                <p className="text-xs text-white/30">Pin this event to featured listings</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setField('featured', !eventForm.featured)}
+                className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${
+                  eventForm.featured ? 'bg-[#59FFA0]' : 'bg-white/10'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    eventForm.featured ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Sold / total (read-only info) */}
+            {(event.total_tickets ?? 0) > 0 && (
+              <div className="sm:col-span-2 text-xs text-white/30">
+                {event.tickets_sold ?? 0} sold out of {event.total_tickets}
+              </div>
+            )}
+
+          </div>
+        )}
       </SectionCard>
 
       {/* ── Admissions ───────────────────────────────────────────────────────── */}
       <SectionCard title="Admissions" subtitle="Manage ticket types for this event">
-
-        {ticketTypes.length > 0 && (
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-4 flex-shrink-0" />
-            <span className="flex-1 text-xs text-white/30">Name</span>
-            <span className="w-24 flex-shrink-0 text-xs text-white/30">Price</span>
-            <span className="w-20 flex-shrink-0 text-center text-xs text-white/30">Qty</span>
-            <div className="w-6 flex-shrink-0" />
-          </div>
-        )}
 
         {admissionsLoading ? (
           <div className="space-y-3 py-2">
@@ -574,150 +817,170 @@ export default function AdminEventDetailPage({
               <div key={i} className="h-9 bg-white/5 rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : ticketTypes.length === 0 && !showAddForm ? (
-          <p className="text-sm text-white/30 italic py-2">
-            No ticket types yet. Add one below.
-          </p>
         ) : (
-          <div>
-            {ticketTypes.map((tt) => (
-              <TicketRow
-                key={tt.id}
-                ticket={tt}
-                eventId={id}
-                onUpdated={(updated) =>
-                  setTicketTypes((prev) =>
-                    prev.map((t) => (t.id === updated.id ? updated : t))
-                  )
-                }
-                onDeleted={(deletedId) =>
-                  setTicketTypes((prev) => prev.filter((t) => t.id !== deletedId))
-                }
-              />
-            ))}
-          </div>
-        )}
-
-        {showAddForm && (
-          <div className="mt-4 pt-4 border-t border-[#2a2a2a]">
-            <div className="mb-4">
-              <p className="text-xs text-white/40 mb-2">Quick add</p>
-              <div className="flex flex-wrap gap-2">
-                {(['free', 'general', 'vip', 'early_bird', 'custom'] as Preset[]).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => applyPreset(p)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                      newTicket.preset === p
-                        ? 'bg-[#59FFA0]/15 border-[#59FFA0] text-[#59FFA0]'
-                        : 'bg-white/[0.03] border-white/10 text-white/50 hover:border-white/25 hover:text-white/70'
-                    }`}
-                  >
-                    {p === 'early_bird' ? 'Early Bird' : p === 'custom' ? 'Custom' : p.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-1">
-                  <label className="block text-xs text-white/40 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={newTicket.name}
-                    onChange={(e) => setNewTicket((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="Ticket name"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-                  />
+          <>
+            {ticketTypes.length > 0 && (
+              <>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-4 flex-shrink-0" />
+                  <span className="flex-1 text-xs text-white/30">Name</span>
+                  <span className="w-24 flex-shrink-0 text-xs text-white/30">Price</span>
+                  <span className="w-20 flex-shrink-0 text-center text-xs text-white/30">Qty</span>
+                  <div className="w-6 flex-shrink-0" />
                 </div>
                 <div>
-                  <label className="block text-xs text-white/40 mb-1">Price</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/30">$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={newTicket.price}
-                      onChange={(e) => setNewTicket((f) => ({ ...f, price: e.target.value }))}
-                      placeholder="0.00"
-                      disabled={newTicket.preset === 'free'}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-7 pr-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  {ticketTypes.map((tt) => (
+                    <TicketRow
+                      key={tt.id}
+                      ticket={tt}
+                      eventId={id}
+                      onUpdated={(updated) =>
+                        setTicketTypes((prev) =>
+                          prev.map((t) => (t.id === updated.id ? updated : t))
+                        )
+                      }
+                      onDeleted={(deletedId) =>
+                        setTicketTypes((prev) => prev.filter((t) => t.id !== deletedId))
+                      }
                     />
-                  </div>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-xs text-white/40 mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newTicket.quantity}
-                    onChange={(e) => setNewTicket((f) => ({ ...f, quantity: e.target.value }))}
-                    placeholder="100"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-                  />
+              </>
+            )}
+
+            {ticketTypes.length === 0 && !showAddForm && (
+              <p className="text-sm text-white/30 italic py-2">
+                No ticket types yet. Add one below.
+              </p>
+            )}
+
+            {showAddForm && (
+              <div className="mt-3 pt-4 border-t border-[#2a2a2a]">
+                {/* Preset buttons */}
+                <p className="text-xs text-white/40 mb-2">Quick add</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {([
+                    ['free', 'Free Admission'],
+                    ['general', 'General Admission'],
+                    ['vip', 'VIP'],
+                    ['early_bird', 'Early Bird'],
+                  ] as [Preset, string][]).map(([p, label]) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => applyPreset(p)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        newTicket.preset === p
+                          ? 'bg-[#59FFA0]/15 border-[#59FFA0] text-[#59FFA0]'
+                          : 'bg-white/5 border-white/20 text-white/60 hover:border-white/40 hover:text-white/80'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Form fields */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-1">
+                      <label className="block text-xs text-white/40 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={newTicket.name}
+                        onChange={(e) => setNewTicket((f) => ({ ...f, name: e.target.value }))}
+                        placeholder="Ticket name"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-white/40 mb-1">Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/30">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={newTicket.price}
+                          onChange={(e) => setNewTicket((f) => ({ ...f, price: e.target.value }))}
+                          placeholder="0.00"
+                          disabled={newTicket.preset === 'free'}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg pl-7 pr-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-white/40 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={newTicket.quantity}
+                        onChange={(e) => setNewTicket((f) => ({ ...f, quantity: e.target.value }))}
+                        placeholder="100"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {isEarlyBird && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-white/40 mb-1">Available From</label>
+                        <input
+                          type="datetime-local"
+                          value={newTicket.available_from}
+                          onChange={(e) => setNewTicket((f) => ({ ...f, available_from: e.target.value }))}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-white/40 mb-1">Available Until</label>
+                        <input
+                          type="datetime-local"
+                          value={newTicket.available_until}
+                          onChange={(e) => setNewTicket((f) => ({ ...f, available_until: e.target.value }))}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                        />
+                      </div>
+                      <p className="col-span-2 text-xs text-white/25 italic -mt-1">
+                        Date range enforcement — <span className="text-white/35">coming soon</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {addError && <p className="text-xs text-red-400">{addError}</p>}
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAddTicket}
+                      disabled={addSaving}
+                      className="px-5 py-2 bg-[#59FFA0] text-[#121113] font-semibold text-sm rounded-lg hover:bg-[#4de891] transition-colors disabled:opacity-50"
+                    >
+                      {addSaving ? 'Adding…' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAddForm(false); setNewTicket(EMPTY_FORM); setAddError(null); }}
+                      className="px-4 py-2 bg-white/5 text-white/50 text-sm rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {isEarlyBird && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-white/40 mb-1">Available From</label>
-                    <input
-                      type="datetime-local"
-                      value={newTicket.available_from}
-                      onChange={(e) => setNewTicket((f) => ({ ...f, available_from: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-white/40 mb-1">Available Until</label>
-                    <input
-                      type="datetime-local"
-                      value={newTicket.available_until}
-                      onChange={(e) => setNewTicket((f) => ({ ...f, available_until: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-                    />
-                  </div>
-                  <p className="col-span-2 text-xs text-white/25 italic -mt-1">
-                    Date range enforcement — <span className="text-white/35">coming soon</span>
-                  </p>
-                </div>
-              )}
-
-              {addError && <p className="text-xs text-red-400">{addError}</p>}
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleAddTicket}
-                  disabled={addSaving}
-                  className="px-5 py-2 bg-[#59FFA0] text-[#121113] font-semibold text-sm rounded-lg hover:bg-[#4de891] transition-colors disabled:opacity-50"
-                >
-                  {addSaving ? 'Adding…' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowAddForm(false); setNewTicket(EMPTY_FORM); setAddError(null); }}
-                  className="px-4 py-2 bg-white/5 text-white/50 text-sm rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!showAddForm && (
-          <button
-            type="button"
-            onClick={() => setShowAddForm(true)}
-            className="mt-4 flex items-center gap-1.5 text-sm text-[#59FFA0] hover:text-white transition-colors"
-          >
-            <span className="text-base leading-none">+</span> Add Ticket Type
-          </button>
+            {!showAddForm && (
+              <button
+                type="button"
+                onClick={() => setShowAddForm(true)}
+                className="mt-4 flex items-center gap-1.5 text-sm text-[#59FFA0] hover:text-white transition-colors"
+              >
+                <span className="text-base leading-none">+</span> Add Ticket Type
+              </button>
+            )}
+          </>
         )}
       </SectionCard>
 
