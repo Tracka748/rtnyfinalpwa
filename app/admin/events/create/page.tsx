@@ -115,6 +115,10 @@ export default function AdminCreateEventPage() {
   // Promo code
   const [generatedPromoCode, setGeneratedPromoCode] = useState<string | null>(null);
 
+  // Venue mode
+  const [useCustomAddress, setUseCustomAddress] = useState(false);
+  const [customAddress, setCustomAddress] = useState('');
+
   // Submit
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -194,7 +198,8 @@ export default function AdminCreateEventPage() {
           name,
           description,
           event_date: combinedEventDate,
-          venue_id: venueId,
+          venue_id: useCustomAddress ? null : (venueId || null),
+          custom_address: useCustomAddress ? customAddress : null,
           category,
           total_tickets: totalTickets ? Number(totalTickets) : null,
           ticket_price: ticketPrice ? Number(ticketPrice) : null,
@@ -331,19 +336,47 @@ export default function AdminCreateEventPage() {
               <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
                 Venue
               </label>
-              <select
-                aria-label="Venue"
-                value={venueId}
-                onChange={(e) => setVenueId(e.target.value)}
-                className="w-full bg-[#0E0E10] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              >
-                <option value="">None</option>
-                {venues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
+              {!useCustomAddress ? (
+                <>
+                  <select
+                    aria-label="Venue"
+                    value={venueId}
+                    onChange={(e) => setVenueId(e.target.value)}
+                    className="w-full bg-[#0E0E10] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                  >
+                    <option value="">None</option>
+                    {venues.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setUseCustomAddress(true)}
+                    className="text-xs text-[#1AC8ED] hover:text-[#1AC8ED]/80 transition-colors"
+                  >
+                    + Use custom address instead
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={customAddress}
+                    onChange={(e) => setCustomAddress(e.target.value)}
+                    placeholder="Enter full address e.g. 123 Main St, Rochester, NY"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setUseCustomAddress(false)}
+                    className="text-xs text-[#1AC8ED] hover:text-[#1AC8ED]/80 transition-colors"
+                  >
+                    ← Select from venue list instead
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Promoter */}

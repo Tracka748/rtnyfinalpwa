@@ -10,7 +10,8 @@
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/api/v1/admin/promo-codes\")",
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/components/admin\")",
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/admin/promo-codes\")",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(xxd \"c:/Users/Stock/rtnyfinalpwa/lib/supabase/client.ts\")"
     ],
     "deny": [],
     "ask": []

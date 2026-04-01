@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       description,
       event_date,       // combined ISO datetime string from the form
       venue_id,
+      custom_address,
       category,
       total_tickets,
       ticket_price,     // single number — stored as ticket_prices JSON
@@ -33,6 +34,13 @@ export async function POST(request: Request) {
     if (!name || !event_date || !category) {
       return NextResponse.json(
         { error: 'name, event_date, and category are required', success: false },
+        { status: 400 }
+      );
+    }
+
+    if (!venue_id && !custom_address) {
+      return NextResponse.json(
+        { error: 'Please select a venue or enter a custom address', success: false },
         { status: 400 }
       );
     }
@@ -69,8 +77,11 @@ export async function POST(request: Request) {
       featured: false,
     };
 
-    if (venue_id) insertPayload.venue_id = venue_id;
+    insertPayload.venue_id = venue_id || null;
+    insertPayload.custom_address = custom_address || null;
     if (promoter_id) insertPayload.promoter_id = promoter_id;
+
+    console.log('[events/create] payload venue_id:', insertPayload.venue_id, '| custom_address:', insertPayload.custom_address);
 
     const { data, error } = await supabase
       .from('events')

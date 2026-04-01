@@ -19,16 +19,15 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params
-    
+
     console.log('🔍 Looking for order with session_id:', sessionId)
-    
+
     const { data: order, error } = await supabaseAdmin
       .from('orders')
       .select(`
         id,
-        order_number,
         total_amount,
-        customer_email,
+        status,
         created_at,
         event_id,
         events!inner (
@@ -53,28 +52,36 @@ export async function GET(
           confirmation_code
         )
       `)
-      .eq('transaction_id', sessionId)
-      .single()
+      .eq('session_id', sessionId)
+      .maybeSingle()
 
     if (error) {
-      console.log('❌ Order not found:', error.message)
+      // If session_id column doesn't exist yet, return 404 so the
+      // confirmation page keeps polling rather than hard-erroring
+      if (error.code === '42703') {
+        console.warn('⚠️ session_id column missing on orders — run migration 20260329_orders_add_session_id.sql')
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      }
+      console.error('❌ Order lookup error:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
       return NextResponse.json(
-        { 
-          error: 'Order not found', 
-          code: error.code,
-          message: error.message
-        },
-        { status: 404 }
+        { error: 'Order lookup failed', code: error.code, message: error.message },
+        { status: 500 }
       )
     }
 
-    console.log('✅ Order found:', order.order_number, 'for event:', (order as any)['events']['name'])
+    if (!order) {
+      console.log('❌ No order found for session_id:', sessionId)
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    console.log('✅ Order found:', order.id, 'for event:', (order as any)['events']['name'])
     return NextResponse.json(order)
-    
-  } catch (error: any) {
-    console.error('❌ Error fetching order:', error)
+
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error('❌ Error fetching order:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: err.message },
       { status: 500 }
     )
   }

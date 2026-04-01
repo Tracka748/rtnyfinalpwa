@@ -1,0 +1,23 @@
+warning: in the working copy of '.claude/settings.local.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/events/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/events/create/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/events/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/v1/admin/events/[id]/update/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/v1/admin/events/create/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/v1/admin/events/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/v1/orders/by-session/[sessionId]/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/v1/stripe/webhook/route.ts', LF will be replaced by CRLF the next time Git touches it
+.claude/settings.local.json
+app/admin/events/[id]/page.tsx
+app/admin/events/create/page.tsx
+app/admin/events/page.tsx
+app/api/v1/admin/events/[id]/update/route.ts
+app/api/v1/admin/events/create/route.ts
+app/api/v1/admin/events/route.ts
+app/api/v1/orders/by-session/[sessionId]/route.ts
+app/api/v1/stripe/create-checkout-session/route.ts
+app/api/v1/stripe/webhook/route.ts
+app/confirmation/page.tsx
+package-lock.json
+package.json
+types/database.ts

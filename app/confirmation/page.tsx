@@ -5,8 +5,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { 
-  CheckCircle2, 
+import { createBrowserClient } from '@supabase/ssr'
+import {
+  CheckCircle2,
   Ticket,
   Calendar,
   MapPin,
@@ -42,11 +43,10 @@ export default function ConfirmationPage() {
   const [showConfetti, setShowConfetti] = useState(false)
   const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [attempts, setAttempts] = useState(0)
+  const [paymentReceived, setPaymentReceived] = useState(false)
 
   useEffect(() => {
     if (!sessionId) {
-      console.log('❌ No session_id, redirecting to events')
       router.push('/events')
       return
     }
@@ -54,109 +54,140 @@ export default function ConfirmationPage() {
     setShowConfetti(true)
     setTimeout(() => setShowConfetti(false), 3000)
 
-    console.log('🔍 Looking for order with session_id:', sessionId)
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
-    // Poll for order data (webhook might still be processing)
-    const fetchOrder = async () => {
-      try {
-        const res = await fetch(`/api/v1/orders/by-session/${sessionId}`)
-        
-        if (res.ok) {
-          const data = await res.json()
-          console.log('✅ Order found:', data)
-          
-          // Transform database data to OrderData format
-          const tickets = data.tickets || []
-          
-          // Group tickets by type
-          const groupedTickets = tickets.reduce((acc: any[], ticket: any) => {
-            const existing = acc.find((t: any) => t.type === ticket.ticket_type)
-            if (existing) {
-              existing.quantity += 1
-              existing.price = ticket.base_price
-              existing.qrCodeData?.push(ticket.qr_code_data)
-            } else {
-              acc.push({
-                type: ticket.ticket_type,
-                quantity: 1,
-                price: ticket.base_price,
-                qrCodeData: [ticket.qr_code_data]
-              })
-            }
-            return acc
-          }, [])
-
-          setOrderData({
-            orderId: data.order_number,
-            confirmationCode: data.order_number,
-            eventName: data.events?.name || 'Event', // ✅ Real event name
-            eventDate: data.events?.event_date || new Date().toISOString(), // ✅ Real date
-            venueName: data.events?.venues?.name || 'Venue TBA', // ✅ Real venue
-            venueAddress: data.events?.venues?.address || 'Address TBA', // ✅ Real address
-            tickets: groupedTickets,
-            boosters: [],
-            total: data.total_amount,
-            email: data.customer_email,
+    function applyOrder(data: any) {
+      const tickets = data.tickets || []
+      const groupedTickets = tickets.reduce((acc: any[], ticket: any) => {
+        const existing = acc.find((t: any) => t.type === ticket.ticket_type)
+        if (existing) {
+          existing.quantity += 1
+          existing.qrCodeData?.push(ticket.qr_code_data)
+        } else {
+          acc.push({
+            type: ticket.ticket_type,
+            quantity: 1,
+            price: ticket.base_price,
+            qrCodeData: [ticket.qr_code_data],
           })
-          setIsLoading(false)
-        } else if (res.status === 404) {
-          console.log(`⏳ Order not found yet (attempt ${attempts + 1}/10)`)
-          // Order not yet created by webhook, try again
-          if (attempts < 10) {
-            setAttempts(prev => prev + 1)
-            setTimeout(fetchOrder, 1500) // Try again in 1.5 seconds
-          } else {
-            console.error('❌ Order not found after 10 attempts')
-            // Fall back to sessionStorage if available
-            const savedOrder = sessionStorage.getItem('completed_order')
-            if (savedOrder) {
-              const completedOrder = JSON.parse(savedOrder)
-              setOrderData({
-                orderId: completedOrder.orderId || 'N/A',
-                confirmationCode: completedOrder.orderId || 'CONF-' + Math.random().toString(36).substring(2, 11).toUpperCase(),
-                eventName: completedOrder.eventName || 'Event',
-                eventDate: completedOrder.eventDate || new Date().toISOString(),
-                venueName: 'Venue TBA',
-                venueAddress: 'Address TBA',
-                tickets: completedOrder.tickets || [],
-                boosters: [],
-                total: completedOrder.totalAmount || 0,
-                email: 'user@example.com',
-              })
-            } else {
-              router.push('/events')
-            }
-            setIsLoading(false)
-          }
-        } else {
-          console.error('❌ Error fetching order:', res.status)
-          router.push('/events')
         }
-      } catch (err) {
-        console.error('❌ Error:', err)
-        if (attempts < 10) {
-          setAttempts(prev => prev + 1)
-          setTimeout(fetchOrder, 1500)
-        } else {
-          router.push('/events')
-        }
-      }
+        return acc
+      }, [])
+
+      setOrderData({
+        orderId: data.id,
+        confirmationCode: data.id,
+        eventName: data.events?.name || 'Event',
+        eventDate: data.events?.event_date || new Date().toISOString(),
+        venueName: data.events?.venues?.name || 'Venue TBA',
+        venueAddress: data.events?.venues?.address || 'Address TBA',
+        tickets: groupedTickets,
+        boosters: [],
+        total: data.total_amount,
+        email: data.customer_email || '',
+      })
+      setIsLoading(false)
     }
 
-    fetchOrder()
-  }, [sessionId, router, attempts])
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let resolved = false
+
+    async function init() {
+      // Step 1 — immediate check (order may already exist)
+      const { data: existing } = await supabase
+        .from('orders')
+        .select(`*, events!inner(id, name, event_date, venues!inner(id, name, address)), tickets(*)`)
+        .eq('session_id', sessionId)
+        .maybeSingle()
+
+      if (existing) {
+        resolved = true
+        applyOrder(existing)
+        return
+      }
+
+      // Step 2 — subscribe to realtime INSERT
+      channel = supabase
+        .channel('order-confirmation')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'orders',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          async (payload) => {
+            if (resolved) return
+            resolved = true
+            if (timeoutId) clearTimeout(timeoutId)
+            // Fetch full order with relations
+            const { data: full } = await supabase
+              .from('orders')
+              .select(`*, events!inner(id, name, event_date, venues!inner(id, name, address)), tickets(*)`)
+              .eq('id', payload.new.id)
+              .single()
+            applyOrder(full ?? payload.new)
+            channel?.unsubscribe()
+          }
+        )
+        .subscribe()
+
+      // Step 3 — 30 second fallback
+      timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          setPaymentReceived(true)
+          setIsLoading(false)
+          channel?.unsubscribe()
+        }
+      }, 30000)
+    }
+
+    init()
+
+    return () => {
+      channel?.unsubscribe()
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [sessionId, router])
 
   if (isLoading || !orderData) {
     return (
       <div className="min-h-screen bg-[#121113] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="animate-spin rounded-full h-12 w-12 border-[#59FFA0] mx-auto mb-4" />
-          <p className="font-sans text-[#F9FDFF]/60 mb-2">
-            Processing Your Order
-          </p>
-          <p className="font-sans text-sm text-[#F9FDFF]/40">
-            Attempt {attempts + 1} of 10
-          </p>
+        <div className="text-center max-w-sm px-6">
+          {paymentReceived ? (
+            <>
+              <CheckCircle2 className="h-12 w-12 text-[#59FFA0] mx-auto mb-4" />
+              <p className="font-sans text-[#F9FDFF] text-lg font-semibold mb-2">
+                Payment Received!
+              </p>
+              <p className="font-sans text-sm text-[#F9FDFF]/60">
+                Your order is being processed. Check your email for your confirmation and tickets.
+              </p>
+              <Button
+                onClick={() => router.push('/events')}
+                variant="ghost"
+                className="mt-6 text-[#F9FDFF]/60 hover:text-[#F9FDFF]"
+              >
+                Browse Events
+              </Button>
+            </>
+          ) : (
+            <>
+              <Loader2 className="animate-spin h-12 w-12 text-[#59FFA0] mx-auto mb-4" />
+              <p className="font-sans text-[#F9FDFF]/60 mb-2">
+                Processing Your Order
+              </p>
+              <p className="font-sans text-sm text-[#F9FDFF]/40">
+                Waiting for confirmation…
+              </p>
+            </>
+          )}
         </div>
       </div>
     )

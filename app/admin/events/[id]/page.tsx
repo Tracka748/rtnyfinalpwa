@@ -48,6 +48,7 @@ interface EventDetail {
   ticket_prices?: { general?: number };
   flyer_image_url?: string;
   venue?: Venue | null;
+  custom_address?: string | null;
   invite_runs: InviteRun[];
 }
 
@@ -348,6 +349,10 @@ export default function AdminEventDetailPage({
   const [venues, setVenues] = useState<VenueOption[]>([]);
   const [venuesError, setVenuesError] = useState(false);
 
+  // ── Custom address toggle ────────────────────────────────────────────────────
+  const [useCustomAddress, setUseCustomAddress] = useState(false);
+  const [customAddress, setCustomAddress] = useState('');
+
   // ── Admissions ──────────────────────────────────────────────────────────────
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [admissionsLoading, setAdmissionsLoading] = useState(true);
@@ -389,7 +394,13 @@ export default function AdminEventDetailPage({
   // ── Init form when event loads ───────────────────────────────────────────────
 
   useEffect(() => {
-    if (event && !eventForm) setEventForm(eventToForm(event));
+    if (event && !eventForm) {
+      setEventForm(eventToForm(event));
+      if (event.custom_address) {
+        setUseCustomAddress(true);
+        setCustomAddress(event.custom_address);
+      }
+    }
   }, [event, eventForm]);
 
   // ── Fetch venues ─────────────────────────────────────────────────────────────
@@ -473,7 +484,8 @@ export default function AdminEventDetailPage({
           name: eventForm.name,
           category: eventForm.category,
           event_date: combinedDate,
-          venue_id: eventForm.venue_id || undefined,
+          venue_id: useCustomAddress ? null : (eventForm.venue_id || undefined),
+          custom_address: useCustomAddress ? customAddress : null,
           status: eventForm.status,
           total_tickets: eventForm.total_tickets ? Number(eventForm.total_tickets) : undefined,
           flyer_image_url: eventForm.flyer_image_url || null,
@@ -728,26 +740,54 @@ export default function AdminEventDetailPage({
             {/* Venue */}
             <div>
               <label className="block text-xs text-white/40 mb-1">Venue</label>
-              {venuesError ? (
-                <select
-                  disabled
-                  className="w-full bg-white/5 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-red-400/70 focus:outline-none appearance-none opacity-70"
-                >
-                  <option>Error loading venues</option>
-                </select>
+              {!useCustomAddress ? (
+                <>
+                  {venuesError ? (
+                    <select
+                      disabled
+                      className="w-full bg-white/5 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-red-400/70 focus:outline-none appearance-none opacity-70"
+                    >
+                      <option>Error loading venues</option>
+                    </select>
+                  ) : (
+                    <select
+                      value={eventForm.venue_id}
+                      onChange={(e) => setField('venue_id', e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors appearance-none"
+                    >
+                      <option value="">No venue / TBA</option>
+                      {venues.map((v) => (
+                        <option key={v.id} value={v.id} className="bg-[#1a1a1c]">
+                          {v.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setUseCustomAddress(true); setEventFormDirty(true); }}
+                    className="text-xs text-[#1AC8ED] hover:text-[#1AC8ED]/80 transition-colors mt-1"
+                  >
+                    + Use custom address instead
+                  </button>
+                </>
               ) : (
-                <select
-                  value={eventForm.venue_id}
-                  onChange={(e) => setField('venue_id', e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#59FFA0]/50 transition-colors appearance-none"
-                >
-                  <option value="">No venue / TBA</option>
-                  {venues.map((v) => (
-                    <option key={v.id} value={v.id} className="bg-[#1a1a1c]">
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <input
+                    type="text"
+                    value={customAddress}
+                    onChange={(e) => { setCustomAddress(e.target.value); setEventFormDirty(true); }}
+                    placeholder="Enter full address e.g. 123 Main St, Rochester, NY"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setUseCustomAddress(false); setEventFormDirty(true); }}
+                    className="text-xs text-[#1AC8ED] hover:text-[#1AC8ED]/80 transition-colors mt-1"
+                  >
+                    ← Select from venue list instead
+                  </button>
+                </>
               )}
             </div>
 

@@ -85,6 +85,18 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // Build enriched items for metadata — include name and price so the
+    // webhook can insert tickets without needing a second DB lookup
+    const enrichedItems = items.map((item: any) => {
+      const ticketType = ticketTypes.find((tt: any) => tt.id === item.ticketTypeId)
+      return {
+        ticketTypeId: item.ticketTypeId,
+        name: ticketType?.name || 'General Admission',
+        price: ticketType?.price ?? 0,
+        quantity: item.quantity,
+      }
+    })
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -96,7 +108,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         userId: user.id,
         eventId: eventId,
-        items: JSON.stringify(items),
+        items: JSON.stringify(enrichedItems),
         promoCode: promoCode || '',
         boosters: boosters ? JSON.stringify(boosters) : '',
       },

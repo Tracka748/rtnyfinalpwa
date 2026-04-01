@@ -16,6 +16,7 @@ interface Event {
   target_neighborhoods: string[] | null;
   target_vibes: string[] | null;
   venue_id: string | null;
+  custom_address: string | null;
   venue_name?: string;
 }
 
@@ -128,7 +129,11 @@ export default function AdminEventsPage() {
           });
           const merged: Event[] = (d.data.events as Event[]).map((e) => ({
             ...e,
-            venue_name: e.venue_id ? (venueMap[e.venue_id] ?? 'Unknown venue') : 'TBA',
+            venue_name: e.custom_address
+              ? e.custom_address
+              : e.venue_id
+              ? (venueMap[e.venue_id] ?? 'Unknown venue')
+              : 'TBA',
           }));
           setEvents(merged);
         } else {

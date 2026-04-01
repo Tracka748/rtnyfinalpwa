@@ -27,7 +27,8 @@ export async function PATCH(
       name,
       description,
       event_date,
-      venue_id,
+      venue_id,         // null when custom_address is used
+      custom_address,
       category,
       status,
       total_tickets,
@@ -55,7 +56,10 @@ export async function PATCH(
     if (name !== undefined) updatePayload.name = name;
     if (description !== undefined) updatePayload.description = description;
     if (event_date !== undefined) updatePayload.event_date = event_date;
-    if (venue_id !== undefined) updatePayload.venue_id = venue_id;
+    if (venue_id !== undefined) updatePayload.venue_id = venue_id ?? null;
+    if (custom_address !== undefined) updatePayload.custom_address = custom_address ?? null;
+
+    console.log('[events/update] payload venue_id:', updatePayload.venue_id, '| custom_address:', updatePayload.custom_address);
     if (category !== undefined) updatePayload.category = category;
     if (status !== undefined) updatePayload.status = status;
     if (total_tickets !== undefined) updatePayload.total_tickets = Number(total_tickets);

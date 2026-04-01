@@ -20,7 +20,7 @@ export async function GET() {
     const { data: events, error: eventsError } = await supabase
       .from('events')
       .select(
-        'id, name, event_date, status, category, total_tickets, tickets_sold, featured, target_neighborhoods, target_vibes, venue_id'
+        'id, name, event_date, status, category, total_tickets, tickets_sold, featured, target_neighborhoods, target_vibes, venue_id, custom_address'
       )
       .order('event_date', { ascending: false });
 

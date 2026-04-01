@@ -68,6 +68,7 @@ export type Database = {
           category: string
           created_at: string | null
           created_by: string | null
+          custom_address: string | null
           description: string
           event_date: string
           featured: boolean | null
@@ -87,7 +88,7 @@ export type Database = {
           tier_discounts: Json | null
           total_tickets: number
           updated_at: string | null
-          venue_id: string
+          venue_id: string | null
         }
         Insert: {
           additional_images?: string[] | null
@@ -95,6 +96,7 @@ export type Database = {
           category: string
           created_at?: string | null
           created_by?: string | null
+          custom_address?: string | null
           description: string
           event_date: string
           featured?: boolean | null
@@ -114,7 +116,7 @@ export type Database = {
           tier_discounts?: Json | null
           total_tickets: number
           updated_at?: string | null
-          venue_id: string
+          venue_id?: string | null
         }
         Update: {
           additional_images?: string[] | null
@@ -122,6 +124,7 @@ export type Database = {
           category?: string
           created_at?: string | null
           created_by?: string | null
+          custom_address?: string | null
           description?: string
           event_date?: string
           featured?: boolean | null
@@ -141,7 +144,7 @@ export type Database = {
           tier_discounts?: Json | null
           total_tickets?: number
           updated_at?: string | null
-          venue_id?: string
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -265,33 +268,87 @@ export type Database = {
       }
       orders: {
         Row: {
+          completed_at: string | null
           created_at: string | null
+          customer_email: string
+          discount_amount: number | null
+          event_id: string | null
+          fees: number | null
           id: string
+          order_number: string
           payment_intent_id: string | null
+          payment_method: string | null
+          payment_status: string | null
+          promo_code_id: string | null
+          session_id: string | null
           status: string
+          subtotal: number
+          tax_amount: number | null
           total_amount: number
+          transaction_id: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string | null
+          customer_email: string
+          discount_amount?: number | null
+          event_id?: string | null
+          fees?: number | null
           id?: string
+          order_number: string
           payment_intent_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          promo_code_id?: string | null
+          session_id?: string | null
           status: string
+          subtotal: number
+          tax_amount?: number | null
           total_amount: number
+          transaction_id?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string | null
+          customer_email?: string
+          discount_amount?: number | null
+          event_id?: string | null
+          fees?: number | null
           id?: string
+          order_number?: string
           payment_intent_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          promo_code_id?: string | null
+          session_id?: string | null
           status?: string
+          subtotal?: number
+          tax_amount?: number | null
           total_amount?: number
+          transaction_id?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_intents: {
         Row: {
