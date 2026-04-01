@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const navItems = [
   { href: '/admin', icon: '📊', label: 'Dashboard' },
   { href: '/admin/events', icon: '🎫', label: 'Events' },
+  { href: '/admin/scan', icon: '🔍', label: 'Scanner' },
   { href: '/admin/audience', icon: '🧠', label: 'Audience' },
   { href: '/admin/promoter-applications', icon: '📝', label: 'Applications' },
   { href: '/admin/event-drafts', icon: '✏️', label: 'Drafts' },
@@ -18,6 +19,7 @@ const navItems = [
 const pageTitles: Record<string, string> = {
   '/admin': 'Dashboard',
   '/admin/events': 'Events',
+  '/admin/scan': 'Ticket Scanner',
   '/admin/audience': 'Audience',
   '/admin/promoter-applications': 'Applications',
   '/admin/event-drafts': 'Drafts',
