@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { HomepageSearchBar } from "@/components/custom/homepage/search-bar"
 import { HeroPromo } from "@/components/custom/homepage/hero-promo"
 import { DateTabs } from "@/components/custom/homepage/date-tabs"
 import { FeaturedEvents } from "@/components/custom/homepage/featured-events"
@@ -363,6 +364,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background divide-y divide-white/5">
+      {/* Search Bar (sticky below nav) */}
+      <HomepageSearchBar />
+
       {/* Section 1: Hero Promo */}
       <HeroPromo promos={promos} />
 

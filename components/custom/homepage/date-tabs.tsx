@@ -35,7 +35,7 @@ export function DateTabs() {
   }
 
   return (
-    <div className="sticky top-[60px] z-40 w-full border-b border-border bg-background/95 backdrop-blur">
+    <div className="w-full border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto max-w-[1200px] px-4">
         <div className="flex gap-2 overflow-x-auto py-3 scrollbar-hide snap-x snap-mandatory">
           {dates.map((date) => (
