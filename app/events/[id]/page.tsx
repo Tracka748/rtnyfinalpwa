@@ -120,6 +120,12 @@ export default function EventDetailPage({
         setIsLoading(true)
         setError(null)
 
+        // Validate UUID format before querying — Postgres throws 22P02 on non-UUID ids
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!uuidRegex.test(id)) {
+          throw new Error('Event not found')
+        }
+
         const supabase = createBrowserSupabaseClient()
 
         // Fetch event with venue relationship and ticket types
@@ -139,7 +145,7 @@ export default function EventDetailPage({
             ticket_prices,
             tier_discounts,
             venue_id,
-            venues!inner (
+            venues (
               name,
               address
             ),
@@ -158,17 +164,17 @@ export default function EventDetailPage({
         console.log('Supabase response:', { eventData, eventError, id })
 
         if (eventError) {
-          console.error('Supabase error details:', eventError)
-          throw new Error(eventError.message || 'Failed to fetch event')
+          console.error('Supabase error code:', eventError.code)
+          console.error('Supabase error message:', eventError.message)
+          console.error('Supabase error hint:', eventError.hint)
+          console.error('Supabase error details:', eventError.details)
+          throw new Error(`Supabase error: ${eventError.code} - ${eventError.message} - ${eventError.hint}`)
         }
         if (!eventData) throw new Error('Event not found')
 
         // Convert database format to UI format
         // Note: venues is an array from the relationship, but we only need the first item
-        const venueData = eventData.venues as unknown
-        const venue = (Array.isArray(venueData) && venueData.length > 0
-          ? venueData[0]
-          : venueData) as { name: string; address: string } | null
+        const venue = eventData.venues as { name: string; address: string } | null
 
         // Use actual ticket_types from database if available, otherwise fall back to derived types
         const rawTicketTypes = eventData.ticket_types as unknown

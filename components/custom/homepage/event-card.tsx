@@ -20,8 +20,11 @@ export function EventCard({ event, size = "small" }: EventCardProps) {
 
   const categoryColor = getCategoryColor(event.category)
 
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const href = uuidRegex.test(event.id) ? `/events/${event.id}` : '/events'
+
   return (
-    <Link href={`/events/${event.id}`} className={`${cardWidth} ${cardHeight} shrink-0 snap-start`}>
+    <Link href={href} className={`${cardWidth} ${cardHeight} shrink-0 snap-start`}>
       <div className="h-full rounded-xl border border-border bg-surface overflow-hidden transition-all hover:border-accent-primary hover:shadow-lg group cursor-pointer">
         {/* Image */}
         <div className={`relative ${imageHeight} w-full overflow-hidden bg-surface-elevated`}>

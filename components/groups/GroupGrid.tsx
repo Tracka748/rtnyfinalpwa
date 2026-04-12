@@ -20,9 +20,10 @@ function getInitials(name: string): string {
 interface GroupGridProps {
   groups: GroupWithMembership[]
   organizers: Organizer[]
+  accessToken?: string
 }
 
-export function GroupGrid({ groups, organizers }: GroupGridProps) {
+export function GroupGrid({ groups, organizers, accessToken }: GroupGridProps) {
   const hasOrganizers = organizers.length > 0
 
   return (
@@ -85,7 +86,7 @@ export function GroupGrid({ groups, organizers }: GroupGridProps) {
       ) : (
         <div className="flex flex-col gap-3 px-4">
           {groups.map(group => (
-            <GroupCard key={group.id} group={group} />
+            <GroupCard key={group.id} group={group} accessToken={accessToken} />
           ))}
         </div>
       )}

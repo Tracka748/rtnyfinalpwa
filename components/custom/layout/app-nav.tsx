@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from "@supabase/supabase-js"
+import { SidebarTrigger } from "@/components/custom/layout/sidebar-trigger"
 
 export function AppNav() {
   const pathname = usePathname()
@@ -54,12 +55,17 @@ export function AppNav() {
         <div className="flex h-16 items-center justify-between">
           {/* Left group: RTNY + RocTicketNy */}
           <div className="flex items-center">
+            {/* Desktop: plain link to home */}
             <Link
               href="/"
-              className="font-header text-2xl font-bold text-[#59FFA0] transition-opacity hover:opacity-80"
+              className="hidden md:block font-header text-2xl font-bold text-[#59FFA0] transition-opacity hover:opacity-80"
             >
               RTNY
             </Link>
+            {/* Mobile: sidebar trigger on the left */}
+            <div className="md:hidden">
+              <SidebarTrigger />
+            </div>
             <div
               className="hidden items-center font-header md:flex"
               style={{ marginLeft: '40px', marginRight: '60px' }}
@@ -68,6 +74,15 @@ export function AppNav() {
               <span className="text-3xl font-black text-[#F9FDFF]">Ticket</span>
               <span className="text-3xl font-black text-[#59FFA0]">Ny</span>
             </div>
+          </div>
+
+          {/* Mobile: centered RocTicketNy wordmark (absolute so it doesn't affect flex layout) */}
+          <div className="absolute left-0 right-0 flex justify-center md:hidden pointer-events-none">
+            <span className="font-header text-2xl font-black">
+              <span className="text-[#1AC8ED]">Roc</span>
+              <span className="text-[#F9FDFF]">Ticket</span>
+              <span className="text-[#59FFA0]">Ny</span>
+            </span>
           </div>
 
           {/* Right group: Desktop Navigation */}

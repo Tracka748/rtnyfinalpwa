@@ -18,6 +18,7 @@ export default async function GroupsPage() {
     .order('sort_order', { ascending: true })
 
   const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
   let groupsWithMembership: GroupWithMembership[] = groups || []
 
@@ -77,6 +78,7 @@ export default async function GroupsPage() {
       <GroupGrid
         groups={groupsWithMembership}
         organizers={organizers}
+        accessToken={session?.access_token}
       />
     </main>
   )
