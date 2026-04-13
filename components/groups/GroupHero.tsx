@@ -1,79 +1,162 @@
 'use client'
 
-import { useState } from 'react'
-import { Group } from '@/types/groups'
-import { JoinGroupButton } from './JoinGroupButton'
+import JoinGroupButton from './JoinGroupButton'
+import type { Group } from '@/types/groups'
 
-function formatMemberCount(count: number): string {
-  if (count >= 1000) return `${(count / 1000).toFixed(1).replace('.0', '')}k members`
-  return `${count} members`
-}
-
-interface GroupHeroProps {
+interface Props {
   group: Group
   isMember: boolean
   onMembershipChange: () => void
 }
 
-export function GroupHero({ group, isMember, onMembershipChange }: GroupHeroProps) {
-  const [memberState, setMemberState] = useState(isMember)
-
-  const handleToggle = () => {
-    setMemberState(prev => !prev)
-    onMembershipChange()
-  }
+export default function GroupHero({ group, isMember, onMembershipChange }: Props) {
+  const memberLabel = group.member_count === 1
+    ? '1 Member'
+    : `${group.member_count.toLocaleString()} Members`
 
   return (
-    <div className="relative w-full h-[320px] md:h-[420px] overflow-hidden">
-      {/* Background */}
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        minHeight: '360px',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
+      }}
+    >
+      {/* Layer 1: Background */}
       {group.cover_image_url ? (
         <img
           src={group.cover_image_url}
           alt={group.name}
-          className="absolute inset-0 w-full h-full object-cover"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
         />
       ) : (
         <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(135deg, ${group.accent_color}80, #121113)` }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(135deg, ${group.accent_color}55 0%, #1a1a2e 50%, #121113 100%)`,
+          }}
         />
       )}
 
-      {/* Dark gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#121113] via-[#121113]/50 to-transparent" />
+      {/* Layer 2: Bottom fade to page background */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to top, #121113 0%, #121113aa 35%, transparent 100%)',
+        }}
+      />
 
-      {/* Category badge — top left */}
-      {group.category && (
-        <div className="absolute top-4 left-4">
-          <span
-            className="font-label text-[10px] uppercase tracking-widest font-semibold px-3 py-1 rounded-full"
-            style={{ backgroundColor: `${group.accent_color}33`, color: group.accent_color }}
+      {/* Layer 3: Glow blob */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '-40px',
+          left: '-40px',
+          width: '300px',
+          height: '300px',
+          borderRadius: '50%',
+          backgroundColor: group.accent_color,
+          opacity: 0.12,
+          filter: 'blur(60px)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Layer 4: Content — this is what was missing */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          padding: '0 24px 36px 24px',
+        }}
+      >
+        {/* Category badge */}
+        {group.category && (
+          <div style={{ marginBottom: '12px' }}>
+            <span
+              style={{
+                fontFamily: 'Montserrat, sans-serif',
+                fontSize: '10px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.15em',
+                padding: '4px 12px',
+                borderRadius: '999px',
+                backgroundColor: `${group.accent_color}22`,
+                color: group.accent_color,
+                border: `1px solid ${group.accent_color}55`,
+              }}
+            >
+              {group.category}
+            </span>
+          </div>
+        )}
+
+        {/* Group name */}
+        <h1
+          style={{
+            fontFamily: 'Rokkitt, serif',
+            fontSize: '2.5rem',
+            fontWeight: 700,
+            color: '#F9FDFF',
+            margin: '0 0 8px 0',
+            lineHeight: 1.1,
+          }}
+        >
+          {group.name}
+        </h1>
+
+        {/* Tagline */}
+        {group.tagline && (
+          <p
+            style={{
+              fontFamily: 'Rubik, sans-serif',
+              fontSize: '0.95rem',
+              color: `${group.accent_color}cc`,
+              margin: '0 0 16px 0',
+            }}
           >
-            {group.category}
-          </span>
-        </div>
-      )}
-
-      {/* Bottom content */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 md:px-8 md:pb-8 flex items-end justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="font-header font-bold text-2xl md:text-4xl text-white leading-tight">
-            {group.name}
-          </h1>
-          {group.tagline && (
-            <p className="font-sans text-sm md:text-base text-[#7DD8E8] mt-1">{group.tagline}</p>
-          )}
-          <p className="font-label text-xs text-[#7DD8E8] mt-2 uppercase tracking-wide">
-            {formatMemberCount(group.member_count)}
+            {group.tagline}
           </p>
-        </div>
+        )}
 
-        <div className="shrink-0">
+        {/* Member count + Join button */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'Montserrat, sans-serif',
+              fontSize: '11px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              color: 'rgba(249,253,255,0.45)',
+            }}
+          >
+            {memberLabel}
+          </span>
+
           <JoinGroupButton
             groupSlug={group.slug}
-            isMember={memberState}
+            isMember={isMember}
             accentColor={group.accent_color}
-            onToggle={handleToggle}
+            onToggle={onMembershipChange}
           />
         </div>
       </div>

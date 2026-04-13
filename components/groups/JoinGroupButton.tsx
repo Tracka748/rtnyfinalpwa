@@ -11,7 +11,7 @@ interface JoinGroupButtonProps {
   onToggle: () => void
 }
 
-export function JoinGroupButton({ groupSlug, isMember, accentColor, onToggle }: JoinGroupButtonProps) {
+export default function JoinGroupButton({ groupSlug, isMember, accentColor, onToggle }: JoinGroupButtonProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 

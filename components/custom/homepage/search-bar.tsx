@@ -11,7 +11,7 @@ export function HomepageSearchBar() {
     <div className="sticky top-16 z-40 w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
       <div className="mx-auto max-w-[1200px] px-4 py-3">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#707070] pointer-events-none z-10" />
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#1ac8ed] pointer-events-none z-10" />
           <input
             type="text"
             value={query}
@@ -19,7 +19,7 @@ export function HomepageSearchBar() {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder="Search events, venues, artists…"
-            className={`w-full rounded-full border-0 bg-[#1A1A1A] pl-12 font-sans text-base text-[#F9FDFF] placeholder:text-[#707070] outline-none transition-all duration-200 ${
+            className={`w-full rounded-full border-0 bg-[#1A1A1A] pl-12 font-sans text-base text-[#F9FDFF] placeholder:text-[#FFFFFF] outline-none transition-all duration-200 ${
               query ? "pr-12" : "pr-4"
             } ${
               focused

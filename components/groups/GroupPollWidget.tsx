@@ -7,15 +7,16 @@ interface GroupPollWidgetProps {
   poll: GroupPoll & { user_vote?: string | null }
   groupSlug: string
   accentColor?: string
+  userVote?: string | null
 }
 
 function totalVotes(options: GroupPoll['options']): number {
   return options.reduce((sum, o) => sum + (o.votes || 0), 0)
 }
 
-export function GroupPollWidget({ poll, groupSlug: _groupSlug, accentColor = '#59FFA0' }: GroupPollWidgetProps) {
+export default function GroupPollWidget({ poll, groupSlug: _groupSlug, accentColor = '#59FFA0', userVote: userVoteProp }: GroupPollWidgetProps) {
   const [localPoll, setLocalPoll] = useState(poll)
-  const [userVote, setUserVote] = useState<string | null>(poll.user_vote ?? null)
+  const [userVote, setUserVote] = useState<string | null>(userVoteProp ?? poll.user_vote ?? null)
   const [loading, setLoading] = useState(false)
 
   const isClosed = poll.closes_at ? new Date(poll.closes_at) < new Date() : false

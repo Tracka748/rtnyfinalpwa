@@ -31,6 +31,10 @@ export async function GET(
       .order('created_at', { ascending: false })
       .limit(20)
 
+    // Split posts by type
+    const announcements = (posts ?? []).filter(p => p.post_type === 'announcement')
+    const updates = (posts ?? []).filter(p => p.post_type === 'update')
+
     // Fetch polls for poll-type posts
     const pollPostIds = (posts || [])
       .filter(p => p.post_type === 'poll')
@@ -56,6 +60,39 @@ export async function GET(
       .gte('event_date', `${today}T00:00:00`)
       .order('event_date', { ascending: true })
       .limit(10)
+
+    // Fetch active spotlight
+    const { data: spotlight } = await supabase
+      .from('group_spotlights')
+      .select('*')
+      .eq('group_id', group.id)
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle()
+
+    // Fetch organizers
+    const { data: organizers } = await supabase
+      .from('group_organizers')
+      .select('*')
+      .eq('group_id', group.id)
+      .order('sort_order', { ascending: true })
+
+    // Fetch recent members preview
+    const { data: members } = await supabase
+      .from('group_memberships')
+      .select('user_id, joined_at')
+      .eq('group_id', group.id)
+      .order('joined_at', { ascending: false })
+      .limit(12)
+
+    // Fetch related groups (same category)
+    const { data: relatedGroups } = await supabase
+      .from('groups')
+      .select('id, slug, name, tagline, card_image_url, accent_color, member_count')
+      .eq('category', group.category)
+      .neq('id', group.id)
+      .eq('is_active', true)
+      .limit(3)
 
     // Check membership and poll votes for authenticated user
     const { data: { user } } = await supabase.auth.getUser()
@@ -93,7 +130,19 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: { group, posts: posts || [], polls: pollsWithVotes, events: eventsWithData, is_member },
+      data: {
+        group,
+        announcements,
+        updates,
+        polls: pollsWithVotes,
+        events: eventsWithData,
+        spotlight: spotlight ?? null,
+        organizers: organizers ?? [],
+        members: members || [],
+        relatedGroups: relatedGroups || [],
+        is_member,
+        userVotes,
+      },
     })
   } catch (error: any) {
     console.error('Error fetching group detail:', error)

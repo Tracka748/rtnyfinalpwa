@@ -1,8 +1,8 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { GroupDetailClient } from '@/components/groups/GroupDetailClient'
-import { GroupPost, GroupPoll } from '@/types/groups'
+import GroupDetailClient from '@/components/groups/GroupDetailClient'
+import { GroupPost, GroupPoll, Group, GroupOrganizer } from '@/types/groups'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -46,6 +46,10 @@ export default async function GroupDetailPage({ params }: PageProps) {
     .order('created_at', { ascending: false })
     .limit(20)
 
+  // Split posts by type
+  const announcements = (posts ?? []).filter(p => p.post_type === 'announcement') as GroupPost[]
+  const updates = (posts ?? []).filter(p => p.post_type === 'update') as GroupPost[]
+
   // Fetch polls for poll-type posts
   const pollPostIds = (posts || []).filter(p => p.post_type === 'poll').map(p => p.id)
   let polls: any[] = []
@@ -67,6 +71,41 @@ export default async function GroupDetailPage({ params }: PageProps) {
     .gte('event_date', `${today}T00:00:00`)
     .order('event_date', { ascending: true })
     .limit(10)
+
+  // Fetch active spotlight
+  const { data: spotlight } = await supabase
+    .from('group_spotlights')
+    .select('*')
+    .eq('group_id', group.id)
+    .eq('active', true)
+    .limit(1)
+    .maybeSingle()
+
+  // Fetch organizers
+  const { data: organizers } = await supabase
+    .from('group_organizers')
+    .select('*')
+    .eq('group_id', group.id)
+    .order('sort_order', { ascending: true })
+
+  // Fetch recent members preview
+  const { data: members } = await supabase
+    .from('group_memberships')
+    .select('user_id, joined_at')
+    .eq('group_id', group.id)
+    .order('joined_at', { ascending: false })
+    .limit(12)
+
+  // Fetch related groups (same category)
+  const { data: relatedGroups } = group.category
+    ? await supabase
+        .from('groups')
+        .select('id, slug, name, tagline, card_image_url, accent_color, member_count, cover_image_url, description, about, rules, category, is_active, sort_order, created_at')
+        .eq('category', group.category)
+        .neq('id', group.id)
+        .eq('is_active', true)
+        .limit(3)
+    : { data: [] }
 
   // Auth state + membership + poll votes
   const { data: { user } } = await supabase.auth.getUser()
@@ -93,27 +132,25 @@ export default async function GroupDetailPage({ params }: PageProps) {
     }
   }
 
-  const pollsWithVotes = polls.map(p => ({ ...p, user_vote: userVotes[p.id] ?? null }))
-  const pollsByPostId = Object.fromEntries(pollsWithVotes.map(p => [p.post_id, p]))
-
   const eventsWithData = (events || []).map(e => ({
     ...e,
     venue_name: e.venues?.name || null,
     venue_address: e.venues?.address || null,
   }))
 
-  // Separate poll posts from regular posts
-  const regularPosts: GroupPost[] = (posts || []).filter(p => p.post_type !== 'poll') as GroupPost[]
-  const pollPosts: GroupPost[] = (posts || []).filter(p => p.post_type === 'poll') as GroupPost[]
-
   return (
     <main className="min-h-screen bg-[#121113]">
       <GroupDetailClient
         group={group}
         initialIsMember={is_member}
-        posts={posts}
-        polls={polls}
+        announcements={announcements}
+        updates={updates}
+        polls={polls as GroupPoll[]}
         events={eventsWithData}
+        spotlight={spotlight ?? null}
+        organizers={(organizers ?? []) as GroupOrganizer[]}
+        members={members || []}
+        relatedGroups={(relatedGroups || []) as Group[]}
         userVotes={userVotes}
       />
     </main>

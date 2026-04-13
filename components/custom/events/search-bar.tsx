@@ -35,7 +35,7 @@ export function SearchBar({
     <div className="relative w-full max-w-2xl">
       <div className="relative">
         {/* Search Icon */}
-        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#A0A0A0]" />
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#1ac8ed]" />
         
         {/* Input */}
         <Input

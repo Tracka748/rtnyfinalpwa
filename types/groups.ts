@@ -4,6 +4,8 @@ export interface Group {
   name: string
   tagline: string | null
   description: string | null
+  about: string | null
+  rules: string | null
   cover_image_url: string | null
   card_image_url: string | null
   accent_color: string
@@ -11,6 +13,18 @@ export interface Group {
   member_count: number
   is_active: boolean
   sort_order: number
+  created_at: string
+}
+
+export interface GroupSpotlight {
+  id: string
+  group_id: string
+  title: string
+  subject: string
+  description: string | null
+  image_url: string | null
+  link_url: string | null
+  active: boolean
   created_at: string
 }
 
@@ -47,6 +61,16 @@ export interface GroupPoll {
   options: PollOption[]
   closes_at: string | null
   created_at: string
+}
+
+export interface GroupOrganizer {
+  id: string
+  group_id: string
+  name: string
+  role: string
+  bio: string | null
+  avatar_url: string | null
+  sort_order: number
 }
 
 export interface GroupWithMembership extends Group {

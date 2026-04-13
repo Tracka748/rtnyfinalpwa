@@ -6,10 +6,13 @@ interface GroupEventsListProps {
   accentColor?: string
 }
 
-export function GroupEventsList({ events, groupName, accentColor = '#59FFA0' }: GroupEventsListProps) {
+export default function GroupEventsList({ events, groupName, accentColor = '#59FFA0' }: GroupEventsListProps) {
   return (
     <div>
-      <h2 className="font-header font-bold text-xl text-[#F9FDFF] mb-4">
+      <h2
+        className="font-slab-serif font-bold text-xl text-[#F9FDFF] mb-4 pl-3"
+        style={{ borderLeft: `3px solid ${accentColor}` }}
+      >
         Exclusive {groupName} Events
       </h2>
 
