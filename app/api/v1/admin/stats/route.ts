@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkIsAdmin } from '@/lib/admin-auth';
 
 // Simple service role client (bypasses RLS for admin queries)
 function getSupabaseAdmin() {
@@ -17,8 +18,11 @@ function getSupabaseAdmin() {
 
 export async function GET() {
   try {
+    const adminCheck = await checkIsAdmin();
+    if (adminCheck.error) return adminCheck.response;
+
     console.log('=== Admin Stats API Called ===');
-    
+
     const supabase = getSupabaseAdmin();
 
     // Get current date range

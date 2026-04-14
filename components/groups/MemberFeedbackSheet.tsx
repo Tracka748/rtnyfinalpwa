@@ -10,7 +10,12 @@ interface Props {
   accentColor: string
   existingFeedback: PitchFeedback | null
   onClose: () => void
-  onSubmitted: (feedback: PitchFeedback) => void
+  onSubmitted: (feedback: PitchFeedback, pointsData?: {
+    earned: number
+    newTotal: number
+    justUnlocked: boolean
+    badge: { title: string; emoji: string } | null
+  }) => void
 }
 
 export default function MemberFeedbackSheet({
@@ -68,7 +73,7 @@ export default function MemberFeedbackSheet({
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Submission failed')
-      onSubmitted(data.data)
+      onSubmitted(data.data, data.points ?? undefined)
     } catch (err: any) {
       setError(err.message)
     } finally {

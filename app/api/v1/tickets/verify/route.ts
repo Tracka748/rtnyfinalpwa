@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
 
-// NOTE: This endpoint is intentionally unauthenticated to support staff scan
-// devices that may not be logged in. Add admin/staff token auth in a future
-// hardening pass before exposing to external networks.
+// TODO: replace with proper admin session auth post-launch
 
 export async function POST(request: NextRequest) {
   try {
+    // Shared-secret check — scanner devices must supply the server-side secret
+    const scannerToken = request.headers.get('x-scanner-token')
+    if (!scannerToken || scannerToken !== process.env.SCANNER_SECRET) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { code } = body
 

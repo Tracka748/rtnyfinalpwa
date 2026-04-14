@@ -1,3 +1,16 @@
+/*
+ * Required database migration — run once in Supabase SQL editor before deploying:
+ *
+ *   ALTER TABLE public.profiles
+ *   ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'
+ *   CHECK (role IN ('user', 'admin', 'promoter'));
+ *
+ *   -- Find your user ID:
+ *   SELECT id FROM auth.users WHERE email = 'tracka748@gmail.com';
+ *   -- Then grant admin:
+ *   UPDATE public.profiles SET role = 'admin' WHERE id = '<your-uuid>';
+ */
+
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -21,22 +34,8 @@ async function createClient() {
   );
 }
 
-/**
- * Check if user is an admin
- * Development: Uses email whitelist
- * Production TODO: Query app_admins table
- */
-export async function isAdmin(email?: string): Promise<boolean> {
-  if (!email) return false;
-
-  // Admin whitelist
-  const adminEmails = [
-    'admin@rtny.com',
-    'tracka748@gmail.com',
-  ];
-
-  return adminEmails.includes(email.toLowerCase());
-}
+// Legacy email whitelist — kept for reference only, no longer used in auth logic.
+// const ADMIN_EMAILS = ['admin@rtny.com', 'tracka748@gmail.com'];
 
 /**
  * Used in API routes to gate admin-only endpoints.
@@ -59,9 +58,13 @@ export async function checkIsAdmin(): Promise<
     };
   }
 
-  const adminStatus = await isAdmin(user.email);
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
 
-  if (!adminStatus) {
+  if (profileError || profile?.role !== 'admin') {
     return {
       error: true,
       response: NextResponse.json({ error: 'Admin access required' }, { status: 403 }),
@@ -86,7 +89,13 @@ export async function checkAdminAccess() {
     return { isAdmin: false, user: null, error: 'Not authenticated' };
   }
 
-  const adminStatus = await isAdmin(user.email);
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const adminStatus = profile?.role === 'admin';
 
   return {
     isAdmin: adminStatus,

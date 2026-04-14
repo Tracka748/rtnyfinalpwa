@@ -96,6 +96,24 @@ export interface EventPitch {
   created_at: string
 }
 
+export interface UserPitchPoints {
+  id: string
+  user_id: string
+  total_points: number
+  badge_slug: string | null
+  badge_title: string | null
+  badge_emoji: string | null
+  updated_at: string
+}
+
+export type PointAction =
+  | 'quick_submit'
+  | 'date_vote'
+  | 'location_vote'
+  | 'price_vote'
+  | 'full_form_submit'
+  | 'feedback_update'
+
 export interface PitchFeedback {
   id: string
   pitch_id: string

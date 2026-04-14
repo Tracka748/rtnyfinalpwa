@@ -11,7 +11,9 @@
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/components/admin\")",
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/admin/promo-codes\")",
       "Bash(xargs grep:*)",
-      "Bash(xxd \"c:/Users/Stock/rtnyfinalpwa/lib/supabase/client.ts\")"
+      "Bash(xxd \"c:/Users/Stock/rtnyfinalpwa/lib/supabase/client.ts\")",
+      "Bash(grep -l \"checkIsAdmin\\\\|checkAdminAccess\" /c/Users/Stock/rtnyfinalpwa/app/api/v1/admin/**/*.ts)",
+      "Bash(grep -L \"checkIsAdmin\\\\|checkAdminAccess\" /c/Users/Stock/rtnyfinalpwa/app/api/v1/admin/**/*.ts)"
     ],
     "deny": [],
     "ask": []

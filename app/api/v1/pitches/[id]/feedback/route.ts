@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { awardPoints, POINT_VALUES } from '@/lib/points'
 
 export async function POST(
   req: NextRequest,
@@ -48,6 +49,16 @@ export async function POST(
       return NextResponse.json({ error: 'Pitch not found or closed' }, { status: 404 })
     }
 
+    // Check whether feedback already exists (determines action type for points)
+    const { data: existingFeedback } = await supabase
+      .from('pitch_feedback')
+      .select('id')
+      .eq('pitch_id', pitchId)
+      .eq('member_id', user.id)
+      .maybeSingle()
+
+    const isUpdate = !!existingFeedback
+
     const payload = {
       pitch_id: pitchId,
       member_id: user.id,
@@ -74,7 +85,20 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to submit feedback' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, data: feedback })
+    // Award points
+    const pointAction = isUpdate ? 'feedback_update' : 'full_form_submit'
+    const pointsResult = await awardPoints(supabase, user.id, pitchId, pointAction)
+
+    return NextResponse.json({
+      success: true,
+      data: feedback,
+      points: {
+        earned:       POINT_VALUES[pointAction],
+        newTotal:     pointsResult.newTotal,
+        justUnlocked: pointsResult.justUnlocked,
+        badge:        pointsResult.badge,
+      },
+    })
   } catch (error: any) {
     console.error('Error submitting feedback:', error)
     return NextResponse.json({ error: error.message || 'Failed to submit feedback' }, { status: 500 })

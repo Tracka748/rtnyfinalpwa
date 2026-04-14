@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createSupabaseServer } from '@/lib/supabase'
 
 // Use admin client to bypass RLS
 const supabaseAdmin = createClient(
@@ -18,6 +19,13 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
+    // Auth check — must be a logged-in user
+    const supabaseServer = await createSupabaseServer()
+    const { data: { user } } = await supabaseServer.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { sessionId } = await params
 
     console.log('🔍 Looking for order with session_id:', sessionId)
@@ -26,6 +34,7 @@ export async function GET(
       .from('orders')
       .select(`
         id,
+        user_id,
         total_amount,
         status,
         created_at,
@@ -72,6 +81,11 @@ export async function GET(
     if (!order) {
       console.log('❌ No order found for session_id:', sessionId)
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    // Ownership check — ensure the order belongs to the authenticated user
+    if (order.user_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     console.log('✅ Order found:', order.id, 'for event:', (order as any)['events']['name'])

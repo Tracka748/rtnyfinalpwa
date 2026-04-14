@@ -22,16 +22,33 @@ export const dynamic = 'force-dynamic'
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   console.log('🔵 PROCESSING SESSION:', session.id)
 
-  try {
-    const { userId, eventId, items } = session.metadata || {}
+  const { userId, eventId, items } = session.metadata || {}
 
     if (!userId || !eventId || !items) {
       console.error('❌ Missing metadata:', session.metadata)
       return
     }
 
-    const parsedItems: { name: string; price: string; quantity: number }[] = JSON.parse(items)
+    const parsedItems: { ticketTypeId: string; name: string; price: number; quantity: number }[] = JSON.parse(items)
     console.log('📦 Items to process:', parsedItems.length)
+
+    // Server-side price verification — reject if metadata prices don't match the DB
+    await Promise.all(
+      parsedItems.map(async (item) => {
+        if (!item.ticketTypeId) return
+        const { data: tt, error: ttError } = await supabaseAdmin
+          .from('ticket_types')
+          .select('price')
+          .eq('id', item.ticketTypeId)
+          .single()
+        if (ttError || !tt) {
+          throw new Error(`Ticket type ${item.ticketTypeId} not found during price verification`)
+        }
+        if (Math.abs(tt.price - item.price) > 0.01) {
+          throw new Error(`Price mismatch detected on ticket type ${item.ticketTypeId}`)
+        }
+      })
+    )
 
     const orderNumber = `RTNY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
@@ -61,7 +78,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
     if (orderError) {
       console.error('❌ Order creation error:', JSON.stringify(orderError, Object.getOwnPropertyNames(orderError)))
-      return
+      throw new Error(`Order creation failed: ${orderError.message}`)
     }
 
     console.log('✅ Order created:', order.id)
@@ -92,8 +109,8 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           order_id: order.id,
           ticket_type: item.name || 'General Admission',
           ticket_number: ticketNumber,
-          base_price: parseFloat(item.price),
-          purchase_price: parseFloat(item.price),
+          base_price: item.price,
+          purchase_price: item.price,
           purchased_by: userId,
           purchase_date: new Date().toISOString(),
           payment_intent_id: (session.payment_intent as string) ?? null,
@@ -134,7 +151,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
     if (ticketsError) {
       console.error('❌ Tickets creation error:', JSON.stringify(ticketsError, Object.getOwnPropertyNames(ticketsError)))
-      return
+      throw new Error(`Ticket creation failed: ${ticketsError.message}`)
     }
 
     console.log(`✅ Created ${createdTickets.length} tickets for order ${order.id}`)
@@ -255,9 +272,6 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         console.error('❌ Email send failed:', err)
       })
     }
-  } catch (error: unknown) {
-    console.error('❌ handleCheckoutComplete error:', JSON.stringify(error, Object.getOwnPropertyNames(error as object)))
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -287,10 +301,13 @@ export async function POST(req: NextRequest) {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
-      // Return 200 immediately — process async, fire-and-forget
-      const response = NextResponse.json({ received: true }, { status: 200 })
-      handleCheckoutComplete(session).catch(console.error)
-      return response
+      try {
+        await handleCheckoutComplete(session)
+        return NextResponse.json({ received: true }, { status: 200 })
+      } catch (err) {
+        console.error('Webhook processing failed:', err)
+        return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ received: true })

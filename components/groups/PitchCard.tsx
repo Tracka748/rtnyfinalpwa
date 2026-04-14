@@ -2,8 +2,17 @@
 
 import { useState } from 'react'
 import { ThumbsUp, ThumbsDown, ChevronDown, ChevronUp } from 'lucide-react'
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { EventPitch, PitchFeedback } from '@/types/groups'
 import MemberFeedbackSheet from './MemberFeedbackSheet'
+import PointsToast from './PointsToast'
+
+interface PointsData {
+  earned: number
+  newTotal: number
+  justUnlocked: boolean
+  badge: { title: string; emoji: string } | null
+}
 
 interface Props {
   pitch: EventPitch
@@ -17,6 +26,7 @@ export default function PitchCard({
 }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [showFullForm, setShowFullForm] = useState(false)
+  const [toast, setToast] = useState<PointsData | null>(null)
 
   // Quick action local state
   const [interested, setInterested] = useState<'yes' | 'maybe' | 'no' | null>(
@@ -64,10 +74,7 @@ export default function PitchCard({
         flexShrink: 0,
       }}
     >
-      {dir === 'up'
-        ? <ThumbsUp size={12} />
-        : <ThumbsDown size={12} />
-      }
+      {dir === 'up' ? <ThumbsUp size={12} /> : <ThumbsDown size={12} />}
     </button>
   )
 
@@ -89,7 +96,6 @@ export default function PitchCard({
       borderBottom: '1px solid rgba(255,255,255,0.05)',
       gap: '8px',
     }}>
-      {/* Left: label + value */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <span style={{
           fontFamily: 'Montserrat, sans-serif',
@@ -115,8 +121,6 @@ export default function PitchCard({
           {value}
         </span>
       </div>
-
-      {/* Right: thumbs pair */}
       <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
         <Thumb dir="up"   active={vote === 'up'}   onPress={onUp} />
         <Thumb dir="down" active={vote === 'down'}  onPress={onDown} />
@@ -124,25 +128,75 @@ export default function PitchCard({
     </div>
   )
 
+  const handleQuickSubmit = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!interested) return
+
+    const interestMap = {
+      yes:   'very_interested',
+      maybe: 'somewhat_interested',
+      no:    'not_interested',
+    } as const
+
+    try {
+      const supabase = createBrowserSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      }
+
+      // Submit feedback
+      const feedbackRes = await fetch(`/api/v1/pitches/${pitch.id}/feedback`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          interest_level: interestMap[interested],
+          price_acceptable: priceVote === 'up' ? true : priceVote === 'down' ? false : true,
+          preferred_location: pitch.preferred_locations[0] ?? null,
+        }),
+      })
+      const feedbackData = await feedbackRes.json()
+      if (feedbackData.data) onFeedbackSubmitted(feedbackData.data)
+
+      // Award quick-action points
+      const actionsToLog: string[] = ['quick_submit']
+      if (dateVote)     actionsToLog.push('date_vote')
+      if (locationVote) actionsToLog.push('location_vote')
+      if (priceVote)    actionsToLog.push('price_vote')
+
+      const pointsRes = await fetch(`/api/v1/pitches/${pitch.id}/quick-points`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ actions: actionsToLog }),
+      })
+      const pointsData = await pointsRes.json()
+      if (pointsData.points) setToast(pointsData.points)
+    } catch (err) {
+      console.error('Quick submit error:', err)
+    }
+
+    setExpanded(false)
+  }
+
   return (
     <>
       <div
         style={{
           backgroundColor: '#1a1a1c',
           border: hasResponded
-            ? `1px solid ${accentColor}55`
+            ? `2px solid ${accentColor}`
             : '1px solid rgba(255,255,255,0.08)',
-          borderLeft: `3px solid ${hasResponded ? accentColor : 'rgba(255,255,255,0.12)'}`,
+          borderLeft: `4px solid ${hasResponded ? accentColor : 'rgba(255,255,255,0.12)'}`,
           borderRadius: '0',
           overflow: 'hidden',
           transition: 'border-color 0.2s',
         }}
       >
-
         {/* ── COLLAPSED HEADER — always visible ── */}
         <div
           onClick={() => setExpanded(e => !e)}
-          style={{ padding: '16px', cursor: 'pointer' }}
+          style={{ padding: '16px', cursor: 'pointer', backgroundColor: hasResponded ? `${accentColor}08` : 'transparent' }}
         >
           {/* Top row: category + price */}
           <div style={{
@@ -199,11 +253,7 @@ export default function PitchCard({
           </p>
 
           {/* Bottom: interest count + expand indicator */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <ThumbsUp size={12} color={accentColor} />
               <span style={{
@@ -214,6 +264,16 @@ export default function PitchCard({
               }}>
                 {pitch.interest_count} interested
               </span>
+              {hasResponded && (
+                <span style={{
+                  fontFamily: 'Montserrat, sans-serif',
+                  fontSize: '10px',
+                  color: 'rgba(249,253,255,0.3)',
+                  marginLeft: '4px',
+                }}>
+                  · you're one of them
+                </span>
+              )}
             </div>
 
             <div style={{
@@ -223,17 +283,27 @@ export default function PitchCard({
               color: 'rgba(255,255,255,0.35)',
             }}>
               {hasResponded && (
-                <span style={{
-                  fontFamily: 'Montserrat, sans-serif',
-                  fontSize: '9px',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  color: accentColor,
-                  fontWeight: 700,
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: `${accentColor}22`,
+                  border: `1px solid ${accentColor}`,
+                  padding: '4px 10px',
                   marginRight: '6px',
                 }}>
-                  ✓ Responded
-                </span>
+                  <span style={{ fontSize: '12px' }}>✓</span>
+                  <span style={{
+                    fontFamily: 'Montserrat, sans-serif',
+                    fontSize: '9px',
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase',
+                    color: accentColor,
+                    fontWeight: 700,
+                  }}>
+                    Responded
+                  </span>
+                </div>
               )}
               <span style={{
                 fontFamily: 'Montserrat, sans-serif',
@@ -243,10 +313,7 @@ export default function PitchCard({
               }}>
                 {expanded ? 'Close' : 'Weigh In'}
               </span>
-              {expanded
-                ? <ChevronUp size={14} />
-                : <ChevronDown size={14} />
-              }
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </div>
           </div>
         </div>
@@ -258,7 +325,6 @@ export default function PitchCard({
             backgroundColor: '#121113',
             padding: '4px 16px 0 16px',
           }}>
-
             {/* INTERESTED? — 3 button row */}
             <div style={{
               padding: '12px 0 10px 0',
@@ -310,7 +376,6 @@ export default function PitchCard({
               </div>
             </div>
 
-            {/* DATE row */}
             <QuickRow
               label="Date"
               value={dateLabel}
@@ -318,8 +383,6 @@ export default function PitchCard({
               onUp={() => setDateVote(dateVote === 'up' ? null : 'up')}
               onDown={() => setDateVote(dateVote === 'down' ? null : 'down')}
             />
-
-            {/* LOCATION row */}
             <QuickRow
               label="Location"
               value={locationLabel}
@@ -327,8 +390,6 @@ export default function PitchCard({
               onUp={() => setLocationVote(locationVote === 'up' ? null : 'up')}
               onDown={() => setLocationVote(locationVote === 'down' ? null : 'down')}
             />
-
-            {/* PRICE row */}
             <QuickRow
               label="Price"
               value={priceLabel}
@@ -338,34 +399,9 @@ export default function PitchCard({
             />
 
             {/* Actions row */}
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              padding: '14px 0 16px 0',
-            }}>
-              {/* Quick Submit */}
+            <div style={{ display: 'flex', gap: '8px', padding: '14px 0 16px 0' }}>
               <button
-                onClick={e => {
-                  e.stopPropagation()
-                  if (!interested) return
-                  const interestMap = {
-                    yes: 'very_interested',
-                    maybe: 'somewhat_interested',
-                    no: 'not_interested',
-                  } as const
-                  fetch(`/api/v1/pitches/${pitch.id}/feedback`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      interest_level: interestMap[interested],
-                      price_acceptable: priceVote === 'up' ? true : priceVote === 'down' ? false : true,
-                      preferred_location: pitch.preferred_locations[0] ?? null,
-                    }),
-                  })
-                  .then(r => r.json())
-                  .then(d => { if (d.data) onFeedbackSubmitted(d.data) })
-                  setExpanded(false)
-                }}
+                onClick={handleQuickSubmit}
                 disabled={!interested}
                 style={{
                   flex: 2,
@@ -385,8 +421,6 @@ export default function PitchCard({
               >
                 Submit
               </button>
-
-              {/* More Input */}
               <button
                 onClick={e => { e.stopPropagation(); setShowFullForm(true) }}
                 style={{
@@ -408,22 +442,34 @@ export default function PitchCard({
                 More Input
               </button>
             </div>
-
           </div>
         )}
       </div>
 
-      {/* Full form sheet — opens via More Input */}
+      {/* Full form sheet */}
       {showFullForm && (
         <MemberFeedbackSheet
           pitch={pitch}
           accentColor={accentColor}
           existingFeedback={userFeedback ?? null}
           onClose={() => setShowFullForm(false)}
-          onSubmitted={(feedback) => {
+          onSubmitted={(feedback, pointsData) => {
             onFeedbackSubmitted(feedback)
+            if (pointsData) setToast(pointsData)
             setShowFullForm(false)
           }}
+        />
+      )}
+
+      {/* Points toast */}
+      {toast && (
+        <PointsToast
+          earned={toast.earned}
+          newTotal={toast.newTotal}
+          justUnlocked={toast.justUnlocked}
+          badge={toast.badge}
+          accentColor={accentColor}
+          onDismiss={() => setToast(null)}
         />
       )}
     </>

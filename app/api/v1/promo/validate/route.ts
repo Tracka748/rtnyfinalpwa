@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createSupabaseServer } from '@/lib/supabase'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,6 +12,16 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+    // Auth check — promo validation requires a logged-in session
+    const supabaseServer = await createSupabaseServer()
+    const { data: { user } } = await supabaseServer.auth.getUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { code, userId, eventId, subtotal } = body
 

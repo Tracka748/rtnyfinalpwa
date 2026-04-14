@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkIsAdmin } from '@/lib/admin-auth';
 
 function getSupabaseAdmin() {
   return createClient(
@@ -11,6 +12,9 @@ function getSupabaseAdmin() {
 
 export async function POST() {
   try {
+    const adminCheck = await checkIsAdmin();
+    if (adminCheck.error) return adminCheck.response;
+
     const supabase = getSupabaseAdmin();
 
     // Fetch all orders
