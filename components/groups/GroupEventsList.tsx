@@ -10,7 +10,7 @@ export default function GroupEventsList({ events, groupName, accentColor = '#59F
   return (
     <div>
       <h2
-        className="font-slab-serif font-bold text-xl text-[#F9FDFF] mb-4 pl-3"
+        className="font-slab-serif font-bold text-4xl text-[#F9FDFF] mb-8 pl-4"
         style={{ borderLeft: `3px solid ${accentColor}` }}
       >
         Exclusive {groupName} Events
@@ -21,27 +21,14 @@ export default function GroupEventsList({ events, groupName, accentColor = '#59F
           No exclusive events right now. Stay tuned.
         </p>
       ) : (
-        <>
-          {/* Mobile: horizontal scroll */}
-          <div className="flex gap-4 overflow-x-auto pb-2 md:hidden scrollbar-hide">
-            {events.map(event => (
-              <div key={event.id} className="relative shrink-0 w-52">
-                <MembersOnlyBadge accentColor={accentColor} />
-                <EventCard event={event} />
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop: grid */}
-          <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {events.map(event => (
-              <div key={event.id} className="relative">
-                <MembersOnlyBadge accentColor={accentColor} />
-                <EventCard event={event} />
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {events.map(event => (
+            <div key={event.id} className="relative">
+              <MembersOnlyBadge accentColor={accentColor} />
+              <EventCard event={event} />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

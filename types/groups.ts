@@ -77,3 +77,37 @@ export interface GroupWithMembership extends Group {
   is_member?: boolean
   user_vote?: string | null
 }
+
+export interface EventPitch {
+  id: string
+  group_id: string
+  organizer_id: string
+  title: string
+  description: string
+  category: string
+  price_min: number
+  price_max: number
+  date_start: string
+  date_end: string
+  preferred_locations: string[]
+  ideas_details: string | null
+  interest_count: number
+  status: 'active' | 'closed' | 'archived'
+  created_at: string
+}
+
+export interface PitchFeedback {
+  id: string
+  pitch_id: string
+  member_id: string
+  interest_level: 'very_interested' | 'somewhat_interested' | 'not_interested'
+  thumbs_vote: 'up' | 'down' | null
+  preferred_dates: string[]
+  preferred_location: string | null
+  price_acceptable: boolean
+  price_range_min: number | null
+  price_range_max: number | null
+  additional_comments: string | null
+  action_commitment: 'interested' | 'very_interested' | null
+  submitted_at: string
+}

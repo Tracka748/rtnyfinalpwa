@@ -10,7 +10,7 @@ export default function GroupSpotlight({ spotlight, accentColor }: GroupSpotligh
     <div>
       {/* Section heading */}
       <h2
-        className="font-slab-serif font-bold text-xl text-[#F9FDFF] mb-4 pl-3"
+        className="font-slab-serif font-bold text-4xl text-[#F9FDFF] mb-8 pl-4"
         style={{ borderLeft: `3px solid ${accentColor}` }}
       >
         Featured

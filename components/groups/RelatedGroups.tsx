@@ -14,7 +14,7 @@ export default function RelatedGroups({ groups, currentSlug, accentColor }: Rela
   return (
     <div>
       <h2
-        className="font-slab-serif font-bold text-xl text-[#F9FDFF] mb-4 pl-3"
+        className="font-slab-serif font-bold text-4xl text-[#F9FDFF] mb-8 pl-4"
         style={{ borderLeft: `3px solid ${accentColor}` }}
       >
         More Communities

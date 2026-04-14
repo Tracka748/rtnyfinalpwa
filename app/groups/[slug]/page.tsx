@@ -107,10 +107,19 @@ export default async function GroupDetailPage({ params }: PageProps) {
         .limit(3)
     : { data: [] }
 
-  // Auth state + membership + poll votes
+  // Fetch active pitches
+  const { data: pitchesData } = await supabase
+    .from('event_pitches')
+    .select('*')
+    .eq('group_id', group.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+
+  // Auth state + membership + poll votes + pitch feedback
   const { data: { user } } = await supabase.auth.getUser()
   let is_member = false
   let userVotes: Record<string, string> = {}
+  let userPitchFeedback: Record<string, any> = {}
 
   if (user) {
     const { data: membership } = await supabase
@@ -129,6 +138,19 @@ export default async function GroupDetailPage({ params }: PageProps) {
         .eq('user_id', user.id)
         .in('poll_id', polls.map(p => p.id))
       userVotes = Object.fromEntries((votes || []).map(v => [v.poll_id, v.option_id]))
+    }
+
+    if (pitchesData?.length) {
+      const pitchIds = pitchesData.map(p => p.id)
+      const { data: feedbackData } = await supabase
+        .from('pitch_feedback')
+        .select('*')
+        .eq('member_id', user.id)
+        .in('pitch_id', pitchIds)
+
+      if (feedbackData) {
+        feedbackData.forEach(f => { userPitchFeedback[f.pitch_id] = f })
+      }
     }
   }
 
@@ -152,6 +174,8 @@ export default async function GroupDetailPage({ params }: PageProps) {
         members={members || []}
         relatedGroups={(relatedGroups || []) as Group[]}
         userVotes={userVotes}
+        pitches={pitchesData ?? []}
+        userPitchFeedback={userPitchFeedback}
       />
     </main>
   )

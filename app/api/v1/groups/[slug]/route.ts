@@ -61,6 +61,14 @@ export async function GET(
       .order('event_date', { ascending: true })
       .limit(10)
 
+    // Fetch active pitches
+    const { data: pitches } = await supabase
+      .from('event_pitches')
+      .select('*')
+      .eq('group_id', group.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+
     // Fetch active spotlight
     const { data: spotlight } = await supabase
       .from('group_spotlights')
@@ -136,6 +144,7 @@ export async function GET(
         updates,
         polls: pollsWithVotes,
         events: eventsWithData,
+        pitches: pitches ?? [],
         spotlight: spotlight ?? null,
         organizers: organizers ?? [],
         members: members || [],

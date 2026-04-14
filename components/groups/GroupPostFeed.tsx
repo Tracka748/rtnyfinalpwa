@@ -15,7 +15,7 @@ export default function GroupPostFeed({ announcements, updates, accentColor }: P
   return (
     <section>
       <h2
-        className="font-slab-serif text-xl text-white mb-5 pl-3"
+        className="font-slab-serif font-bold text-4xl text-white mb-8 pl-4"
         style={{ borderLeft: `3px solid ${accentColor}` }}
       >
         Updates

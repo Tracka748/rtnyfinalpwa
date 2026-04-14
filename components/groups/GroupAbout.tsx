@@ -13,7 +13,7 @@ export default function GroupAbout({ about, rules, groupName, accentColor }: Pro
       {about && (
         <div>
           <h2
-            className="font-slab-serif font-bold text-xl text-[#F9FDFF] mb-3 pl-3"
+            className="font-slab-serif font-bold text-4xl text-[#F9FDFF] mb-8 pl-4"
             style={{ borderLeft: `3px solid ${accentColor}` }}
           >
             About {groupName}
@@ -25,7 +25,7 @@ export default function GroupAbout({ about, rules, groupName, accentColor }: Pro
       {rules && (
         <div className="bg-[#1a1a1c] rounded-xl p-5 border border-white/5">
           <h2
-            className="font-slab-serif font-bold text-xl text-[#F9FDFF] mb-3 pl-3"
+            className="font-slab-serif font-bold text-4xl text-[#F9FDFF] mb-8 pl-4"
             style={{ borderLeft: `3px solid ${accentColor}` }}
           >
             Community Guidelines

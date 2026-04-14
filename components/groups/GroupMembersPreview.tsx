@@ -17,7 +17,7 @@ export default function GroupMembersPreview({ members, memberCount, accentColor 
   return (
     <section>
       <h2
-        className="font-slab-serif text-xl text-white mb-4 pl-3"
+        className="font-slab-serif font-bold text-4xl text-white mb-8 pl-4"
         style={{ borderLeft: `3px solid ${accentColor}` }}
       >
         Members
