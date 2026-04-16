@@ -46,6 +46,210 @@ export type Database = {
           },
         ]
       }
+      business_hours: {
+        Row: {
+          business_id: string
+          close_time: string
+          day_of_week: string
+          id: string
+          open_time: string
+        }
+        Insert: {
+          business_id: string
+          close_time: string
+          day_of_week: string
+          id?: string
+          open_time: string
+        }
+        Update: {
+          business_id?: string
+          close_time?: string
+          day_of_week?: string
+          id?: string
+          open_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_hours_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_offers: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          days_active: string[] | null
+          description: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          id: string
+          is_active: boolean | null
+          offer_type: string | null
+          time_end: string | null
+          time_start: string | null
+          title: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          days_active?: string[] | null
+          description?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          offer_type?: string | null
+          time_end?: string | null
+          time_start?: string | null
+          title: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          days_active?: string[] | null
+          description?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          offer_type?: string | null
+          time_end?: string | null
+          time_start?: string | null
+          title?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_offers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          address: string | null
+          avg_duration_minutes: number | null
+          avg_spend: number | null
+          category: string
+          created_at: string | null
+          energy_type: string | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          lat: number | null
+          lng: number | null
+          name: string
+          neighborhood: string | null
+          tags: string[] | null
+        }
+        Insert: {
+          address?: string | null
+          avg_duration_minutes?: number | null
+          avg_spend?: number | null
+          category: string
+          created_at?: string | null
+          energy_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          lat?: number | null
+          lng?: number | null
+          name: string
+          neighborhood?: string | null
+          tags?: string[] | null
+        }
+        Update: {
+          address?: string | null
+          avg_duration_minutes?: number | null
+          avg_spend?: number | null
+          category?: string
+          created_at?: string | null
+          energy_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          neighborhood?: string | null
+          tags?: string[] | null
+        }
+        Relationships: []
+      }
+      day_plans: {
+        Row: {
+          budget_range: string | null
+          created_at: string | null
+          energy_type: string | null
+          group_type: string | null
+          id: string
+          plan_date: string | null
+          status: string | null
+          stops: Json
+          tags: string[] | null
+          time_end: string | null
+          time_start: string | null
+          total_duration_minutes: number | null
+          total_estimated_spend: number | null
+          transportation: string | null
+          user_id: string | null
+        }
+        Insert: {
+          budget_range?: string | null
+          created_at?: string | null
+          energy_type?: string | null
+          group_type?: string | null
+          id?: string
+          plan_date?: string | null
+          status?: string | null
+          stops?: Json
+          tags?: string[] | null
+          time_end?: string | null
+          time_start?: string | null
+          total_duration_minutes?: number | null
+          total_estimated_spend?: number | null
+          transportation?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          budget_range?: string | null
+          created_at?: string | null
+          energy_type?: string | null
+          group_type?: string | null
+          id?: string
+          plan_date?: string | null
+          status?: string | null
+          stops?: Json
+          tags?: string[] | null
+          time_end?: string | null
+          time_start?: string | null
+          total_duration_minutes?: number | null
+          total_estimated_spend?: number | null
+          transportation?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_analytics: {
         Row: {
           add_to_cart: number | null
