@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
 
     // ── Parse params ──────────────────────────────────────────────────────────
+    const planDateParam   = searchParams.get('plan_date')
     const timeStartParam  = searchParams.get('time_start') ?? '12:00'
     const timeEndParam    = searchParams.get('time_end')   ?? '23:00'
     const budgetParam     = searchParams.get('budget')
@@ -110,9 +111,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // ── Resolve today's day name ──────────────────────────────────────────────
-    const todayName = DAY_NAMES[new Date().getDay()]   // e.g. 'saturday'
-    const todayISO  = new Date().toISOString().split('T')[0]  // 'YYYY-MM-DD'
+    // ── Resolve plan date (defaults to today in server local time) ────────────
+    let planDate: Date
+    if (planDateParam && /^\d{4}-\d{2}-\d{2}$/.test(planDateParam)) {
+      const [y, mo, d] = planDateParam.split('-').map(Number)
+      planDate = new Date(y, mo - 1, d)
+    } else {
+      planDate = new Date()
+    }
+    const todayName = DAY_NAMES[planDate.getDay()]   // e.g. 'saturday'
+    const todayISO  = [
+      planDate.getFullYear(),
+      String(planDate.getMonth() + 1).padStart(2, '0'),
+      String(planDate.getDate()).padStart(2, '0'),
+    ].join('-')
 
     // ── Fetch data ────────────────────────────────────────────────────────────
     const supabase = createSupabaseAdmin()

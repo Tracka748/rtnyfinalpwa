@@ -121,6 +121,32 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function toISOLocal(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+interface DayPill {
+  date: string       // YYYY-MM-DD
+  dayLabel: string   // 'Today' | 'Mon' | 'Tue' …
+  monthDay: string   // 'Apr 17'
+}
+
+function getDayPills(): DayPill[] {
+  const base = new Date()
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base)
+    d.setDate(base.getDate() + i)
+    return {
+      date:     toISOLocal(d),
+      dayLabel: i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+      monthDay: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    }
+  })
+}
+
 function getCategoryIcon(category: string): string {
   const lower = category.toLowerCase()
   for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
@@ -198,8 +224,9 @@ const DEFAULT_FORM: FormState = {
   transportation:'car',
 }
 
-function buildParams(form: FormState): URLSearchParams {
+function buildParams(form: FormState, planDate: string): URLSearchParams {
   const params = new URLSearchParams()
+  params.set('plan_date',  planDate)
   params.set('time_start', form.timeStart)
   params.set('time_end',   form.timeEnd)
   const budgetOpt = BUDGET_OPTIONS.find(b => b.label === form.budget)
@@ -212,6 +239,42 @@ function buildParams(form: FormState): URLSearchParams {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+interface DaySelectorProps {
+  pills: DayPill[]
+  selected: string
+  onChange: (date: string) => void
+}
+
+function DaySelector({ pills, selected, onChange }: DaySelectorProps) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 mb-5 scrollbar-none">
+      {pills.map(pill => {
+        const active = pill.date === selected
+        return (
+          <button
+            key={pill.date}
+            type="button"
+            onClick={() => onChange(pill.date)}
+            className={cn(
+              'flex-shrink-0 flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-full border text-center transition-all duration-150',
+              active
+                ? 'border-[#1ac8ed] bg-[#1ac8ed]/10 text-[#1ac8ed]'
+                : 'border-[#2a2829] bg-[#1a1819] text-[#7DD8E8]/60 hover:border-[#1ac8ed]/40 hover:text-[#7DD8E8]'
+            )}
+          >
+            <span className="font-label text-[10px] tracking-widest leading-none">
+              {pill.dayLabel.toUpperCase()}
+            </span>
+            <span className="font-sans text-[11px] leading-none mt-0.5 whitespace-nowrap">
+              {pill.monthDay}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -773,6 +836,7 @@ function TimelineView({ enrichedStops, swappingIdx, onLock, onSwap }: TimelineVi
 
 export function PlanMyDay() {
   const [form, setFormState] = useState<FormState>(DEFAULT_FORM)
+  const [selectedDate, setSelectedDate] = useState<string>(() => toISOLocal(new Date()))
   const [enrichedStops, setEnrichedStops] = useState<EnrichedStop[]>([])
   const [totalSpend, setTotalSpend]   = useState(0)
   const [totalMins,  setTotalMins]    = useState(0)
@@ -781,6 +845,8 @@ export function PlanMyDay() {
   const [swappingIdx,  setSwappingIdx]  = useState<number | null>(null)
   const [error,      setError]        = useState<string | null>(null)
   const [hasResult,  setHasResult]    = useState(false)
+
+  const dayPills = getDayPills()
 
   // Field setter (stable reference)
   const set = useCallback(<K extends keyof FormState>(k: K, v: FormState[K]) => {
@@ -792,7 +858,7 @@ export function PlanMyDay() {
 
   // Core fetch function — returns enriched stops on success
   async function fetchPlan(f: FormState): Promise<EnrichedStop[] | null> {
-    const params = buildParams(f)
+    const params = buildParams(f, selectedDate)
     const res = await fetch(`/api/v1/plan/day?${params.toString()}`)
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
@@ -895,19 +961,11 @@ export function PlanMyDay() {
   }
 
   const lockedCount = enrichedStops.filter(s => s.locked).length
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  })
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Date eyebrow */}
-      <div className="mb-5 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#1ac8ed] animate-pulse" />
-        <span className="text-[#7DD8E8] text-[10px] font-label tracking-widest">
-          TODAY · {today.toUpperCase()}
-        </span>
-      </div>
+      {/* Day selector */}
+      <DaySelector pills={dayPills} selected={selectedDate} onChange={setSelectedDate} />
 
       {/* Input panel */}
       <InputPanel form={form} set={set} onGenerate={handleGenerate} loading={loading} />
