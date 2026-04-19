@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
-
-// TODO: replace with proper admin session auth post-launch
+import { checkIsAdmin } from '@/lib/admin-auth'
 
 export async function POST(request: NextRequest) {
   try {
-    // Shared-secret check — scanner devices must supply the server-side secret
-    const scannerToken = request.headers.get('x-scanner-token')
-    if (!scannerToken || scannerToken !== process.env.SCANNER_SECRET) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
-    }
+    const adminCheck = await checkIsAdmin()
+    if (adminCheck.error) return adminCheck.response
 
     const body = await request.json()
     const { code } = body
@@ -115,7 +108,7 @@ export async function POST(request: NextRequest) {
         ? { id: event.id, name: event.name, event_date: event.event_date }
         : null,
       holder: {
-        display_name: holderName,
+        name: holderName,
         email: profile?.email ?? null,
       },
     })

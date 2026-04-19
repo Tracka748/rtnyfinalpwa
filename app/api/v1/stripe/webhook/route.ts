@@ -114,7 +114,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           purchased_by: userId,
           purchase_date: new Date().toISOString(),
           payment_intent_id: (session.payment_intent as string) ?? null,
-          confirmation_code: ticketNumber,
+          confirmation_code: 'RTNY-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
           qr_code_data: ticketNumber, // placeholder; overwritten below
           status: 'purchased',
         })
