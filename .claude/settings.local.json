@@ -13,7 +13,8 @@
       "Bash(xargs grep:*)",
       "Bash(xxd \"c:/Users/Stock/rtnyfinalpwa/lib/supabase/client.ts\")",
       "Bash(grep -l \"checkIsAdmin\\\\|checkAdminAccess\" /c/Users/Stock/rtnyfinalpwa/app/api/v1/admin/**/*.ts)",
-      "Bash(grep -L \"checkIsAdmin\\\\|checkAdminAccess\" /c/Users/Stock/rtnyfinalpwa/app/api/v1/admin/**/*.ts)"
+      "Bash(grep -L \"checkIsAdmin\\\\|checkAdminAccess\" /c/Users/Stock/rtnyfinalpwa/app/api/v1/admin/**/*.ts)",
+      "Bash(grep -v \"^$\")"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -86,6 +86,60 @@ const TRANSPORT_OPTIONS = [
   { value: 'rideshare', label: 'Rideshare',  icon: '🚕' },
   { value: 'walking',   label: 'Walking',    icon: '🚶' },
 ]
+
+// ─── Group-based tag suggestions ──────────────────────────────────────────────
+
+interface UserGroup {
+  id: string
+  name: string
+  slug: string | null
+  category: string | null
+}
+
+interface GroupSuggestion {
+  /** The 1–2 matched groups shown in the strip */
+  groups: UserGroup[]
+  /** Deduped, valid, max-3 tags derived from those groups */
+  tags: string[]
+}
+
+const GROUP_TAG_MAP: Array<{ keywords: string[]; tags: string[] }> = [
+  { keywords: ['music', 'hip hop', 'hip-hop', 'concert'], tags: ['night', 'entertainment', 'social'] },
+  { keywords: ['food', 'dining'],                          tags: ['food', 'social', 'casual']         },
+  { keywords: ['fitness', 'active'],                       tags: ['active', 'explore']                },
+  { keywords: ['art', 'culture'],                          tags: ['entertainment', 'explore']         },
+]
+
+// Pre-computed set of valid tag values for fast filtering
+const VALID_TAG_VALUES = new Set(TAGS.map(t => t.value))
+
+function computeSuggestions(groups: UserGroup[]): GroupSuggestion | null {
+  const matchedGroups: UserGroup[] = []
+  const tagSet = new Set<string>()
+
+  for (const group of groups) {
+    // Search both group name and category for keyword matches
+    const haystack = `${group.name} ${group.category ?? ''}`.toLowerCase()
+    let matched = false
+
+    for (const rule of GROUP_TAG_MAP) {
+      if (rule.keywords.some(kw => haystack.includes(kw))) {
+        matched = true
+        for (const tag of rule.tags) {
+          if (VALID_TAG_VALUES.has(tag) && tagSet.size < 3) tagSet.add(tag)
+        }
+      }
+    }
+    if (matched) matchedGroups.push(group)
+  }
+
+  if (matchedGroups.length === 0 || tagSet.size === 0) return null
+
+  return {
+    groups: matchedGroups.slice(0, 2),
+    tags:   [...tagSet],
+  }
+}
 
 const SEGMENT_CONFIG: Record<SegmentLabel, { label: string; icon: string; color: string }> = {
   afternoon: { label: 'Afternoon', icon: '☀️',  color: '#f59e0b' },
@@ -281,6 +335,75 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     <label className="block font-label text-[10px] tracking-widest text-[#7DD8E8] mb-2.5">
       {children}
     </label>
+  )
+}
+
+// ─── Group suggestion strip ───────────────────────────────────────────────────
+
+interface GroupSuggestionStripProps {
+  suggestion: GroupSuggestion
+  currentTags: string[]
+  onApply: (tags: string[]) => void
+}
+
+function GroupSuggestionStrip({ suggestion, currentTags, onApply }: GroupSuggestionStripProps) {
+  const [applied, setApplied] = useState(false)
+
+  // Already applied if every suggested tag is present in current selection
+  const alreadyApplied = suggestion.tags.every(t => currentTags.includes(t))
+
+  function handleApply() {
+    onApply(suggestion.tags)
+    setApplied(true)
+    setTimeout(() => setApplied(false), 2000)
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-2.5 px-3 py-2.5 rounded-xl bg-[#1ac8ed]/5 border border-[#1ac8ed]/10">
+      {/* Spark icon + label */}
+      <span className="font-sans text-[10px] text-[#7DD8E8]/55 shrink-0 flex items-center gap-1">
+        <svg className="w-2.5 h-2.5 shrink-0 text-[#1ac8ed]/60" viewBox="0 0 10 10" fill="none">
+          <path d="M5 1l1 3h3L6.5 6l1 3L5 7.5 2.5 9l1-3L1 4h3L5 1z" stroke="currentColor" strokeWidth="0.8" strokeLinejoin="round" fill="currentColor" fillOpacity="0.25" />
+        </svg>
+        Based on your groups:
+      </span>
+
+      {/* Group name pills */}
+      <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+        {suggestion.groups.map(g => (
+          <span
+            key={g.id}
+            className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#242324] border border-[#2a2829] text-[#f9fdff]/65 font-sans text-[10px] truncate max-w-[120px]"
+          >
+            {g.name}
+          </span>
+        ))}
+      </div>
+
+      {/* Apply button */}
+      <button
+        type="button"
+        onClick={handleApply}
+        disabled={alreadyApplied}
+        className={cn(
+          'shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg border font-sans text-[11px] transition-all duration-150',
+          applied || alreadyApplied
+            ? 'border-[#59ffa0]/30 bg-[#59ffa0]/8 text-[#59ffa0] cursor-default'
+            : 'border-[#1ac8ed]/30 text-[#1ac8ed] hover:bg-[#1ac8ed]/10 active:scale-[0.97]'
+        )}
+      >
+        {applied || alreadyApplied ? (
+          <>
+            <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 10 10" fill="none">
+              <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Applied
+          </>
+        ) : (
+          'Apply suggestions'
+        )}
+      </button>
+    </div>
   )
 }
 
@@ -511,9 +634,10 @@ interface InputPanelProps {
   set: <K extends keyof FormState>(k: K, v: FormState[K]) => void
   onGenerate: () => void
   loading: boolean
+  groupSuggestion: GroupSuggestion | null
 }
 
-function InputPanel({ form, set, onGenerate, loading }: InputPanelProps) {
+function InputPanel({ form, set, onGenerate, loading, groupSuggestion }: InputPanelProps) {
   const inputBase =
     'w-full bg-[#121113] border border-[#2a2829] rounded-xl px-4 py-2.5 text-[#f9fdff] font-sans text-sm ' +
     'placeholder:text-[#7DD8E8]/40 outline-none transition-all duration-200 ' +
@@ -596,6 +720,15 @@ function InputPanel({ form, set, onGenerate, loading }: InputPanelProps) {
 
       {/* Tags — max 3 */}
       <div className="p-4 md:p-5">
+        {/* Group-based suggestions — only shown when user has matching groups */}
+        {groupSuggestion && (
+          <GroupSuggestionStrip
+            suggestion={groupSuggestion}
+            currentTags={form.tags}
+            onApply={tags => set('tags', tags)}
+          />
+        )}
+
         <div className="flex items-center justify-between mb-2.5">
           <FieldLabel>Mood Tags</FieldLabel>
           <span className="text-[10px] text-[#7DD8E8]/50 font-sans">
@@ -838,15 +971,34 @@ export function PlanMyDay() {
   const [form, setFormState] = useState<FormState>(DEFAULT_FORM)
   const [selectedDate, setSelectedDate] = useState<string>(() => toISOLocal(new Date()))
   const [enrichedStops, setEnrichedStops] = useState<EnrichedStop[]>([])
-  const [totalSpend, setTotalSpend]   = useState(0)
-  const [totalMins,  setTotalMins]    = useState(0)
-  const [loading,    setLoading]      = useState(false)
-  const [regenLoading, setRegenLoading] = useState(false)
-  const [swappingIdx,  setSwappingIdx]  = useState<number | null>(null)
-  const [error,      setError]        = useState<string | null>(null)
-  const [hasResult,  setHasResult]    = useState(false)
+  const [totalSpend, setTotalSpend]       = useState(0)
+  const [totalMins,  setTotalMins]        = useState(0)
+  const [loading,    setLoading]          = useState(false)
+  const [regenLoading, setRegenLoading]   = useState(false)
+  const [swappingIdx,  setSwappingIdx]    = useState<number | null>(null)
+  const [error,      setError]            = useState<string | null>(null)
+  const [hasResult,  setHasResult]        = useState(false)
+  const [groupSuggestion, setGroupSuggestion] = useState<GroupSuggestion | null>(null)
 
   const dayPills = getDayPills()
+
+  // ── Fetch user's group memberships on mount for tag suggestions ────────────
+  useEffect(() => {
+    async function loadGroupSuggestions() {
+      try {
+        const res = await fetch('/api/v1/users/me/groups')
+        // 401 = not authenticated; any error = hide section silently
+        if (!res.ok) return
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data?.groups) && json.data.groups.length > 0) {
+          setGroupSuggestion(computeSuggestions(json.data.groups))
+        }
+      } catch {
+        // Network error — fail silently, feature just won't appear
+      }
+    }
+    loadGroupSuggestions()
+  }, [])
 
   // Field setter (stable reference)
   const set = useCallback(<K extends keyof FormState>(k: K, v: FormState[K]) => {
@@ -968,7 +1120,13 @@ export function PlanMyDay() {
       <DaySelector pills={dayPills} selected={selectedDate} onChange={setSelectedDate} />
 
       {/* Input panel */}
-      <InputPanel form={form} set={set} onGenerate={handleGenerate} loading={loading} />
+      <InputPanel
+        form={form}
+        set={set}
+        onGenerate={handleGenerate}
+        loading={loading}
+        groupSuggestion={groupSuggestion}
+      />
 
       {/* Results area */}
       {loading && (
