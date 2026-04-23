@@ -4,40 +4,27 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
-  { href: '/admin', icon: '📊', label: 'Dashboard' },
-  { href: '/admin/events', icon: '🎫', label: 'Events' },
-  { href: '/admin/scan', icon: '🔍', label: 'Scanner' },
-  { href: '/admin/audience', icon: '🧠', label: 'Audience' },
-  { href: '/admin/promoter-applications', icon: '📝', label: 'Applications' },
-  { href: '/admin/event-drafts', icon: '✏️', label: 'Drafts' },
-  { href: '/admin/orders', icon: '🛒', label: 'Orders' },
-  { href: '/admin/users', icon: '👥', label: 'Users' },
-  { href: '/admin/groups', icon: '👥', label: 'Groups' },
-  { href: '/admin/promo-codes', icon: '🏷️', label: 'Promo Codes' },
-  { href: '/admin/invites', icon: '✉️', label: 'Invites' },
-  { href: '/admin/settings', icon: '⚙️', label: 'Settings' },
+  { href: '/promoter/dashboard', icon: '📊', label: 'Overview' },
+  { href: '/promoter/events', icon: '🎫', label: 'My Events' },
+  { href: '/promoter/analytics', icon: '📈', label: 'Analytics' },
+  { href: '/promoter/promo-codes', icon: '🏷️', label: 'Promo Codes' },
+  { href: '/promoter/profile', icon: '👤', label: 'My Profile' },
 ];
 
 const pageTitles: Record<string, string> = {
-  '/admin': 'Dashboard',
-  '/admin/events': 'Events',
-  '/admin/scan': 'Ticket Scanner',
-  '/admin/audience': 'Audience',
-  '/admin/promoter-applications': 'Applications',
-  '/admin/event-drafts': 'Drafts',
-  '/admin/orders': 'Orders',
-  '/admin/users': 'User Management',
-  '/admin/groups': 'Group Management',
-  '/admin/promo-codes': 'Promo Codes',
-  '/admin/settings': 'Settings',
+  '/promoter/dashboard': 'Overview',
+  '/promoter/events': 'My Events',
+  '/promoter/analytics': 'Analytics',
+  '/promoter/promo-codes': 'Promo Codes',
+  '/promoter/profile': 'My Profile',
 };
 
-interface AdminShellProps {
+interface PromoterShellProps {
   children: React.ReactNode;
   userEmail?: string;
 }
 
-export function AdminShell({ children, userEmail }: AdminShellProps) {
+export function PromoterShell({ children, userEmail }: PromoterShellProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -49,12 +36,11 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Close sidebar on navigation on mobile
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
   }, [pathname, isMobile]);
 
-  const pageTitle = pageTitles[pathname] ?? 'Admin';
+  const pageTitle = pageTitles[pathname] ?? 'Promoter Hub';
 
   return (
     <div className="min-h-screen bg-[#121113] flex">
@@ -79,10 +65,10 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
         {/* Logo */}
         <div className="p-5 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🛠️</span>
+            <span className="text-2xl">🎪</span>
             <div>
               <p className="text-base font-header font-bold text-white leading-none">
-                RTNY Admin
+                Promoter Hub
               </p>
               {userEmail && (
                 <p className="text-xs text-[#7DD8E8] mt-0.5 truncate max-w-[150px]">
@@ -97,8 +83,8 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {navItems.map((item) => {
             const isActive =
-              item.href === '/admin'
-                ? pathname === '/admin'
+              item.href === '/promoter/dashboard'
+                ? pathname === '/promoter/dashboard'
                 : pathname.startsWith(item.href);
 
             return (

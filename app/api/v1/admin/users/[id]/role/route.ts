@@ -72,6 +72,28 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
+    // Auto-create promoters row for organizer and promoter roles
+    if (role === 'organizer' || role === 'promoter') {
+      const { data: existingPromoter } = await supabase
+        .from('promoters')
+        .select('id')
+        .eq('user_id', targetId)
+        .maybeSingle();
+
+      if (!existingPromoter) {
+        const displayName = [data.first_name, data.last_name].filter(Boolean).join(' ') || data.email || 'Unknown';
+        await supabase
+          .from('promoters')
+          .insert({
+            user_id: targetId,
+            display_name: displayName,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+      }
+    }
+
     return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error('Role update error:', err);

@@ -58,6 +58,31 @@ export async function POST(
     // await sendPromoterApprovalEmail(application.contact_email, application.business_name)
     //   .catch(err => console.error('⚠️ Failed to send email:', err))
 
+    // Update user's profile role to promoter
+    await supabase
+      .from('profiles')
+      .update({ role: 'promoter' })
+      .eq('id', application.user_id);
+
+    // Create promoters row if it doesn't exist
+    const { data: existingPromoter } = await supabase
+      .from('promoters')
+      .select('id')
+      .eq('user_id', application.user_id)
+      .maybeSingle();
+
+    if (!existingPromoter) {
+      await supabase
+        .from('promoters')
+        .insert({
+          user_id: application.user_id,
+          display_name: application.business_name,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+    }
+
     return NextResponse.json({
       success: true,
       data,

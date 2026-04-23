@@ -253,7 +253,7 @@ export function Sidebar() {
             {isPromoter ? (
               <NavItem href="/promoter/dashboard" emoji="📊" label="Promoter Dashboard" onClick={handleNavClick} />
             ) : (
-              <NavItem href="/promoter/apply" emoji="🤝" label="Become a Promoter" onClick={handleNavClick} />
+              <NavItem href="/apply/promoter" emoji="🤝" label="Become a Promoter" onClick={handleNavClick} />
             )}
           </div>
 

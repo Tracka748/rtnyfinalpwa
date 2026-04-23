@@ -68,7 +68,7 @@ export default function PromoterApplicationPage() {
       console.log('[Partner Portal] Response:', data);
 
       if (data.success) {
-        window.location.href = '/promoter/apply/success';
+        window.location.href = '/apply/promoter/success';
       } else {
         if (res.status === 401) {
           setError('You must be logged in to apply. Please sign in first.');
