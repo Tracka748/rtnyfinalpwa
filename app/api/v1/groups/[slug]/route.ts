@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createSupabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
   _req: NextRequest,
@@ -9,9 +10,12 @@ export async function GET(
 
   try {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const db = createSupabaseAdmin()
 
     // Fetch group
-    const { data: group, error: groupError } = await supabase
+    const { data: group, error: groupError } = await db
       .from('groups')
       .select('*')
       .eq('slug', slug)
@@ -23,7 +27,7 @@ export async function GET(
     }
 
     // Fetch posts
-    const { data: posts } = await supabase
+    const { data: posts } = await db
       .from('group_posts')
       .select('*')
       .eq('group_id', group.id)
@@ -42,7 +46,7 @@ export async function GET(
 
     let polls: any[] = []
     if (pollPostIds.length > 0) {
-      const { data: pollData } = await supabase
+      const { data: pollData } = await db
         .from('group_polls')
         .select('*')
         .in('post_id', pollPostIds)
@@ -53,7 +57,7 @@ export async function GET(
     const now = new Date()
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
-    const { data: events } = await supabase
+    const { data: events } = await db
       .from('events')
       .select('*, venues!inner(name, address), ticket_types(*)')
       .eq('group_id', group.id)
@@ -62,7 +66,7 @@ export async function GET(
       .limit(10)
 
     // Fetch active pitches
-    const { data: pitches } = await supabase
+    const { data: pitches } = await db
       .from('event_pitches')
       .select('*')
       .eq('group_id', group.id)
@@ -70,7 +74,7 @@ export async function GET(
       .order('created_at', { ascending: false })
 
     // Fetch active spotlight
-    const { data: spotlight } = await supabase
+    const { data: spotlight } = await db
       .from('group_spotlights')
       .select('*')
       .eq('group_id', group.id)
@@ -79,14 +83,14 @@ export async function GET(
       .maybeSingle()
 
     // Fetch organizers
-    const { data: organizers } = await supabase
+    const { data: organizers } = await db
       .from('group_organizers')
       .select('*')
       .eq('group_id', group.id)
       .order('sort_order', { ascending: true })
 
     // Fetch recent members preview
-    const { data: members } = await supabase
+    const { data: members } = await db
       .from('group_memberships')
       .select('user_id, joined_at')
       .eq('group_id', group.id)
@@ -94,7 +98,7 @@ export async function GET(
       .limit(12)
 
     // Fetch related groups (same category)
-    const { data: relatedGroups } = await supabase
+    const { data: relatedGroups } = await db
       .from('groups')
       .select('id, slug, name, tagline, card_image_url, accent_color, member_count')
       .eq('category', group.category)
@@ -103,12 +107,11 @@ export async function GET(
       .limit(3)
 
     // Check membership and poll votes for authenticated user
-    const { data: { user } } = await supabase.auth.getUser()
     let is_member = false
     let userVotes: Record<string, string> = {}
 
     if (user) {
-      const { data: membership } = await supabase
+      const { data: membership } = await db
         .from('group_memberships')
         .select('id')
         .eq('group_id', group.id)
@@ -118,7 +121,7 @@ export async function GET(
       is_member = !!membership
 
       if (polls.length > 0) {
-        const { data: votes } = await supabase
+        const { data: votes } = await db
           .from('group_poll_votes')
           .select('poll_id, option_id')
           .eq('user_id', user.id)

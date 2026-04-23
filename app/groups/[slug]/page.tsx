@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createSupabaseAdmin } from '@/lib/supabase'
 import GroupDetailClient from '@/components/groups/GroupDetailClient'
 import { GroupPost, GroupPoll, Group, GroupOrganizer } from '@/types/groups'
 
@@ -10,8 +11,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
-  const supabase = await createClient()
-  const { data: group } = await supabase
+  const db = createSupabaseAdmin()
+  const { data: group } = await db
     .from('groups')
     .select('name')
     .eq('slug', slug)
@@ -26,9 +27,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function GroupDetailPage({ params }: PageProps) {
   const { slug } = await params
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const db = createSupabaseAdmin()
 
   // Fetch group
-  const { data: group, error: groupError } = await supabase
+  const { data: group, error: groupError } = await db
     .from('groups')
     .select('*')
     .eq('slug', slug)
@@ -38,7 +42,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
   if (groupError || !group) notFound()
 
   // Fetch posts
-  const { data: posts } = await supabase
+  const { data: posts } = await db
     .from('group_posts')
     .select('*')
     .eq('group_id', group.id)
@@ -54,7 +58,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
   const pollPostIds = (posts || []).filter(p => p.post_type === 'poll').map(p => p.id)
   let polls: any[] = []
   if (pollPostIds.length > 0) {
-    const { data: pollData } = await supabase
+    const { data: pollData } = await db
       .from('group_polls')
       .select('*')
       .in('post_id', pollPostIds)
@@ -64,7 +68,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
   // Fetch exclusive events
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const { data: events } = await supabase
+  const { data: events } = await db
     .from('events')
     .select('*, venues!inner(name, address), ticket_types(*)')
     .eq('group_id', group.id)
@@ -73,7 +77,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
     .limit(10)
 
   // Fetch active spotlight
-  const { data: spotlight } = await supabase
+  const { data: spotlight } = await db
     .from('group_spotlights')
     .select('*')
     .eq('group_id', group.id)
@@ -82,14 +86,14 @@ export default async function GroupDetailPage({ params }: PageProps) {
     .maybeSingle()
 
   // Fetch organizers
-  const { data: organizers } = await supabase
+  const { data: organizers } = await db
     .from('group_organizers')
     .select('*')
     .eq('group_id', group.id)
     .order('sort_order', { ascending: true })
 
   // Fetch recent members preview
-  const { data: members } = await supabase
+  const { data: members } = await db
     .from('group_memberships')
     .select('user_id, joined_at')
     .eq('group_id', group.id)
@@ -98,7 +102,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
 
   // Fetch related groups (same category)
   const { data: relatedGroups } = group.category
-    ? await supabase
+    ? await db
         .from('groups')
         .select('id, slug, name, tagline, card_image_url, accent_color, member_count, cover_image_url, description, about, rules, category, is_active, sort_order, created_at')
         .eq('category', group.category)
@@ -108,7 +112,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
     : { data: [] }
 
   // Fetch active pitches
-  const { data: pitchesData } = await supabase
+  const { data: pitchesData } = await db
     .from('event_pitches')
     .select('*')
     .eq('group_id', group.id)
@@ -116,13 +120,12 @@ export default async function GroupDetailPage({ params }: PageProps) {
     .order('created_at', { ascending: false })
 
   // Auth state + membership + poll votes + pitch feedback
-  const { data: { user } } = await supabase.auth.getUser()
   let is_member = false
   let userVotes: Record<string, string> = {}
   let userPitchFeedback: Record<string, any> = {}
 
   if (user) {
-    const { data: membership } = await supabase
+    const { data: membership } = await db
       .from('group_memberships')
       .select('id')
       .eq('group_id', group.id)
@@ -132,7 +135,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
     is_member = !!membership
 
     if (polls.length > 0) {
-      const { data: votes } = await supabase
+      const { data: votes } = await db
         .from('group_poll_votes')
         .select('poll_id, option_id')
         .eq('user_id', user.id)
@@ -142,7 +145,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
 
     if (pitchesData?.length) {
       const pitchIds = pitchesData.map(p => p.id)
-      const { data: feedbackData } = await supabase
+      const { data: feedbackData } = await db
         .from('pitch_feedback')
         .select('*')
         .eq('member_id', user.id)

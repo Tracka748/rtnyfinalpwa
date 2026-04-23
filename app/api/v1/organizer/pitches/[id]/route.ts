@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseAdmin } from '@/lib/supabase';
 
 const VALID_STATUSES = ['active', 'closed', 'converted'] as const;
 
@@ -15,6 +16,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const db = createSupabaseAdmin();
     const { id } = await params;
 
     const body = await req.json();
@@ -28,7 +30,7 @@ export async function PATCH(
     }
 
     // 1. Get promoter row
-    const { data: promoter } = await supabase
+    const { data: promoter } = await db
       .from('promoters')
       .select('id')
       .eq('user_id', user.id)
@@ -40,7 +42,7 @@ export async function PATCH(
     }
 
     // 2. Get group_ids this organizer manages
-    const { data: orgRows } = await supabase
+    const { data: orgRows } = await db
       .from('group_organizers')
       .select('group_id')
       .eq('promoter_id', promoter.id);
@@ -48,7 +50,7 @@ export async function PATCH(
     const groupIds = (orgRows ?? []).map((r) => r.group_id);
 
     // 3. Fetch the pitch and verify it belongs to one of their groups
-    const { data: pitch, error: fetchError } = await supabase
+    const { data: pitch, error: fetchError } = await db
       .from('event_pitches')
       .select('id, group_id, status')
       .eq('id', id)
@@ -63,7 +65,7 @@ export async function PATCH(
     }
 
     // 4. Update status
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await db
       .from('event_pitches')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)

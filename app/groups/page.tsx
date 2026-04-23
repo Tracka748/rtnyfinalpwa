@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { createSupabaseAdmin } from '@/lib/supabase'
 import { GroupGrid } from '@/components/groups/GroupGrid'
 import { GroupWithMembership } from '@/types/groups'
 
@@ -10,20 +11,21 @@ export const metadata: Metadata = {
 
 export default async function GroupsPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  const { data: groups } = await supabase
+  const db = createSupabaseAdmin()
+
+  const { data: groups } = await db
     .from('groups')
     .select('*')
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: { session } } = await supabase.auth.getSession()
-
   let groupsWithMembership: GroupWithMembership[] = groups || []
 
   if (user && groups && groups.length > 0) {
-    const { data: memberships } = await supabase
+    const { data: memberships } = await db
       .from('group_memberships')
       .select('group_id')
       .eq('user_id', user.id)
@@ -36,7 +38,7 @@ export default async function GroupsPage() {
   }
 
   // Fetch organizers
-  const { data: organizerRows } = await supabase
+  const { data: organizerRows } = await db
     .from('group_organizers')
     .select('group_id, promoter_id')
 
@@ -46,12 +48,12 @@ export default async function GroupsPage() {
     const promoterIds = [...new Set(organizerRows.map(r => r.promoter_id))]
     const groupIds = [...new Set(organizerRows.map(r => r.group_id))]
 
-    const { data: promoters } = await supabase
+    const { data: promoters } = await db
       .from('promoters')
       .select('id, display_name')
       .in('id', promoterIds)
 
-    const { data: orgGroups } = await supabase
+    const { data: orgGroups } = await db
       .from('groups')
       .select('id, name, slug, accent_color')
       .in('id', groupIds)

@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createSupabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const db = createSupabaseAdmin()
 
     // 1. Fetch all active groups
-    const { data: groups, error: groupsError } = await supabase
+    const { data: groups, error: groupsError } = await db
       .from('groups')
       .select('id, slug, name, tagline, description, cover_image_url, card_image_url, accent_color, category, member_count, is_active, sort_order, early_access_hours')
       .eq('is_active', true)
@@ -24,7 +28,7 @@ export async function GET() {
     const groupIds = groups.map(g => g.id)
 
     // 2. Fetch organizers (group_organizers → promoters)
-    const { data: organizerRows, error: organizersError } = await supabase
+    const { data: organizerRows, error: organizersError } = await db
       .from('group_organizers')
       .select('group_id, promoter_id')
       .in('group_id', groupIds)
@@ -37,7 +41,7 @@ export async function GET() {
 
     let promoterNameById: Record<string, string> = {}
     if (promoterIds.length > 0) {
-      const { data: promoters, error: promotersError } = await supabase
+      const { data: promoters, error: promotersError } = await db
         .from('promoters')
         .select('id, display_name')
         .in('id', promoterIds)
@@ -59,7 +63,21 @@ export async function GET() {
       }
     }
 
-    // 3. Aggregate
+    // 3. Fetch membership status for authenticated user
+    const memberGroupIds = new Set<string>()
+    if (user) {
+      const { data: memberships } = await db
+        .from('group_memberships')
+        .select('group_id')
+        .eq('user_id', user.id)
+        .in('group_id', groupIds)
+
+      for (const m of memberships || []) {
+        memberGroupIds.add(m.group_id)
+      }
+    }
+
+    // 4. Aggregate
     const result = groups.map(g => ({
       id: g.id,
       slug: g.slug,
@@ -75,6 +93,7 @@ export async function GET() {
       sort_order: g.sort_order,
       early_access_hours: g.early_access_hours,
       organizer_name: organizerByGroup[g.id] ?? null,
+      is_member: memberGroupIds.has(g.id),
     }))
 
     return NextResponse.json({ success: true, data: result })

@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseAdmin } from '@/lib/supabase';
 
 const VALID_POST_TYPES = ['announcement', 'update', 'poll'] as const;
 
-async function getPromoterAndGroups(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const { data: promoter } = await supabase
+async function getPromoterAndGroups(db: ReturnType<typeof createSupabaseAdmin>, userId: string) {
+  const { data: promoter } = await db
     .from('promoters')
     .select('id')
     .eq('user_id', userId)
-    .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!promoter) return { promoter: null, groupIds: [] };
 
-  const { data: orgRows } = await supabase
+  const { data: orgRows } = await db
     .from('group_organizers')
     .select('group_id')
     .eq('promoter_id', promoter.id);
@@ -31,7 +31,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { groupIds } = await getPromoterAndGroups(supabase, user.id);
+    const db = createSupabaseAdmin();
+
+    const { groupIds } = await getPromoterAndGroups(db, user.id);
 
     if (groupIds.length === 0) {
       const isCount = req.nextUrl.searchParams.get('count') === 'true';
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest) {
     const isCount = req.nextUrl.searchParams.get('count') === 'true';
 
     if (isCount) {
-      const { count, error } = await supabase
+      const { count, error } = await db
         .from('group_posts')
         .select('id', { count: 'exact', head: true })
         .in('group_id', groupIds);
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data: { count: count ?? 0 } });
     }
 
-    const { data: posts, error: postsError } = await supabase
+    const { data: posts, error: postsError } = await db
       .from('group_posts')
       .select('id, group_id, author_id, title, body, post_type, is_pinned, created_at')
       .in('group_id', groupIds)
@@ -67,7 +69,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch group names for enrichment
-    const { data: groups } = await supabase
+    const { data: groups } = await db
       .from('groups')
       .select('id, name')
       .in('id', groupIds);
@@ -96,6 +98,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const db = createSupabaseAdmin();
+
     const body = await req.json();
     const { group_id, title, body: postBody, post_type, is_pinned } = body;
 
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `post_type must be one of: ${VALID_POST_TYPES.join(', ')}` }, { status: 400 });
     }
 
-    const { promoter, groupIds } = await getPromoterAndGroups(supabase, user.id);
+    const { promoter, groupIds } = await getPromoterAndGroups(db, user.id);
 
     if (!promoter) {
       return NextResponse.json({ error: 'No promoter profile found' }, { status: 403 });
@@ -117,7 +121,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You do not manage this group' }, { status: 403 });
     }
 
-    const { data: post, error: insertError } = await supabase
+    const { data: post, error: insertError } = await db
       .from('group_posts')
       .insert({
         group_id,

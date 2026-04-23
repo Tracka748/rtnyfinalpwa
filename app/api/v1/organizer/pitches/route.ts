@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET() {
   try {
@@ -10,8 +11,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const db = createSupabaseAdmin();
+
     // 1. Get promoter row
-    const { data: promoter } = await supabase
+    const { data: promoter } = await db
       .from('promoters')
       .select('id')
       .eq('user_id', user.id)
@@ -23,7 +26,7 @@ export async function GET() {
     }
 
     // 2. Get group_ids this organizer manages
-    const { data: orgRows } = await supabase
+    const { data: orgRows } = await db
       .from('group_organizers')
       .select('group_id')
       .eq('promoter_id', promoter.id);
@@ -35,7 +38,7 @@ export async function GET() {
     }
 
     // 3. Fetch pitches for these groups
-    const { data: pitches, error: pitchesError } = await supabase
+    const { data: pitches, error: pitchesError } = await db
       .from('event_pitches')
       .select(
         'id, group_id, organizer_id, title, description, category, date_start, date_end, price_min, price_max, preferred_locations, ideas_details, interest_count, status, created_at, updated_at'
@@ -49,7 +52,7 @@ export async function GET() {
     }
 
     // 4. Fetch group names
-    const { data: groups } = await supabase
+    const { data: groups } = await db
       .from('groups')
       .select('id, name')
       .in('id', groupIds);

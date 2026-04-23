@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,8 +11,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const db = createSupabaseAdmin();
+
     // 1. Get promoter row
-    const { data: promoter } = await supabase
+    const { data: promoter } = await db
       .from('promoters')
       .select('id')
       .eq('user_id', user.id)
@@ -23,7 +26,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Get all group_ids this organizer manages
-    const { data: orgRows } = await supabase
+    const { data: orgRows } = await db
       .from('group_organizers')
       .select('group_id')
       .eq('promoter_id', promoter.id);
@@ -46,7 +49,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 4. Fetch active memberships
-    const { data: memberships, error: membershipsError } = await supabase
+    const { data: memberships, error: membershipsError } = await db
       .from('group_memberships')
       .select('id, user_id, group_id, joined_at')
       .in('group_id', groupIds)
@@ -66,7 +69,7 @@ export async function GET(req: NextRequest) {
     // 5. Fetch profiles for all member user_ids
     const userIds = [...new Set(allMemberships.map((m) => m.user_id))];
 
-    const { data: profiles, error: profilesError } = await supabase
+    const { data: profiles, error: profilesError } = await db
       .from('profiles')
       .select('id, first_name, last_name, email')
       .in('id', userIds);
@@ -77,7 +80,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 6. Fetch group names
-    const { data: groups } = await supabase
+    const { data: groups } = await db
       .from('groups')
       .select('id, name')
       .in('id', groupIds);
