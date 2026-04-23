@@ -1454,6 +1454,7 @@ export type Database = {
           first_name: string | null
           gender: string | null
           id: string
+          is_organizer: boolean
           is_parent: boolean | null
           last_name: string | null
           neighborhood: string | null
@@ -1470,6 +1471,7 @@ export type Database = {
           first_name?: string | null
           gender?: string | null
           id: string
+          is_organizer?: boolean
           is_parent?: boolean | null
           last_name?: string | null
           neighborhood?: string | null
@@ -1486,6 +1488,7 @@ export type Database = {
           first_name?: string | null
           gender?: string | null
           id?: string
+          is_organizer?: boolean
           is_parent?: boolean | null
           last_name?: string | null
           neighborhood?: string | null

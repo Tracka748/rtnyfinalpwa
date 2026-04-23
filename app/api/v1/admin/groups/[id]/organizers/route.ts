@@ -53,13 +53,6 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    if (profile.role !== 'organizer') {
-      return NextResponse.json(
-        { success: false, error: 'User must have organizer role first. Update their role in User Management.' },
-        { status: 400 }
-      );
-    }
-
     // Fetch or create promoters row
     let promoterId: string;
 
@@ -128,6 +121,12 @@ export async function POST(
     if (insertError || !newAssignment) {
       return NextResponse.json({ success: false, error: 'Failed to assign organizer' }, { status: 500 });
     }
+
+    // Set is_organizer flag — don't overwrite their existing role
+    await supabase
+      .from('profiles')
+      .update({ is_organizer: true })
+      .eq('id', user_id);
 
     return NextResponse.json({ success: true, data: newAssignment });
   } catch (err) {

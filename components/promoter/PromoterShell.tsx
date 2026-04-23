@@ -11,6 +11,13 @@ const navItems = [
   { href: '/promoter/profile', icon: '👤', label: 'My Profile' },
 ];
 
+const organizerNavItems = [
+  { href: '/promoter/groups', icon: '👥', label: 'My Groups' },
+  { href: '/promoter/posts', icon: '📝', label: 'Posts' },
+  { href: '/promoter/members', icon: '🧑‍🤝‍🧑', label: 'Members' },
+  { href: '/promoter/pitches', icon: '🎯', label: 'Pitches' },
+];
+
 const pageTitles: Record<string, string> = {
   '/promoter/dashboard': 'Overview',
   '/promoter/events': 'My Events',
@@ -22,9 +29,10 @@ const pageTitles: Record<string, string> = {
 interface PromoterShellProps {
   children: React.ReactNode;
   userEmail?: string;
+  isOrganizer?: boolean;
 }
 
-export function PromoterShell({ children, userEmail }: PromoterShellProps) {
+export function PromoterShell({ children, userEmail, isOrganizer }: PromoterShellProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -103,6 +111,32 @@ export function PromoterShell({ children, userEmail }: PromoterShellProps) {
               </a>
             );
           })}
+
+          {isOrganizer && (
+            <>
+              <div className="px-3 pt-4 pb-1">
+                <span className="font-label text-xs tracking-widest text-[#7DD8E8]/50 uppercase">Community</span>
+              </div>
+              {organizerNavItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={[
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#1AC8ED]/10 text-[#1AC8ED] border border-[#1AC8ED]/20'
+                        : 'text-[#7DD8E8] hover:bg-white/8 hover:text-white',
+                    ].join(' ')}
+                  >
+                    <span className="text-lg shrink-0">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </a>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* Footer */}

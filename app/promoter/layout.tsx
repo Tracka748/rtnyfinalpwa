@@ -17,16 +17,19 @@ export default async function PromoterLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, is_organizer')
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'promoter' && profile?.role !== 'admin') {
-    redirect('/promoter/apply');
+  const isPromoter = profile?.role === 'promoter' || profile?.role === 'admin';
+  const isOrganizer = profile?.is_organizer === true || profile?.role === 'organizer';
+
+  if (!isPromoter && !isOrganizer) {
+    redirect('/apply/promoter');
   }
 
   return (
-    <PromoterShell userEmail={user.email}>
+    <PromoterShell userEmail={user.email} isOrganizer={isOrganizer}>
       {children}
     </PromoterShell>
   );

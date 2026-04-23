@@ -11,6 +11,7 @@ interface Profile {
   first_name: string | null
   last_name: string | null
   role: string | null
+  is_organizer: boolean | null
 }
 
 function getInitials(profile: Profile | null, user: User): string {
@@ -94,7 +95,7 @@ export function Sidebar() {
       if (u) {
         const { data } = await supabase
           .from("profiles")
-          .select("first_name, last_name, role")
+          .select("first_name, last_name, role, is_organizer")
           .eq("id", u.id)
           .single()
         setProfile(data ?? null)
@@ -108,7 +109,7 @@ export function Sidebar() {
       if (u) {
         const { data } = await supabase
           .from("profiles")
-          .select("first_name, last_name, role")
+          .select("first_name, last_name, role, is_organizer")
           .eq("id", u.id)
           .single()
         setProfile(data ?? null)
@@ -149,7 +150,7 @@ export function Sidebar() {
     router.refresh()
   }
 
-  const isPromoter = profile?.role === "promoter"
+  const isPromoter = profile?.role === "promoter" || profile?.role === "admin"
 
   return (
     <>
@@ -250,8 +251,8 @@ export function Sidebar() {
           {/* TOOLS */}
           <SectionLabel label="Tools" />
           <div className="border-b border-white/10">
-            {isPromoter ? (
-              <NavItem href="/promoter/dashboard" emoji="📊" label="Promoter Dashboard" onClick={handleNavClick} />
+            {(isPromoter || profile?.is_organizer) ? (
+              <NavItem href="/promoter/dashboard" emoji="📊" label="Promoter Hub" onClick={handleNavClick} />
             ) : (
               <NavItem href="/apply/promoter" emoji="🤝" label="Become a Promoter" onClick={handleNavClick} />
             )}
