@@ -22,6 +22,44 @@ export const dynamic = 'force-dynamic'
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   console.log('🔵 PROCESSING SESSION:', session.id)
 
+  if (session.metadata?.type === 'toolkit_unlock') {
+    const { feature_id, promoter_id, unlock_type } = session.metadata
+
+    if (!feature_id || !promoter_id || !unlock_type) {
+      console.error('❌ toolkit_unlock missing metadata fields:', session.metadata)
+      return
+    }
+
+    const { data: existing } = await supabaseAdmin
+      .from('promoter_features')
+      .select('id')
+      .eq('promoter_id', promoter_id)
+      .eq('feature_id', feature_id)
+      .maybeSingle()
+
+    if (!existing) {
+      const { error: insertError } = await supabaseAdmin
+        .from('promoter_features')
+        .insert({
+          promoter_id,
+          feature_id,
+          unlock_type,
+          unlocked_at: new Date().toISOString(),
+        })
+
+      if (insertError) {
+        console.error('❌ toolkit_unlock insert error:', insertError)
+        throw new Error(`toolkit_unlock insert failed: ${insertError.message}`)
+      }
+
+      console.log(`✅ toolkit_unlock granted: promoter=${promoter_id} feature=${feature_id} type=${unlock_type}`)
+    } else {
+      console.log(`ℹ️ toolkit_unlock already exists, skipping: promoter=${promoter_id} feature=${feature_id}`)
+    }
+
+    return
+  }
+
   const { userId, eventId, items } = session.metadata || {}
 
     if (!userId || !eventId || !items) {

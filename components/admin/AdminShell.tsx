@@ -13,6 +13,7 @@ const navItems = [
   { href: '/admin/orders', icon: '🛒', label: 'Orders' },
   { href: '/admin/users', icon: '👥', label: 'Users' },
   { href: '/admin/groups', icon: '👥', label: 'Groups' },
+  { href: '/admin/toolkit', icon: '🔧', label: 'Toolkit' },
   { href: '/admin/promo-codes', icon: '🏷️', label: 'Promo Codes' },
   { href: '/admin/invites', icon: '✉️', label: 'Invites' },
   { href: '/admin/settings', icon: '⚙️', label: 'Settings' },
@@ -28,6 +29,7 @@ const pageTitles: Record<string, string> = {
   '/admin/orders': 'Orders',
   '/admin/users': 'User Management',
   '/admin/groups': 'Group Management',
+  '/admin/toolkit': 'Toolkit Management',
   '/admin/promo-codes': 'Promo Codes',
   '/admin/settings': 'Settings',
 };
