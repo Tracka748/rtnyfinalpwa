@@ -15,6 +15,21 @@ type VendorResult = VendorRow & {
   vendor_blackout_dates: VendorBlackoutDateRow[]
 }
 
+// Maps UI filter pill values → DB vendors.type enum values
+const TYPE_MAP: Record<string, string[]> = {
+  'all':           [],
+  'dj':            ['dj'],
+  'photography':   ['photographer'],
+  'videography':   ['addon'],
+  'catering':      ['addon'],
+  'lighting':      ['addon'],
+  'decor':         ['addon'],
+  'bartending':    ['bartender'],
+  'security':      ['security'],
+  'photo_booth':   ['addon'],
+  'entertainment': ['addon'],
+}
+
 // Day-of-week label matching Postgres convention
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
@@ -43,6 +58,9 @@ function isVendorAvailable(
   // If no time filter, available as long as not blacked out
   if (!timeStart || !timeEnd) return true
 
+  // No availability records = treat as available
+  if (!vendor.vendor_availability || vendor.vendor_availability.length === 0) return true
+
   // Must have at least one unbooked availability slot that covers the requested window
   const hasSlot = vendor.vendor_availability.some((slot) => {
     if (slot.booked) return false
@@ -65,7 +83,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseAdmin()
 
-    const { data: vendors, error } = await supabase
+    const categoryKey = (category ?? 'all').toLowerCase()
+    const dbTypes = TYPE_MAP[categoryKey] ?? []
+
+    let query = supabase
       .from('vendors')
       .select(`
         *,
@@ -75,6 +96,12 @@ export async function GET(request: NextRequest) {
         vendor_blackout_dates (*)
       `)
       .eq('active', true)
+
+    if (dbTypes.length > 0) {
+      query = query.in('type', dbTypes) as typeof query
+    }
+
+    const { data: vendors, error } = await query
       .order('tier', { ascending: true })
       .order('rating', { ascending: false })
       .returns<VendorResult[]>()
@@ -89,11 +116,13 @@ export async function GET(request: NextRequest) {
 
     let results: VendorResult[] = vendors ?? []
 
-    // Filter by service category
-    if (category) {
+    // For addon-mapped categories, multiple UI filters share the same DB type.
+    // Further narrow by vendor_services.category so e.g. 'catering' doesn't
+    // return lighting or decor vendors.
+    if (category && category !== 'all' && dbTypes[0] === 'addon') {
       results = results.filter((v) =>
         v.vendor_services.some(
-          (s) => s.category.toLowerCase() === category.toLowerCase() && s.active !== false
+          (s) => s.category.toLowerCase() === categoryKey && s.active !== false
         )
       )
     }
@@ -103,19 +132,18 @@ export async function GET(request: NextRequest) {
       results = results.filter((v) => isVendorAvailable(v, date, timeStart, timeEnd))
     }
 
-    // Filter by max_price — check if any active service is within budget (after dynamic pricing)
-    if (maxPrice !== undefined && date) {
-      results = results.filter((v) =>
-        v.vendor_services
-          .filter((s) => s.active !== false)
-          .some((s) => getEffectivePrice(s.price, v.vendor_dynamic_pricing, date) <= maxPrice)
-      )
-    } else if (maxPrice !== undefined) {
-      results = results.filter((v) =>
-        v.vendor_services
-          .filter((s) => s.active !== false)
-          .some((s) => s.price <= maxPrice)
-      )
+    // Filter by max_price — vendors with no active services are included regardless
+    if (maxPrice !== undefined) {
+      results = results.filter((v) => {
+        const activeServices = v.vendor_services.filter((s) => s.active !== false)
+        if (activeServices.length === 0) return true
+        if (date) {
+          return activeServices.some(
+            (s) => getEffectivePrice(s.price, v.vendor_dynamic_pricing, date) <= maxPrice
+          )
+        }
+        return activeServices.some((s) => s.price <= maxPrice)
+      })
     }
 
     return NextResponse.json({ success: true, data: results })

@@ -161,19 +161,23 @@ function EventBuilderView() {
                   categoryFilter={builder.categoryFilter}
                   selectedServiceIds={builder.selectedServiceIds}
                   eventDate={builder.eventDetails.eventDate}
+                  planItems={builder.planItems}
                   onCategoryChange={builder.setCategoryFilter}
                   onToggleService={builder.toggleService}
+                  onAddToPlan={builder.addToPlan}
                   onBack={builder.goBack}
                   onNext={builder.goNext}
                   selectedCount={builder.selectedServices.length}
                 />
               </div>
 
-              <div className="hidden lg:block w-72 shrink-0">
+              <div className="hidden lg:block w-72 shrink-0 sticky top-[180px] self-start">
                 <PlanSummaryPanel
                   selectedServices={builder.selectedServices}
                   estimatedTotal={builder.estimatedTotal}
                   onRemoveService={builder.toggleService}
+                  planItems={builder.planItems}
+                  onRemoveFromPlan={builder.removeFromPlan}
                 />
               </div>
             </div>
@@ -182,6 +186,8 @@ function EventBuilderView() {
               selectedServices={builder.selectedServices}
               estimatedTotal={builder.estimatedTotal}
               onRemoveService={builder.toggleService}
+              planItems={builder.planItems}
+              onRemoveFromPlan={builder.removeFromPlan}
               compact
             />
           </>
@@ -208,12 +214,13 @@ function EventBuilderView() {
               onSubmit={builder.submitRequest}
               onBack={builder.goBack}
               onRemoveService={builder.toggleService}
+              planItems={builder.planItems}
             />
           </div>
         )}
       </div>
 
-      {builder.currentStep === 2 && builder.selectedServices.length > 0 && (
+      {builder.currentStep === 2 && (builder.selectedServices.length > 0 || builder.planItems.length > 0) && (
         <div className="h-20 lg:hidden" />
       )}
     </>

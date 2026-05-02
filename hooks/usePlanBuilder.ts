@@ -2,6 +2,22 @@
 
 import { useState, useCallback, useMemo } from 'react'
 
+// ─── Category → DB type mapping for client-side filtering ────────────────────
+
+const CATEGORY_TO_TYPE: Record<string, string[]> = {
+  'all':           [],
+  'dj':            ['dj'],
+  'photography':   ['photographer'],
+  'videography':   ['addon'],
+  'catering':      ['addon'],
+  'lighting':      ['addon'],
+  'decor':         ['addon'],
+  'bartending':    ['bartender'],
+  'security':      ['security'],
+  'photo_booth':   ['addon'],
+  'entertainment': ['addon'],
+}
+
 // ─── Domain types (mirrored from DB schema) ───────────────────────────────────
 
 export interface VendorService {
@@ -51,10 +67,21 @@ export interface Vendor {
   profile_image_url: string | null
   instant_book: boolean | null
   active: boolean | null
+  available_days?: string[] | null
+  base_price?: number | null
+  price_unit?: string | null
   vendor_services: VendorService[]
   vendor_availability: VendorAvailabilitySlot[]
   vendor_dynamic_pricing: DynamicPricingRule[]
   vendor_blackout_dates: VendorBlackoutDate[]
+}
+
+export interface PlanItem {
+  vendorId: string
+  vendorName: string
+  vendorType: string
+  basePrice: number | null
+  priceUnit: string | null
 }
 
 export interface SelectedService {
@@ -116,6 +143,7 @@ interface PlanBuilderState {
   vendorsError: string | null
   categoryFilter: string
   selectedServiceIds: Set<string>
+  planItems: PlanItem[]
   notes: string
   contactEmail: string
   submitting: boolean
@@ -145,6 +173,7 @@ export function usePlanBuilder() {
     vendorsError: null,
     categoryFilter: 'all',
     selectedServiceIds: new Set(),
+    planItems: [],
     notes: '',
     contactEmail: '',
     submitting: false,
@@ -194,6 +223,31 @@ export function usePlanBuilder() {
     [selectedServices]
   )
 
+  // Client-side filtering: category pill → DB type mapping, plus optional day-of-week check.
+  // Runs on the already-fetched vendor list so pill changes are instant (no re-fetch).
+  const filteredVendors = useMemo(() => {
+    const { vendors, categoryFilter, eventDetails } = state
+
+    let list = vendors
+
+    // Bug 1 fix: if vendor has available_days, check the event day (case-insensitive).
+    // Skip entirely when no date is selected so all vendors show on first load.
+    if (eventDetails.eventDate) {
+      const eventDay = new Date(eventDetails.eventDate)
+        .toLocaleDateString('en-US', { weekday: 'long' })
+        .toLowerCase()
+      list = list.filter(
+        v => !v.available_days || v.available_days.length === 0 || v.available_days.includes(eventDay)
+      )
+    }
+
+    // Bug 2 fix: translate UI pill value → DB type enum values before comparing.
+    if (categoryFilter === 'all') return list
+    const dbTypes = CATEGORY_TO_TYPE[categoryFilter] ?? []
+    if (dbTypes.length === 0) return list
+    return list.filter(v => dbTypes.includes(v.type))
+  }, [state.vendors, state.categoryFilter, state.eventDetails.eventDate])
+
   const canProceedFromStep1 = state.eventDetails.eventType.length > 0
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -205,11 +259,10 @@ export function usePlanBuilder() {
     []
   )
 
-  const fetchVendors = useCallback(async (details: EventDetails, category: string) => {
+  const fetchVendors = useCallback(async (details: EventDetails) => {
     setState(s => ({ ...s, vendorsLoading: true, vendorsError: null }))
     try {
       const params = new URLSearchParams()
-      if (category && category !== 'all') params.set('category', category)
       if (details.eventDate) params.set('date', details.eventDate)
       if (details.timeStart) params.set('time_start', details.timeStart)
       if (details.timeEnd) params.set('time_end', details.timeEnd)
@@ -226,17 +279,30 @@ export function usePlanBuilder() {
     }
   }, [])
 
-  const setCategoryFilter = useCallback(
-    (category: string) => {
-      setState(s => ({ ...s, categoryFilter: category }))
-      // fetchVendors reads from current state snapshot — pass explicitly
-      setState(s => {
-        fetchVendors(s.eventDetails, category)
-        return s
-      })
-    },
-    [fetchVendors]
-  )
+  const setCategoryFilter = useCallback((category: string) => {
+    setState(s => ({ ...s, categoryFilter: category }))
+  }, [])
+
+  const addToPlan = useCallback((vendor: Vendor) => {
+    setState(s => {
+      if (s.planItems.some(item => item.vendorId === vendor.id)) return s
+      const cheapestService = vendor.vendor_services
+        .filter(sv => sv.active !== false)
+        .sort((a, b) => a.price - b.price)[0]
+      const newItem: PlanItem = {
+        vendorId: vendor.id,
+        vendorName: vendor.name,
+        vendorType: vendor.type,
+        basePrice: vendor.base_price ?? cheapestService?.price ?? null,
+        priceUnit: vendor.price_unit ?? null,
+      }
+      return { ...s, planItems: [...s.planItems, newItem] }
+    })
+  }, [])
+
+  const removeFromPlan = useCallback((vendorId: string) => {
+    setState(s => ({ ...s, planItems: s.planItems.filter(item => item.vendorId !== vendorId) }))
+  }, [])
 
   const toggleService = useCallback((serviceId: string) => {
     setState(s => {
@@ -251,7 +317,7 @@ export function usePlanBuilder() {
     setState(s => {
       if (s.currentStep === 1) {
         // Kick off vendor fetch before advancing so step 2 loads with data
-        fetchVendors(s.eventDetails, s.categoryFilter)
+        fetchVendors(s.eventDetails)
       }
       return { ...s, currentStep: s.currentStep + 1 }
     })
@@ -317,11 +383,12 @@ export function usePlanBuilder() {
     // state
     currentStep: state.currentStep,
     eventDetails: state.eventDetails,
-    vendors: state.vendors,
+    vendors: filteredVendors,
     vendorsLoading: state.vendorsLoading,
     vendorsError: state.vendorsError,
     categoryFilter: state.categoryFilter,
     selectedServiceIds: state.selectedServiceIds,
+    planItems: state.planItems,
     notes: state.notes,
     contactEmail: state.contactEmail,
     submitting: state.submitting,
@@ -337,6 +404,8 @@ export function usePlanBuilder() {
     setEventDetail,
     setCategoryFilter,
     toggleService,
+    addToPlan,
+    removeFromPlan,
     goNext,
     goBack,
     setNotes,

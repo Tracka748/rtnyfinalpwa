@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { Vendor } from '@/hooks/usePlanBuilder'
+import type { Vendor, PlanItem } from '@/hooks/usePlanBuilder'
 import { VendorCard } from './VendorCard'
 
 const CATEGORIES = [
@@ -45,8 +45,10 @@ interface VendorBrowserProps {
   categoryFilter: string
   selectedServiceIds: Set<string>
   eventDate: string
+  planItems: PlanItem[]
   onCategoryChange: (category: string) => void
   onToggleService: (serviceId: string) => void
+  onAddToPlan: (vendor: Vendor) => void
   onBack: () => void
   onNext: () => void
   selectedCount: number
@@ -59,8 +61,10 @@ export function VendorBrowser({
   categoryFilter,
   selectedServiceIds,
   eventDate,
+  planItems,
   onCategoryChange,
   onToggleService,
+  onAddToPlan,
   onBack,
   onNext,
   selectedCount,
@@ -68,7 +72,7 @@ export function VendorBrowser({
   return (
     <div className="space-y-6">
       {/* Category filter scroll */}
-      <div className="overflow-x-auto -mx-4 px-4 pb-1">
+      <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
         <div className="flex gap-2 w-max">
           {CATEGORIES.map(cat => {
             const active = categoryFilter === cat.value
@@ -90,6 +94,15 @@ export function VendorBrowser({
             )
           })}
         </div>
+      </div>
+
+      {/* Scroll hint */}
+      <div className="flex items-center gap-2 -mt-3 px-1">
+        <span className="text-[#2a2829] text-xs">←</span>
+        <div className="flex-1 border-t border-dashed border-[#2a2829]" />
+        <span className="text-[#7DD8E8]/40 text-[10px] font-label tracking-widest">scroll</span>
+        <div className="flex-1 border-t border-dashed border-[#2a2829]" />
+        <span className="text-[#2a2829] text-xs">→</span>
       </div>
 
       {/* Result count / state */}
@@ -119,6 +132,8 @@ export function VendorBrowser({
                 selectedServiceIds={selectedServiceIds}
                 onToggleService={onToggleService}
                 eventDate={eventDate}
+                planItems={planItems}
+                onAddToPlan={onAddToPlan}
               />
             ))}
       </div>

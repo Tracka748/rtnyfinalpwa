@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { Vendor, VendorService } from '@/hooks/usePlanBuilder'
+import type { Vendor, VendorService, PlanItem } from '@/hooks/usePlanBuilder'
 
 // ─── Tier config ──────────────────────────────────────────────────────────────
 
@@ -157,12 +157,15 @@ interface VendorCardProps {
   selectedServiceIds: Set<string>
   onToggleService: (serviceId: string) => void
   eventDate: string
+  planItems: PlanItem[]
+  onAddToPlan: (vendor: Vendor) => void
 }
 
-export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventDate }: VendorCardProps) {
+export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventDate, planItems, onAddToPlan }: VendorCardProps) {
   const tierConfig = getTierConfig(vendor.tier)
   const activeServices = vendor.vendor_services.filter(s => s.active !== false)
   const selectedCount = activeServices.filter(s => selectedServiceIds.has(s.id)).length
+  const isInPlan = planItems.some(item => item.vendorId === vendor.id)
 
   // Get day-of-week multiplier for current date
   const getDynamicMultiplier = (service: VendorService): number | null => {
@@ -258,11 +261,22 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
         </div>
       )}
 
-      {activeServices.length === 0 && (
-        <div className="p-6 text-center text-[#7DD8E8]/40 text-sm">
-          No services listed
-        </div>
-      )}
+      {/* Add to Plan */}
+      <div className="px-3 pb-3 pt-2">
+        <button
+          type="button"
+          onClick={() => onAddToPlan(vendor)}
+          disabled={isInPlan}
+          className={cn(
+            'w-full py-2 rounded-xl text-sm font-sans font-semibold transition-all duration-200',
+            isInPlan
+              ? 'bg-[#59ffa0]/10 border border-[#59ffa0]/30 text-[#59ffa0] cursor-default'
+              : 'bg-[#59ffa0] text-[#121113] hover:bg-[#59ffa0]/90 hover:shadow-md hover:shadow-[#59ffa0]/20'
+          )}
+        >
+          {isInPlan ? 'Added ✓' : 'Add to Plan'}
+        </button>
+      </div>
     </div>
   )
 }

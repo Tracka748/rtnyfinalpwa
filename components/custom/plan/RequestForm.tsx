@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { SelectedService } from '@/hooks/usePlanBuilder'
+import type { SelectedService, PlanItem } from '@/hooks/usePlanBuilder'
 
 interface RequestFormProps {
   selectedServices: SelectedService[]
@@ -15,6 +15,7 @@ interface RequestFormProps {
   onSubmit: () => void
   onBack: () => void
   onRemoveService: (serviceId: string) => void
+  planItems?: PlanItem[]
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ export function RequestForm({
   onSubmit,
   onBack,
   onRemoveService,
+  planItems = [],
 }: RequestFormProps) {
   const inputBase =
     'w-full bg-[#1a1819] border border-[#2a2829] rounded-xl px-4 py-3 text-[#f9fdff] font-sans text-sm ' +
@@ -52,6 +54,29 @@ export function RequestForm({
 
   return (
     <div className="space-y-8">
+      {/* Vendor-level plan items */}
+      {planItems.length > 0 && (
+        <div>
+          <SectionLabel>Vendors Added</SectionLabel>
+          <div className="rounded-xl border border-[#2a2829] bg-[#1a1819] overflow-hidden divide-y divide-[#2a2829]">
+            {planItems.map(item => (
+              <div key={item.vendorId} className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#f9fdff] text-sm font-sans font-medium leading-snug">{item.vendorName}</p>
+                  <p className="text-[#7DD8E8] text-[10px] mt-0.5 capitalize">{item.vendorType}</p>
+                </div>
+                {item.basePrice !== null && (
+                  <span className="text-[#59ffa0] font-slab-serif font-bold text-sm shrink-0">
+                    from ${item.basePrice.toLocaleString()}
+                    {item.priceUnit === 'per_hour' ? '/hr' : item.priceUnit === 'per_person' ? '/person' : ''}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Selected services review */}
       <div>
         <SectionLabel>Selected Services</SectionLabel>
