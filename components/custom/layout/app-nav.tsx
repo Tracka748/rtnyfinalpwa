@@ -123,6 +123,18 @@ export function AppNav() {
               Groups
             </Link>
 
+            {/* Crews Link */}
+            <Link
+              href="/crews"
+              className={`font-sans text-sm font-medium transition-colors ${
+                pathname.startsWith("/crews")
+                  ? "text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:text-[#59FFA0]"
+              }`}
+            >
+              Crews
+            </Link>
+
             {/* Conditional Links based on Auth State */}
             {!loading && (
               <>

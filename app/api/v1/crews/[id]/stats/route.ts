@@ -30,8 +30,22 @@ export async function GET(
 
     if (!membership) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden' },
+        { success: false, error: 'Forbidden', code: 'NOT_CREW_MEMBER' },
         { status: 403 }
+      )
+    }
+
+    // Fetch crew to get created_at for scoping orders
+    const { data: crew, error: crewError } = await supabase
+      .from('crews')
+      .select('created_at')
+      .eq('id', crewId)
+      .single()
+
+    if (crewError || !crew) {
+      return NextResponse.json(
+        { success: false, error: 'Crew not found' },
+        { status: 404 }
       )
     }
 
@@ -57,12 +71,13 @@ export async function GET(
 
     const memberIds = members.map((m: any) => m.user_id)
 
-    // Sum completed orders and count distinct members with at least one order
+    // Sum completed orders placed after the crew was created (scoped to this crew's lifetime)
     const { data: orders } = await supabase
       .from('orders')
       .select('user_id, total_amount')
       .in('user_id', memberIds)
       .eq('status', 'completed')
+      .gte('created_at', crew.created_at)
 
     const total_spend = (orders ?? []).reduce(
       (sum: number, o: any) => sum + (o.total_amount || 0),

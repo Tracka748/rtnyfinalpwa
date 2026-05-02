@@ -94,6 +94,21 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
     }
   }
 
+  async function handleInviteFriends() {
+    const text = `Join my crew on RTNY! Use code ${crew.invite_code} at rocticketny.com/crews`
+    if (navigator.share) {
+      try {
+        await navigator.share({ text })
+      } catch {
+        await navigator.clipboard.writeText(text).catch(() => {})
+        onToast("Invite link copied!")
+      }
+    } else {
+      await navigator.clipboard.writeText(text).catch(() => {})
+      onToast("Invite link copied!")
+    }
+  }
+
   const effectiveMembers = stats?.total_members ?? crew.member_count
   const lockedIn = stats?.locked_in_count ?? 0
 
@@ -114,6 +129,7 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
 
         {/* Public/Private toggle */}
         <button
+          type="button"
           onClick={isCreator ? handleTogglePublic : undefined}
           disabled={toggling || !isCreator}
           className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-full transition-colors ${
@@ -132,6 +148,17 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
         lockedInCount={lockedIn}
       />
 
+      {/* Invite More Friends */}
+      {effectiveMembers < 7 && (
+        <button
+          type="button"
+          onClick={handleInviteFriends}
+          className="w-full rounded-xl py-2 border border-dashed border-accent/40 text-accent text-sm font-sans bg-transparent hover:bg-accent/5 transition-colors"
+        >
+          + Invite More Friends
+        </button>
+      )}
+
       {/* Widgets */}
       <GroupTabWidget
         totalSpend={stats?.total_spend ?? 0}
@@ -146,6 +173,7 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
       {/* Bottom row */}
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
         <button
+          type="button"
           onClick={handleCopyCode}
           className="flex items-center gap-1.5 text-foreground/40 text-xs font-mono hover:text-foreground/70 transition-colors"
         >
@@ -157,6 +185,7 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
         </button>
 
         <button
+          type="button"
           onClick={handleShare}
           className="text-foreground/50 text-xs font-sans hover:text-foreground/80 transition-colors"
         >

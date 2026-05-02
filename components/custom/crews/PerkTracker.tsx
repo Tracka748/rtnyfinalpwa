@@ -4,8 +4,13 @@ interface PerkTrackerProps {
 }
 
 export function PerkTracker({ lockedInCount, totalMembers }: PerkTrackerProps) {
-  const pct = totalMembers > 0 ? (lockedInCount / totalMembers) * 100 : 0
-  const full = totalMembers > 0 && lockedInCount >= totalMembers
+  const underThreshold = totalMembers < 3
+  const pct = underThreshold
+    ? (lockedInCount / 3) * 100
+    : totalMembers > 0
+    ? (lockedInCount / totalMembers) * 100
+    : 0
+  const full = !underThreshold && totalMembers >= 3 && lockedInCount >= totalMembers
 
   return (
     <div className="bg-white/5 rounded-xl p-3">
@@ -20,9 +25,13 @@ export function PerkTracker({ lockedInCount, totalMembers }: PerkTrackerProps) {
       </div>
       {full ? (
         <p className="text-accent text-xs font-sans">🎉 Full crew locked in!</p>
+      ) : underThreshold ? (
+        <p className="text-foreground/50 text-xs font-sans">
+          {lockedInCount} of 3 needed to unlock first perk
+        </p>
       ) : (
         <p className="text-foreground/50 text-xs font-sans">
-          {lockedInCount} of {totalMembers} member{totalMembers !== 1 ? "s" : ""} locked in
+          {lockedInCount} of {totalMembers} members locked in
         </p>
       )}
     </div>

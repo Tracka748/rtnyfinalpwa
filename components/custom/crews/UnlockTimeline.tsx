@@ -17,34 +17,36 @@ export function UnlockTimeline({ totalMembers }: UnlockTimelineProps) {
       <div className="flex items-center">
         {MILESTONES.map((m, i) => {
           const unlocked = totalMembers >= m.threshold
+          const isUnlocked = i < MILESTONES.length - 1 && totalMembers >= MILESTONES[i + 1].threshold
           return (
             <div key={m.threshold} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border transition-colors ${
-                    unlocked
-                      ? "bg-accent/20 border-accent"
-                      : "bg-white/5 border-white/10"
-                  }`}
-                >
-                  {m.icon}
-                </div>
-                <span
-                  className={`text-xs font-sans text-center leading-tight max-w-[56px] ${
-                    unlocked ? "text-accent" : "text-foreground/30"
-                  }`}
-                >
-                  {m.label}
-                </span>
+                {unlocked ? (
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{
+                      boxShadow: '0 0 10px rgba(89, 255, 160, 0.4)',
+                      border: '2px solid #59FFA0',
+                      backgroundColor: 'rgba(89, 255, 160, 0.2)',
+                    }}
+                  >
+                    <span className="text-sm" style={{ filter: 'drop-shadow(0 0 4px #59FFA0)' }}>
+                      {m.icon}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10">
+                    <span className="text-sm opacity-30">{m.icon}</span>
+                  </div>
+                )}
+                {unlocked ? (
+                  <span className="text-accent font-sans text-xs text-center mt-1">{m.label}</span>
+                ) : (
+                  <span className="text-foreground/30 font-sans text-xs text-center mt-1">{m.label}</span>
+                )}
               </div>
               {i < MILESTONES.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 mx-1 mb-5 transition-colors ${
-                    totalMembers >= MILESTONES[i + 1].threshold
-                      ? "bg-accent"
-                      : "bg-white/10"
-                  }`}
-                />
+                <div className={`flex-1 h-0.5 mx-1 mb-5 ${isUnlocked ? "bg-accent" : "bg-white/10"}`} />
               )}
             </div>
           )

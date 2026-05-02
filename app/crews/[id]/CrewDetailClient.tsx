@@ -6,7 +6,13 @@ import { UnlockTimeline } from "@/components/custom/crews/UnlockTimeline"
 import { PerkTracker } from "@/components/custom/crews/PerkTracker"
 import { JoinCrewDialog } from "@/components/custom/crews/JoinCrewDialog"
 
-const AVATAR_COLORS = ["#59FFA0", "#1AC8ED", "#FF6B6B", "#FFD93D", "#C77DFF"]
+const AVATAR_COLOR_CLASSES = [
+  "bg-[#59FFA0]",
+  "bg-[#1AC8ED]",
+  "bg-[#FF6B6B]",
+  "bg-[#FFD93D]",
+  "bg-[#C77DFF]",
+]
 
 interface Member {
   user_id: string
@@ -69,9 +75,9 @@ function CopyIcon() {
 }
 
 function getMilestoneLabel(n: number): string {
-  if (n >= 7) return "Bottle Service"
-  if (n >= 5) return "Skip the Line"
-  if (n >= 3) return "Group Discount"
+  if (n >= 7) return "Bottle Service 🍾"
+  if (n >= 5) return "Skip the Line ⚡"
+  if (n >= 3) return "Group Discount 🎟️"
   return "None yet"
 }
 
@@ -233,7 +239,7 @@ export default function CrewDetailClient({
             <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-1">
               Crew Spent
             </p>
-            <p className="font-serif text-lg text-accent leading-tight">
+            <p className="font-serif text-xl text-accent leading-tight">
               {formatSpend(crew.total_spend)}
             </p>
           </div>
@@ -241,7 +247,7 @@ export default function CrewDetailClient({
             <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-1">
               Locked In
             </p>
-            <p className="font-slab-serif text-lg text-white leading-tight">
+            <p className="font-slab-serif text-xl text-white leading-tight">
               {crew.locked_in_count} of {crew.total_members}
             </p>
           </div>
@@ -249,7 +255,7 @@ export default function CrewDetailClient({
             <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-1">
               Milestone
             </p>
-            <p className="font-slab-serif text-base text-accent leading-tight">
+            <p className={`font-slab-serif text-sm leading-tight ${milestoneLabel === "None yet" ? "text-foreground/30" : "text-accent"}`}>
               {milestoneLabel}
             </p>
           </div>
@@ -258,6 +264,14 @@ export default function CrewDetailClient({
         {/* ── Unlock Milestones ─────────────────────────────────────────── */}
         <div className="mb-4">
           <UnlockTimeline totalMembers={crew.total_members} />
+        </div>
+
+        {/* ── Perk Tracker ──────────────────────────────────────────────── */}
+        <div className="mb-4">
+          <PerkTracker
+            lockedInCount={crew.locked_in_count}
+            totalMembers={crew.total_members}
+          />
         </div>
 
         {/* ── Members section ───────────────────────────────────────────── */}
@@ -276,8 +290,7 @@ export default function CrewDetailClient({
                   {i > 0 && <div className="border-t border-white/5" />}
                   <div className="flex items-center gap-3 py-3">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-sans font-semibold text-[#121113] shrink-0"
-                      style={{ backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-sans font-semibold text-[#121113] shrink-0 ${AVATAR_COLOR_CLASSES[i % AVATAR_COLOR_CLASSES.length]}`}
                     >
                       {member.first_name?.[0]?.toUpperCase() ?? "?"}
                     </div>
@@ -303,14 +316,6 @@ export default function CrewDetailClient({
               ))
             )}
           </div>
-        </div>
-
-        {/* ── Perk Tracker ──────────────────────────────────────────────── */}
-        <div className="mb-4">
-          <PerkTracker
-            lockedInCount={crew.locked_in_count}
-            totalMembers={crew.total_members}
-          />
         </div>
 
         {/* ── Non-member CTA ────────────────────────────────────────────── */}
