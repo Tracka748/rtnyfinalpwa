@@ -473,7 +473,7 @@ export default function HomePage() {
       )}
 
       {/* Your Crew */}
-      <section className="mx-auto w-full max-w-[1200px] px-4 py-6">
+      <section className="px-4 py-6">
         <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-3">Your Crew</p>
         <HomepageCrewModule />
       </section>
