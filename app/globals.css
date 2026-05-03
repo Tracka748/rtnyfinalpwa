@@ -3,6 +3,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Safelist dynamic gradient classes used in CuratedPlanCard THEME_CONFIG */
+@source inline("bg-gradient-to-br from-purple-900/40 to-pink-900/20 from-orange-900/30 to-yellow-900/20 from-rose-900/40 to-purple-900/20 from-blue-900/30 to-cyan-900/20 from-emerald-900/30 to-teal-900/20");
+
 /* Custom RTNY dark theme with mint green, cyan, and pink accents */
 :root {
   --background: #121113;

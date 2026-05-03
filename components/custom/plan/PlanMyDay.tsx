@@ -175,6 +175,51 @@ const CATEGORY_ICONS: Record<string, string> = {
   escape:        '🔐',
 }
 
+// ─── Curated plan preload helpers ─────────────────────────────────────────────
+
+export interface PreloadedStop {
+  time: string
+  name: string
+  category: string
+  address: string
+  estimatedCost: number
+  duration_minutes: number
+}
+
+function parseTimeTo24h(timeStr: string): string {
+  const parts = timeStr.trim().split(' ')
+  const [h, m] = parts[0].split(':').map(Number)
+  const ampm = parts[1]?.toUpperCase()
+  let hours = h
+  if (ampm === 'PM' && h !== 12) hours += 12
+  if (ampm === 'AM' && h === 12) hours = 0
+  return `${String(hours).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`
+}
+
+function segmentFromTime(timeStr: string): SegmentLabel {
+  const [h] = parseTimeTo24h(timeStr).split(':').map(Number)
+  if (h < 17) return 'afternoon'
+  if (h < 21) return 'evening'
+  return 'night'
+}
+
+function preloadedToEnriched(stops: PreloadedStop[]): EnrichedStop[] {
+  return stops.map((stop, i) => ({
+    stop: {
+      business_id: `curated-${i}-${stop.name.replace(/\s+/g, '-').toLowerCase()}`,
+      name: stop.name,
+      category: stop.category,
+      address: stop.address,
+      estimated_arrival: parseTimeTo24h(stop.time),
+      duration_minutes: stop.duration_minutes,
+      estimated_spend: stop.estimatedCost,
+      offer: null,
+    },
+    segment: segmentFromTime(stop.time),
+    locked: false,
+  }))
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toISOLocal(d: Date): string {
@@ -455,7 +500,7 @@ interface StopCardProps {
   showSegHeader: boolean
 }
 
-function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, showSegHeader }: StopCardProps) {
+function StopCard({ enriched, isLast, swapping, onLock, onSwap, showSegHeader }: StopCardProps) {
   const { stop, segment, locked } = enriched
   const seg = SEGMENT_CONFIG[segment]
 
@@ -512,7 +557,7 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, showSegHe
               locked ? 'border-[#59ffa0]/30' : 'border-[#2a2829] hover:border-[#2a2829]/70'
             )}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-4">
               {/* Category icon */}
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
@@ -969,17 +1014,21 @@ function TimelineView({ enrichedStops, swappingIdx, onLock, onSwap }: TimelineVi
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function PlanMyDay() {
+export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[] } = {}) {
+  const initEnriched = preloadedStops && preloadedStops.length > 0
+    ? preloadedToEnriched(preloadedStops)
+    : []
+
   const [form, setFormState] = useState<FormState>(DEFAULT_FORM)
   const [selectedDate, setSelectedDate] = useState<string>(() => toISOLocal(new Date()))
-  const [enrichedStops, setEnrichedStops] = useState<EnrichedStop[]>([])
-  const [totalSpend, setTotalSpend]       = useState(0)
-  const [totalMins,  setTotalMins]        = useState(0)
+  const [enrichedStops, setEnrichedStops] = useState<EnrichedStop[]>(initEnriched)
+  const [totalSpend, setTotalSpend]       = useState(() => initEnriched.reduce((s, e) => s + e.stop.estimated_spend, 0))
+  const [totalMins,  setTotalMins]        = useState(() => initEnriched.reduce((s, e) => s + e.stop.duration_minutes, 0))
   const [loading,    setLoading]          = useState(false)
   const [regenLoading, setRegenLoading]   = useState(false)
   const [swappingIdx,  setSwappingIdx]    = useState<number | null>(null)
   const [error,      setError]            = useState<string | null>(null)
-  const [hasResult,  setHasResult]        = useState(false)
+  const [hasResult,  setHasResult]        = useState(initEnriched.length > 0)
   const [groupSuggestion, setGroupSuggestion] = useState<GroupSuggestion | null>(null)
 
   const router   = useRouter()
@@ -1020,7 +1069,7 @@ export function PlanMyDay() {
       throw new Error(j.error ?? 'Failed to generate day plan')
     }
     const json: { success: boolean; data: DayPlanResult } = await res.json()
-    const { timeline, total_estimated_spend, total_duration_minutes } = json.data
+    const { total_estimated_spend, total_duration_minutes } = json.data
     setTotalSpend(total_estimated_spend)
     setTotalMins(total_duration_minutes)
     return buildEnrichedStops(json.data)

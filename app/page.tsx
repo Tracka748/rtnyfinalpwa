@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { CuratedPlanCard, type CuratedPlan } from "@/components/custom/plan/CuratedPlanCard"
+import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import { HomepageSearchBar } from "@/components/custom/homepage/search-bar"
 import { HeroPromo } from "@/components/custom/homepage/hero-promo"
 import { DateTabs } from "@/components/custom/homepage/date-tabs"
@@ -20,6 +22,10 @@ import type { Event, PromoCard, Module } from "@/lib/homepage/types"
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [allEvents, setAllEvents] = useState<any[]>([])
+  const [curatedPlans, setCuratedPlans] = useState<CuratedPlan[]>([])
+  const [selectedPlan, setSelectedPlan] = useState<CuratedPlan | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [carouselIndex, setCarouselIndex] = useState(0)
 
   // Fetch events from API
   useEffect(() => {
@@ -37,6 +43,19 @@ export default function HomePage() {
     }
 
     fetchEvents()
+  }, [])
+
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient()
+    supabase
+      .from('curated_plans')
+      .select('*')
+      .eq('active', true)
+      .order('is_featured', { ascending: false })
+      .limit(6)
+      .then(({ data }) => {
+        if (data) setCuratedPlans(data)
+      })
   }, [])
 
   // Helper function to map API event to Event type
@@ -390,6 +409,69 @@ export default function HomePage() {
       {/* Section 5: Tonight in Rochester (Two Rows) */}
       <TonightSection events={tonightEvents} deals={tonightDeals} />
 
+      {/* Curated Plans Shelf */}
+      {curatedPlans.length > 0 && (
+        <section className="mt-12">
+          <div className="flex items-center justify-between mb-4 px-4">
+            <div>
+              <h2 className="font-slab-serif font-bold text-2xl text-foreground">
+                ✨ Plan Your Day
+              </h2>
+              <p className="text-sm text-foreground/40 mt-0.5">
+                Curated Rochester experiences — tap to customize
+              </p>
+            </div>
+            <a href="/plan" className="text-xs text-accent hover:underline shrink-0">
+              Build Your Own →
+            </a>
+          </div>
+          <div className="px-4">
+            <div className="relative">
+              {/* Left Arrow */}
+              <button
+                onClick={() => setCarouselIndex(i => Math.max(0, i - 3))}
+                disabled={carouselIndex === 0}
+                className="absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
+              >←</button>
+
+              {/* 3 Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                {curatedPlans.slice(carouselIndex, carouselIndex + 3).map((plan) => (
+                  <CuratedPlanCard
+                    key={plan.id}
+                    plan={plan}
+                    onUseThisPlan={(plan) => {
+                      setSelectedPlan(plan)
+                      setSheetOpen(true)
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Right Arrow */}
+              <button
+                onClick={() => setCarouselIndex(i => Math.min(curatedPlans.length - 3, i + 3))}
+                disabled={carouselIndex + 3 >= curatedPlans.length}
+                className="absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
+              >→</button>
+            </div>
+
+            {/* Dot indicators */}
+            <div className="flex justify-center gap-2 mt-5">
+              {Array.from({ length: Math.ceil(curatedPlans.length / 3) }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCarouselIndex(i * 3)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    Math.floor(carouselIndex / 3) === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Your Crew */}
       <section className="mx-auto w-full max-w-[1200px] px-4 py-6">
         <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-3">Your Crew</p>
@@ -506,6 +588,28 @@ export default function HomePage() {
 
       {/* Section 10: Footer */}
       <Footer />
+
+      {/* Curated plan bottom sheet */}
+      {sheetOpen && selectedPlan && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-end"
+          onClick={() => setSheetOpen(false)}
+        >
+          <div
+            className="w-full bg-background rounded-t-3xl p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-foreground font-bold text-lg">{selectedPlan.title}</p>
+            <p className="text-foreground/40 text-sm mt-1">Bottom sheet coming soon</p>
+            <button
+              onClick={() => setSheetOpen(false)}
+              className="mt-4 w-full py-3 rounded-xl bg-accent text-background font-semibold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
