@@ -1,7 +1,9 @@
 // app/dashboard/page.tsx
 import { getCurrentUser } from "@/lib/auth/get-user"
+import { createSupabaseServer } from "@/lib/supabase"
 import { redirect } from "next/navigation"
 import { LogoutButton } from "@/components/custom/auth/logout-button"
+import { SavedDayPlans } from "@/components/custom/dashboard/SavedDayPlans"
 import Link from "next/link"
 
 export default async function DashboardPage() {
@@ -11,6 +13,14 @@ export default async function DashboardPage() {
   if (!user) {
     redirect('/login')
   }
+
+  const supabase = await createSupabaseServer()
+  const { data: dayPlans } = await supabase
+    .from('day_plans')
+    .select('id, plan_date, stops, total_estimated_spend, total_duration_minutes, created_at')
+    .eq('user_id', user!.id)
+    .order('created_at', { ascending: false })
+    .limit(5)
 
   return (
     <main className="min-h-screen bg-[#121113]">
@@ -79,6 +89,9 @@ export default async function DashboardPage() {
             </p>
           </Link>
         </div>
+
+        {/* Saved Day Plans */}
+        <SavedDayPlans plans={(dayPlans ?? []) as any} />
 
         {/* User Info (Debug) */}
         <div className="mt-8 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6">

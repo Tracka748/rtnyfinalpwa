@@ -15,6 +15,7 @@ const CATEGORIES = [
   { value: 'bartending',    label: 'Bar',             icon: '🍸' },
   { value: 'entertainment', label: 'Entertainment',   icon: '🎭' },
   { value: 'security',      label: 'Security',        icon: '🛡️' },
+  { value: 'venue',         label: 'Venue',           icon: '🏛️' },
 ]
 
 function VendorSkeleton() {
@@ -70,10 +71,10 @@ export function VendorBrowser({
   selectedCount,
 }: VendorBrowserProps) {
   return (
-    <div className="space-y-6">
+    <div>
       {/* Category filter scroll */}
-      <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
-        <div className="flex gap-2 w-max">
+      <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 pt-4 pb-5">
+        <div className="flex gap-3 w-max">
           {CATEGORIES.map(cat => {
             const active = categoryFilter === cat.value
             return (
@@ -97,7 +98,7 @@ export function VendorBrowser({
       </div>
 
       {/* Scroll hint */}
-      <div className="flex items-center gap-2 -mt-3 px-1">
+      <div className="flex items-center gap-2 mt-2 px-1">
         <span className="text-[#2a2829] text-xs">←</span>
         <div className="flex-1 border-t border-dashed border-[#2a2829]" />
         <span className="text-[#7DD8E8]/40 text-[10px] font-label tracking-widest">scroll</span>
@@ -107,7 +108,7 @@ export function VendorBrowser({
 
       {/* Result count / state */}
       {!loading && !error && (
-        <p className="text-[#7DD8E8] text-xs font-sans">
+        <p className="text-[#7DD8E8] text-xs font-sans mt-4">
           {vendors.length === 0
             ? 'No vendors found for your criteria — try adjusting your filters.'
             : `${vendors.length} vendor${vendors.length !== 1 ? 's' : ''} available`}
@@ -116,13 +117,13 @@ export function VendorBrowser({
 
       {/* Error */}
       {error && (
-        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm font-sans">
+        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm font-sans mt-4">
           {error}
         </div>
       )}
 
       {/* Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => <VendorSkeleton key={i} />)
           : vendors.map(vendor => (
@@ -139,7 +140,7 @@ export function VendorBrowser({
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex items-center justify-between mt-12 pb-16">
         <button
           type="button"
           onClick={onBack}

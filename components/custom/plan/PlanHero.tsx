@@ -12,7 +12,7 @@ export function PlanHero() {
 
       <div className="relative z-10 max-w-2xl mx-auto">
         {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#59ffa0]/20 bg-[#59ffa0]/5 mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#59ffa0]/20 bg-[#59ffa0]/5 mb-4 mt-12">
           <span className="w-1.5 h-1.5 rounded-full bg-[#59ffa0] animate-pulse" />
           <span className="text-[#59ffa0] text-xs font-label tracking-widest">RTNY PLANNING</span>
         </div>

@@ -186,7 +186,7 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
         : 'border-[#2a2829] hover:border-[#2a2829]/80'
     )}>
       {/* Header */}
-      <div className="p-4 border-b border-[#2a2829]">
+      <div className="p-5 border-b border-[#2a2829]">
         <div className="flex items-start gap-3">
           {/* Avatar */}
           <div className="w-12 h-12 rounded-xl bg-[#242324] border border-[#2a2829] flex items-center justify-center shrink-0 overflow-hidden">
@@ -232,7 +232,7 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
         </div>
 
         {vendor.bio && (
-          <p className="mt-2 text-[#7DD8E8] text-xs leading-relaxed line-clamp-2">{vendor.bio}</p>
+          <p className="mt-3 text-[#7DD8E8] text-xs leading-relaxed line-clamp-2">{vendor.bio}</p>
         )}
 
         {selectedCount > 0 && (
@@ -262,7 +262,7 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
       )}
 
       {/* Add to Plan */}
-      <div className="px-3 pb-3 pt-2">
+      <div className="px-3 pb-3 pt-4">
         <button
           type="button"
           onClick={() => onAddToPlan(vendor)}

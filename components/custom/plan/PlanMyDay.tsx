@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -660,13 +662,13 @@ function InputPanel({ form, set, onGenerate, loading, groupSuggestion }: InputPa
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-[#7DD8E8]/50 text-[10px] mb-1 font-sans">From</p>
-            <input type="time" value={form.timeStart}
+            <input type="time" value={form.timeStart} title="Start time"
               onChange={e => set('timeStart', e.target.value)}
               className={inputBase} style={{ colorScheme: 'dark' }} />
           </div>
           <div>
             <p className="text-[#7DD8E8]/50 text-[10px] mb-1 font-sans">Until</p>
-            <input type="time" value={form.timeEnd}
+            <input type="time" value={form.timeEnd} title="End time"
               onChange={e => set('timeEnd', e.target.value)}
               className={inputBase} style={{ colorScheme: 'dark' }} />
           </div>
@@ -980,6 +982,7 @@ export function PlanMyDay() {
   const [hasResult,  setHasResult]        = useState(false)
   const [groupSuggestion, setGroupSuggestion] = useState<GroupSuggestion | null>(null)
 
+  const router   = useRouter()
   const dayPills = getDayPills()
 
   // ── Fetch user's group memberships on mount for tag suggestions ────────────
@@ -1104,6 +1107,51 @@ export function PlanMyDay() {
     }
   }
 
+  const [saved, setSaved] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  async function handleSaveDayPlan() {
+    const supabase = createBrowserSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
+    const { error } = await supabase
+      .from('day_plans')
+      .insert({
+        user_id:                user.id,
+        plan_date:              selectedDate,
+        stops:                  enrichedStops,
+        budget_range:           form.budget,
+        energy_type:            form.energyType,
+        group_type:             form.groupType,
+        tags:                   form.tags,
+        time_start:             form.timeStart,
+        time_end:               form.timeEnd,
+        transportation:         form.transportation,
+        total_estimated_spend:  totalSpend,
+        total_duration_minutes: totalMins,
+      })
+
+    if (!error) {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    }
+  }
+
+  async function handleShare() {
+    if (navigator.share) {
+      await navigator.share({ title: 'My RTNY Day Plan', url: window.location.href })
+    } else {
+      await navigator.clipboard.writeText(window.location.href)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 3000)
+    }
+  }
+
   function toggleLock(idx: number) {
     setEnrichedStops(prev => {
       const next = [...prev]
@@ -1173,6 +1221,36 @@ export function PlanMyDay() {
               onLock={toggleLock}
               onSwap={handleSwap}
             />
+          )}
+
+          {/* Plan My Day CTA Footer */}
+          {enrichedStops.length > 0 && (
+            <div className="mt-8 pb-16 space-y-3">
+              <button
+                type="button"
+                onClick={handleSaveDayPlan}
+                className="w-full py-4 rounded-2xl bg-accent text-background font-semibold text-base tracking-wide hover:opacity-90 transition"
+              >
+                {saved ? '✓ Plan Saved!' : 'Save My Day Plan'}
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="w-full py-3 rounded-2xl border border-white/10 text-foreground/70 text-sm hover:bg-white/5 transition"
+              >
+                {linkCopied ? '✓ Link Copied!' : 'Share My Plan'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { window.location.href = `/events?date=${selectedDate}` }}
+                className="w-full py-3 rounded-2xl border border-white/10 text-foreground/70 text-sm hover:bg-white/5 transition"
+              >
+                Browse Events for This Day
+              </button>
+              <p className="text-center text-xs text-foreground/30 pt-1">
+                Your plan is saved to your profile and accessible from your dashboard.
+              </p>
+            </div>
           )}
         </div>
       )}

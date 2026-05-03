@@ -171,7 +171,7 @@ function EventBuilderView() {
                 />
               </div>
 
-              <div className="hidden lg:block w-72 shrink-0 sticky top-[180px] self-start">
+              <div className="hidden lg:block w-[280px] shrink-0 sticky top-[220px] self-start ml-8 border-l border-white/10 pl-6">
                 <PlanSummaryPanel
                   selectedServices={builder.selectedServices}
                   estimatedTotal={builder.estimatedTotal}

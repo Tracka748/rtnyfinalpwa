@@ -16,6 +16,7 @@ const CATEGORY_TO_TYPE: Record<string, string[]> = {
   'security':      ['security'],
   'photo_booth':   ['addon'],
   'entertainment': ['addon'],
+  'venue':         ['venue'],
 }
 
 // ─── Domain types (mirrored from DB schema) ───────────────────────────────────
@@ -230,15 +231,18 @@ export function usePlanBuilder() {
 
     let list = vendors
 
-    // Bug 1 fix: if vendor has available_days, check the event day (case-insensitive).
-    // Skip entirely when no date is selected so all vendors show on first load.
+    // Only apply available_days filtering when the vendor has explicitly restricted
+    // availability (1–3 days listed). Empty/null arrays and broad schedules (4+ days)
+    // are treated as "always available" so a day mismatch never empties the grid.
     if (eventDetails.eventDate) {
       const eventDay = new Date(eventDetails.eventDate)
         .toLocaleDateString('en-US', { weekday: 'long' })
         .toLowerCase()
-      list = list.filter(
-        v => !v.available_days || v.available_days.length === 0 || v.available_days.includes(eventDay)
-      )
+      list = list.filter(v => {
+        const days = v.available_days
+        const isRestricted = days && days.length > 0 && days.length <= 3
+        return isRestricted ? days.includes(eventDay) : true
+      })
     }
 
     // Bug 2 fix: translate UI pill value → DB type enum values before comparing.
