@@ -41,8 +41,8 @@ export function SavedDayPlans({ plans }: Props) {
 
   if (plans.length === 0) {
     return (
-      <div className="mt-8">
-        <div className="flex items-center gap-2 mb-4">
+      <div>
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
           <span className="text-2xl">🗒️</span>
           <h2 className="text-xl font-bold text-foreground font-slab-serif">
             Saved Day Plans
@@ -60,8 +60,8 @@ export function SavedDayPlans({ plans }: Props) {
   }
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center gap-2 mb-4">
+    <div>
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
         <span className="text-2xl">🗒️</span>
         <h2 className="text-xl font-bold text-foreground font-slab-serif">
           Saved Day Plans

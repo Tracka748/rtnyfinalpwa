@@ -123,16 +123,16 @@ export function AppNav() {
               Groups
             </Link>
 
-            {/* Crews Link */}
+            {/* Plans Link */}
             <Link
-              href="/crews"
+              href="/plan"
               className={`font-sans text-sm font-medium transition-colors ${
-                pathname.startsWith("/crews")
+                pathname.startsWith("/plan")
                   ? "text-[#59FFA0]"
                   : "text-[#F9FDFF] hover:text-[#59FFA0]"
               }`}
             >
-              Crews
+              Plan
             </Link>
 
             {/* Conditional Links based on Auth State */}
@@ -257,6 +257,18 @@ export function AppNav() {
               }`}
             >
               Groups
+            </Link>
+
+            <Link
+              href="/plan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
+                pathname.startsWith("/plan")
+                  ? "bg-[#59FFA0]/10 text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
+              }`}
+            >
+              Plan
             </Link>
 
             {!loading && (

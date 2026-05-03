@@ -22,6 +22,20 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(5)
 
+  const { data: crewMemberships } = await supabase
+    .from('crew_members')
+    .select('crew:crews(id, name, invite_code, crew_members(count))')
+    .eq('user_id', user!.id)
+    .limit(10)
+
+  const crews = (crewMemberships ?? [])
+    .map((m: any) => m.crew)
+    .filter(Boolean)
+    .map((c: any) => ({
+      ...c,
+      member_count: c.crew_members?.[0]?.count ?? 0,
+    }))
+
   return (
     <main className="min-h-screen bg-[#121113]">
       {/* Header */}
@@ -91,7 +105,52 @@ export default async function DashboardPage() {
         </div>
 
         {/* Saved Day Plans */}
-        <SavedDayPlans plans={(dayPlans ?? []) as any} />
+        <div className="bg-gradient-to-br from-cyan-950/30 to-transparent border border-cyan-500/10 rounded-2xl p-6 mt-6">
+          <SavedDayPlans plans={(dayPlans ?? []) as any} />
+        </div>
+
+        {/* My Crews */}
+        <div className="bg-gradient-to-br from-emerald-950/20 to-transparent border border-emerald-500/10 rounded-2xl p-6 mt-6">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
+            <span className="text-2xl">👥</span>
+            <h2 className="text-xl font-bold text-foreground font-slab-serif">
+              My Crews
+            </h2>
+            <a href="/crews" className="ml-auto text-xs text-accent hover:underline">
+              Manage Crews →
+            </a>
+          </div>
+
+          {crews.length === 0 ? (
+            <div className="text-center py-8 text-foreground/30 border border-white/5 rounded-2xl">
+              <span className="text-3xl">👥</span>
+              <p className="mt-2 text-sm">You&apos;re not in any crews yet.</p>
+              <a href="/crews" className="text-accent text-sm hover:underline mt-1 block">
+                Create or join a crew →
+              </a>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {crews.map((crew: any) => (
+                <div
+                  key={crew.id}
+                  className="flex items-center justify-between p-4 rounded-2xl border border-white/5 hover:bg-white/5 transition"
+                >
+                  <div>
+                    <p className="font-medium text-foreground">{crew.name}</p>
+                    <p className="text-xs text-foreground/40 mt-0.5">
+                      {crew.member_count} member{crew.member_count !== 1 ? 's' : ''} · Code:{' '}
+                      <span className="text-accent font-mono">{crew.invite_code}</span>
+                    </p>
+                  </div>
+                  <a href="/crews" className="text-xs text-foreground/40 hover:text-accent transition">
+                    View →
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* User Info (Debug) */}
         <div className="mt-8 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6">
