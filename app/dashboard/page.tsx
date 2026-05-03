@@ -105,12 +105,12 @@ export default async function DashboardPage() {
         </div>
 
         {/* Saved Day Plans */}
-        <div className="bg-gradient-to-br from-cyan-950/30 to-transparent border border-cyan-500/10 rounded-2xl p-6 mt-6">
+        <div className="bg-card border border-white/5 rounded-2xl p-6 mt-6">
           <SavedDayPlans plans={(dayPlans ?? []) as any} />
         </div>
 
         {/* My Crews */}
-        <div className="bg-gradient-to-br from-emerald-950/20 to-transparent border border-emerald-500/10 rounded-2xl p-6 mt-6">
+        <div className="bg-card border border-white/5 rounded-2xl p-6 mt-6">
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
             <span className="text-2xl">👥</span>
             <h2 className="text-xl font-bold text-foreground font-slab-serif">
