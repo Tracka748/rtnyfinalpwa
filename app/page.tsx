@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CuratedPlanCard, type CuratedPlan } from "@/components/custom/plan/CuratedPlanCard"
 import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import { HomepageSearchBar } from "@/components/custom/homepage/search-bar"
@@ -26,6 +26,8 @@ export default function HomePage() {
   const [selectedPlan, setSelectedPlan] = useState<CuratedPlan | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [mobilePage, setMobilePage] = useState(0)
+  const touchStartX = useRef(0)
 
   // Fetch events from API
   useEffect(() => {
@@ -411,7 +413,7 @@ export default function HomePage() {
 
       {/* Curated Plans Shelf */}
       {curatedPlans.length > 0 && (
-        <section className="mt-12">
+        <section className="mt-8 bg-[#080808] py-8">
           <div className="flex items-center justify-between mb-4 px-4">
             <div>
               <h2 className="font-slab-serif font-bold text-2xl text-foreground">
@@ -425,7 +427,47 @@ export default function HomePage() {
               Build Your Own →
             </a>
           </div>
-          <div className="px-4">
+          {/* Mobile: 3×2 grid, 6 cards per page */}
+          <div className="md:hidden px-4">
+            <div
+              className="grid grid-cols-3 grid-rows-2 gap-4"
+              onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
+              onTouchEnd={(e) => {
+                const delta = touchStartX.current - e.changedTouches[0].clientX
+                const totalPages = Math.ceil(curatedPlans.length / 6)
+                if (delta > 50 && mobilePage < totalPages - 1) setMobilePage(p => p + 1)
+                if (delta < -50 && mobilePage > 0) setMobilePage(p => p - 1)
+              }}
+            >
+              {curatedPlans.slice(mobilePage * 6, mobilePage * 6 + 6).map((plan) => (
+                <CuratedPlanCard
+                  key={plan.id}
+                  plan={plan}
+                  mobile
+                  onUseThisPlan={(plan) => {
+                    setSelectedPlan(plan)
+                    setSheetOpen(true)
+                  }}
+                />
+              ))}
+            </div>
+            {Math.ceil(curatedPlans.length / 6) > 1 && (
+              <div className="flex justify-center gap-2 mt-4">
+                {Array.from({ length: Math.ceil(curatedPlans.length / 6) }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setMobilePage(i)}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      mobilePage === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: original 3-card carousel */}
+          <div className="hidden md:block px-4">
             <div className="relative">
               {/* Left Arrow */}
               <button
