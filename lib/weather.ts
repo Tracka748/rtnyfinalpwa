@@ -1,5 +1,6 @@
 export type WeatherData = {
   temp: string
+  tempF: number
   description: string
   emoji: string
 }
@@ -8,8 +9,10 @@ export async function getRochesterWeather(): Promise<WeatherData | null> {
   try {
     const res = await fetch('https://wttr.in/Rochester+NY?format=j1')
     const data = await res.json()
+    const rawTempF = parseInt(data.current_condition[0].temp_F, 10)
     return {
-      temp: data.current_condition[0].temp_F + '°F',
+      temp: rawTempF + '°F',
+      tempF: rawTempF,
       description: data.current_condition[0].weatherDesc[0].value,
       emoji: getWeatherEmoji(data.current_condition[0].weatherCode),
     }
@@ -22,6 +25,7 @@ function getWeatherEmoji(code: string): string {
   const n = parseInt(code)
   if (n === 113) return '☀️'
   if (n <= 119) return '⛅'
+  if (n <= 122) return '☁️'
   if (n <= 143) return '🌫️'
   if (n <= 176) return '🌦️'
   if (n <= 260) return '🌧️'
