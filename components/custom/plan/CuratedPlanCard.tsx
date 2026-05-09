@@ -263,13 +263,7 @@ export function CuratedPlanCard({ plan, onUseThisPlan, compact = false, mobile =
               )}
             </div>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); setModalOpen(true) }}
-            className="w-full py-1.5 px-2 rounded-lg bg-accent text-background text-[10px] font-semibold active:scale-[0.97] transition-transform"
-            style={{ boxShadow: BTN_SHADOW }}
-          >
-            View This Plan →
-          </button>
+          <span className="text-[#59FFA0] text-xs font-label tracking-wide">View This Plan →</span>
         </div>
         {modalOpen && (
           <PlanModal
@@ -324,13 +318,7 @@ export function CuratedPlanCard({ plan, onUseThisPlan, compact = false, mobile =
             </div>
           </div>
 
-          <button
-            onClick={(e) => { e.stopPropagation(); setModalOpen(true) }}
-            className="w-full py-1.5 rounded-lg bg-accent text-background text-[10px] font-semibold active:scale-[0.97] transition-transform"
-            style={{ boxShadow: BTN_SHADOW }}
-          >
-            View This Plan →
-          </button>
+          <span className="text-[#59FFA0] text-xs font-label tracking-wide">View This Plan →</span>
         </div>
         {modalOpen && (
           <PlanModal
@@ -411,6 +399,8 @@ export function CuratedPlanCard({ plan, onUseThisPlan, compact = false, mobile =
             </span>
           ))}
         </div>
+
+        <span className="text-[#59FFA0] text-xs font-label tracking-wide">View This Plan →</span>
       </div>
       {modalOpen && (
         <PlanModal
