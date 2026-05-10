@@ -15,6 +15,7 @@ import { CategoryGrid } from "@/components/custom/homepage/category-grid"
 import { PointsFeedback } from "@/components/custom/homepage/points-feedback"
 import { Footer } from "@/components/custom/homepage/footer"
 import { HomepageCrewModule } from "@/components/custom/crews/HomepageCrewModule"
+import { HostedPlanCards } from "@/components/custom/plan/hosted-plan-cards"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
 import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
@@ -410,6 +411,9 @@ export default function HomePage() {
 
       {/* Section 5: Tonight in Rochester (Two Rows) */}
       <TonightSection events={tonightEvents} deals={tonightDeals} />
+
+      {/* Section 6: Hosted Plan Cards */}
+      <HostedPlanCards />
 
       {/* Curated Plans Shelf */}
       {curatedPlans.length > 0 && (
