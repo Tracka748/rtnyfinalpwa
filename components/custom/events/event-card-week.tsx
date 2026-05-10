@@ -1,0 +1,93 @@
+'use client'
+
+export type EventCategory = 'Music' | 'Nightlife' | 'Family' | 'Food' | 'Arts'
+
+export interface WeekEvent {
+  id: string
+  name: string
+  venue: string
+  time: string
+  price: string
+  category: EventCategory
+  imageUrl: string
+  description: string
+}
+
+const categoryColors: Record<EventCategory, string> = {
+  Music: 'bg-[#1AC8ED]',
+  Nightlife: 'bg-[#8B5CF6]',
+  Family: 'bg-[#F59E0B]',
+  Food: 'bg-[#EC4899]',
+  Arts: 'bg-[#EAB308]',
+}
+
+export function EventCardWeek({ event }: { event: WeekEvent }) {
+  return (
+    <button
+      type="button"
+      className="group relative w-full aspect-[3/4] rounded-xl overflow-hidden border border-white/[0.06] focus:outline-none transition-transform active:scale-[0.98]"
+      aria-label={`${event.name} at ${event.venue}, ${event.time}, ${event.price}`}
+    >
+      <img
+        src={event.imageUrl}
+        alt={event.name}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+      />
+      <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-label font-semibold uppercase tracking-wide text-white ${categoryColors[event.category]}`}>
+        {event.category}
+      </span>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col gap-0.5">
+        <h3 className="font-slab-serif font-bold text-sm text-[#F9FDFF] leading-tight line-clamp-2">
+          {event.name}
+        </h3>
+        <p className="font-label text-[10px] text-[#7A7978] uppercase tracking-wide">
+          {event.time}
+        </p>
+        <p className="font-label text-xs font-semibold text-[#59FFA0]">
+          {event.price}
+        </p>
+      </div>
+    </button>
+  )
+}
+
+export function EventRowWeek({ event }: { event: WeekEvent }) {
+  return (
+    <div className="group flex items-center gap-4 py-4 px-2 border-b border-white/[0.06] last:border-b-0 hover:bg-[#1C1B1E] transition-colors cursor-pointer rounded-lg">
+      <div className="relative w-[100px] h-[100px] flex-shrink-0 rounded-lg overflow-hidden">
+        <img
+          src={event.imageUrl}
+          alt={event.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="flex-1 flex items-center justify-between gap-4 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <span className={`self-start px-2.5 py-0.5 rounded-full text-[10px] font-label font-semibold uppercase tracking-wide text-white ${categoryColors[event.category]}`}>
+            {event.category}
+          </span>
+          <h3 className="font-slab-serif font-bold text-lg text-[#F9FDFF] leading-tight truncate">
+            {event.name}
+          </h3>
+          <p className="font-label text-sm text-[#7A7978]">
+            {event.venue}
+          </p>
+          <p className="font-sans text-sm text-[#7A7978] italic line-clamp-1">
+            {event.description}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <p className="font-label text-sm text-[#7A7978]">{event.time}</p>
+          <p className="font-label font-bold text-lg text-[#59FFA0]">{event.price}</p>
+          <button
+            type="button"
+            className="px-4 py-1.5 rounded-full border border-[#59FFA0] text-[#59FFA0] font-label text-sm font-medium hover:bg-[#59FFA0] hover:text-[#121113] transition-colors"
+          >
+            Get Tickets →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

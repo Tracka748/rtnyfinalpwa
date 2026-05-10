@@ -16,6 +16,7 @@ import { PointsFeedback } from "@/components/custom/homepage/points-feedback"
 import { Footer } from "@/components/custom/homepage/footer"
 import { HomepageCrewModule } from "@/components/custom/crews/HomepageCrewModule"
 import { HostedPlanCards } from "@/components/custom/plan/hosted-plan-cards"
+import { ThisWeekRochester } from "@/components/custom/events/this-week-rochester"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
 import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
@@ -111,7 +112,7 @@ export default function HomePage() {
       id: "1",
       title: "🎬 Free Kids Movies Weekend",
       subtitle: "Dec 15-20 • All Rochester Theaters",
-      image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200&h=600&fit=crop",
+      image: "https://uxpmfnbifhkayljayjtb.supabase.co/storage/v1/object/public/Hosted-plan-covers/ChatGPT%20Image%20May%209,%202026,%2010_35_56%20AM.png",
       points: 300,
       cta: "View Showtimes",
       link: "/movies",
@@ -120,7 +121,7 @@ export default function HomePage() {
       id: "2",
       title: "🎸 Rochester Music Festival",
       subtitle: "Live bands every night • Downtown venues",
-      image: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1200&h=600&fit=crop",
+      image: "https://uxpmfnbifhkayljayjtb.supabase.co/storage/v1/object/public/Hosted-plan-covers/ChatGPT%20Image%20May%209,%202026,%2010_36_16%20AM.png",
       points: 500,
       cta: "Get Tickets",
       link: "/festivals",
@@ -129,7 +130,7 @@ export default function HomePage() {
       id: "3",
       title: "🍹 Holiday Food & Wine Walk",
       subtitle: "Taste Rochester • Over 25 restaurants",
-      image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=600&fit=crop",
+      image: "https://uxpmfnbifhkayljayjtb.supabase.co/storage/v1/object/public/Hosted-plan-covers/ChatGPT%20Image%20May%209,%202026,%2010_36_29%20AM.png",
       points: 250,
       cta: "Reserve Spot",
       link: "/dining",
@@ -411,6 +412,9 @@ export default function HomePage() {
 
       {/* Section 5: Tonight in Rochester (Two Rows) */}
       <TonightSection events={tonightEvents} deals={tonightDeals} />
+
+      {/* This Week in Rochester */}
+      <ThisWeekRochester />
 
       {/* Section 6: Hosted Plan Cards */}
       <HostedPlanCards />
