@@ -17,6 +17,7 @@ import { Footer } from "@/components/custom/homepage/footer"
 import { HomepageCrewModule } from "@/components/custom/crews/HomepageCrewModule"
 import { HostedPlanCards } from "@/components/custom/plan/hosted-plan-cards"
 import { ThisWeekRochester } from "@/components/custom/events/this-week-rochester"
+import RewardStatusBar from "@/components/rewards/RewardStatusBar"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
 import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
@@ -386,6 +387,10 @@ export default function HomePage() {
     }))
     .sort((a, b) => b.priority - a.priority)
 
+  const musicModule = modules.find(m => m.id === 'music')
+  const moviesModule = modules.find(m => m.id === 'movies')
+  const familyModule = modules.find(m => m.id === 'family')
+
   return (
     <div className="min-h-screen bg-background divide-y divide-white/5">
       {/* Search Bar (sticky below nav) */}
@@ -397,10 +402,16 @@ export default function HomePage() {
       {/* Section 2: Date Tabs */}
       <DateTabs onDateChange={setSelectedDate} />
 
-      {/* Section 3: Featured Events */}
+      {/* Reward Status Bar */}
+      <RewardStatusBar points={240} stubs={2} stubsTarget={3} badgeCount={4} giftCount={1} />
+
+      {/* Section 3: Popular in Rochester */}
       <FeaturedEvents events={featuredEvents} />
 
-      {/* Section 4: Announcement Strip */}
+      {/* Section 4: Live Music */}
+      {musicModule && <ModuleSection module={musicModule} />}
+
+      {/* Section 5: Deals & Promos */}
       <AnnouncementStrip
         icon="🎊"
         title="NEW YEAR'S EVE"
@@ -410,16 +421,13 @@ export default function HomePage() {
         ctaLink="/nye"
       />
 
-      {/* Section 5: Tonight in Rochester (Two Rows) */}
-      <TonightSection events={tonightEvents} deals={tonightDeals} />
-
-      {/* This Week in Rochester */}
+      {/* Section 6: This Week in Rochester */}
       <ThisWeekRochester />
 
-      {/* Section 6: Hosted Plan Cards */}
+      {/* Section 7: Hosted Plan Cards */}
       <HostedPlanCards />
 
-      {/* Curated Plans Shelf */}
+      {/* Section 8: Plan Your Day grid */}
       {curatedPlans.length > 0 && (
         <section className="mt-8 bg-[#080808] py-8">
           <div className="flex items-center justify-between mb-4 px-4">
@@ -464,6 +472,8 @@ export default function HomePage() {
                 {Array.from({ length: Math.ceil(curatedPlans.length / 6) }).map((_, i) => (
                   <button
                     key={i}
+                    type="button"
+                    aria-label={`Go to page ${i + 1}`}
                     onClick={() => setMobilePage(i)}
                     className={`h-1.5 rounded-full transition-all duration-300 ${
                       mobilePage === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
@@ -479,6 +489,8 @@ export default function HomePage() {
             <div className="relative">
               {/* Left Arrow */}
               <button
+                type="button"
+                aria-label="Previous plans"
                 onClick={() => setCarouselIndex(i => Math.max(0, i - 3))}
                 disabled={carouselIndex === 0}
                 className="absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
@@ -500,6 +512,8 @@ export default function HomePage() {
 
               {/* Right Arrow */}
               <button
+                type="button"
+                aria-label="Next plans"
                 onClick={() => setCarouselIndex(i => Math.min(curatedPlans.length - 3, i + 3))}
                 disabled={carouselIndex + 3 >= curatedPlans.length}
                 className="absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
@@ -511,6 +525,8 @@ export default function HomePage() {
               {Array.from({ length: Math.ceil(curatedPlans.length / 3) }).map((_, i) => (
                 <button
                   key={i}
+                  type="button"
+                  aria-label={`Go to page ${i + 1}`}
                   onClick={() => setCarouselIndex(i * 3)}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     Math.floor(carouselIndex / 3) === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
@@ -522,20 +538,20 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Your Crew */}
+      {/* Section 9: Your Crew */}
       <section className="px-4 py-6">
         <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-3">Your Crew</p>
         <HomepageCrewModule />
       </section>
 
-      {/* Section 6: RTNY Merch */}
+      {/* Section 10: RTNY Merch */}
       <section className="py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-header text-2xl font-bold text-foreground">
               🛍️ RTNY Merch
             </h2>
-            <button className="text-accent hover:text-accent/80 font-sans text-sm">
+            <button type="button" className="text-accent hover:text-accent/80 font-sans text-sm">
               Shop All →
             </button>
           </div>
@@ -620,23 +636,24 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Section 7: Other Modules */}
-      {sortedModules.slice(0, 4).map((module) => (
-        <ModuleSection key={module.id} module={module} />
-      ))}
+      {/* Section 11: Movies This Week */}
+      {moviesModule && <ModuleSection module={moviesModule} />}
 
-      {/* Section 7: Contextual Ad */}
+      {/* Section 12: Family Weekend */}
+      {familyModule && <ModuleSection module={familyModule} />}
+
+      {/* Contextual Ad */}
       <ContextualAd />
 
-      {/* Section 8: Category Grid */}
+      {/* Category Grid */}
       <CategoryGrid />
 
-      {/* Section 9: Points Feedback */}
+      {/* Points Feedback */}
       {userData.isLoggedIn && (
         <PointsFeedback points={userData.points} currentBadge="Explorer" nextBadge="Night Owl" progress={70} />
       )}
 
-      {/* Section 10: Footer */}
+      {/* Footer */}
       <Footer />
 
       {/* Curated plan bottom sheet */}
@@ -652,6 +669,7 @@ export default function HomePage() {
             <p className="text-foreground font-bold text-lg">{selectedPlan.title}</p>
             <p className="text-foreground/40 text-sm mt-1">Bottom sheet coming soon</p>
             <button
+              type="button"
               onClick={() => setSheetOpen(false)}
               className="mt-4 w-full py-3 rounded-xl bg-accent text-background font-semibold"
             >
