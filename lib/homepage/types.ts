@@ -9,6 +9,7 @@ export interface Event {
   points: number
   date: string
   description?: string
+  deal?: string
 }
 
 export interface PromoCard {

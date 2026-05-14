@@ -311,6 +311,8 @@ export default function HomePage() {
           price: "$15",
           points: 80,
           date: selectedDate,
+          deal: "Free entry before 10PM",
+          description: "A smooth evening of live jazz with Rochester's finest musicians",
         },
         {
           id: "mu2",
@@ -322,6 +324,8 @@ export default function HomePage() {
           price: "$30",
           points: 150,
           date: selectedDate,
+          deal: "VIP includes open bar",
+          description: "High energy rock with full light show and multiple acts",
         },
         {
           id: "mu3",
@@ -333,6 +337,8 @@ export default function HomePage() {
           price: "Free",
           points: 40,
           date: selectedDate,
+          deal: "Sign up to perform on stage",
+          description: "Local talent takes the spotlight every Tuesday night",
         },
       ],
     },

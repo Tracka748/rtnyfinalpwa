@@ -1,12 +1,14 @@
 // components/custom/events/event-card.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { Heart } from 'lucide-react';
 import { EventCategory } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { DEFAULT_EVENT_IMAGE, getEventImage } from '@/lib/image-utils';
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
 
 const CATEGORY_CONFIG: Record<EventCategory, {
   icon: string;
@@ -66,6 +68,8 @@ interface EventCardProps {
 
 export function EventCard({ event }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savePending, setSavePending] = useState(false);
   const categoryConfig = CATEGORY_CONFIG[event.category];
 
   // Calculate lowest price
@@ -80,12 +84,83 @@ export function EventCard({ event }: EventCardProps) {
   const soldOutSoon = ticketsRemaining > 0 && ticketsRemaining <= 20;
   const soldOut = ticketsRemaining === 0;
 
+  // Stat chip values
+  const isFree = lowestPrice === 0;
+  const eventTime = format(new Date(event.event_date), 'h:mm a');
+  const remainingPct = event.total_tickets > 0 ? ticketsRemaining / event.total_tickets : 1;
+  const availabilityLabel = ticketsRemaining < 10 ? 'Last Few' : remainingPct < 0.2 ? 'Selling Fast' : 'Available';
+  const availabilityClass = ticketsRemaining < 10 ? 'text-[#FF4D4D]' : remainingPct < 0.2 ? 'text-[#F59E0B]' : 'text-[#22D3EE]';
+
+  // Load saved state on mount
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      supabase
+        .from('saved_events')
+        .select('event_id')
+        .eq('user_id', data.user.id)
+        .eq('event_id', event.id)
+        .maybeSingle()
+        .then(({ data: row }) => setIsSaved(!!row));
+    });
+  }, [event.id]);
+
+  const handleSaveToggle = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (savePending) return;
+
+    const supabase = createBrowserSupabaseClient();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
+    const optimistic = !isSaved;
+    setIsSaved(optimistic);
+    setSavePending(true);
+
+    try {
+      if (optimistic) {
+        const { error } = await supabase
+          .from('saved_events')
+          .insert({ user_id: userData.user.id, event_id: event.id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('saved_events')
+          .delete()
+          .eq('user_id', userData.user.id)
+          .eq('event_id', event.id);
+        if (error) throw error;
+      }
+    } catch {
+      setIsSaved(!optimistic);
+    } finally {
+      setSavePending(false);
+    }
+  }, [isSaved, savePending, event.id]);
+
   return (
     <Link
       href={`/events/${event.id}`}
       className="group block"
     >
-      <article className="relative h-full bg-card rounded-2xl overflow-hidden border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-2xl hover:shadow-accent/10 hover:-translate-y-1">
+      <article className="relative h-full bg-[#111318] rounded-[10px] overflow-hidden border-[0.5px] border-[rgba(255,255,255,0.1)] hover:border-accent/50 transition-all duration-300 hover:shadow-2xl hover:shadow-accent/10 hover:-translate-y-1">
+        {/* Heart / Save button */}
+        <button
+          type="button"
+          onClick={handleSaveToggle}
+          aria-label={isSaved ? 'Unsave event' : 'Save event'}
+          className="absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-black/45 backdrop-blur-sm transition-transform active:scale-90"
+        >
+          <Heart
+            size={16}
+            className="transition-colors"
+            fill={isSaved ? '#ef4444' : 'none'}
+            stroke={isSaved ? '#ef4444' : 'rgba(255,255,255,0.7)'}
+            strokeWidth={2}
+          />
+        </button>
 
         {/* Image Container - Fixed Aspect Ratio */}
         <div className="relative aspect-[3/4] overflow-hidden bg-secondary/10">
@@ -138,6 +213,28 @@ export function EventCard({ event }: EventCardProps) {
             <h3 className="font-slab-serif font-bold text-xl md:text-2xl leading-tight text-foreground line-clamp-2 group-hover:text-accent transition-colors">
               {event.name}
             </h3>
+
+            {/* Stat chips */}
+            <div className="flex items-center gap-1.5">
+              {/* Price chip */}
+              <div className={cn(
+                "flex-1 flex items-center justify-center px-2 py-1 rounded-md border-[0.5px] border-[rgba(255,255,255,0.08)] bg-[#0d0f14] text-[10px] font-semibold",
+                isFree ? 'text-[#59FFA0]' : 'text-slate-200'
+              )}>
+                {isFree ? 'Free' : lowestPrice !== null ? `$${lowestPrice % 1 === 0 ? lowestPrice : lowestPrice.toFixed(2)}` : 'TBA'}
+              </div>
+              {/* Time chip */}
+              <div className="flex-1 flex items-center justify-center px-2 py-1 rounded-md border-[0.5px] border-[rgba(255,255,255,0.08)] bg-[#0d0f14] text-[10px] font-semibold text-foreground/80">
+                {eventTime}
+              </div>
+              {/* Availability chip */}
+              <div className={cn(
+                "flex-1 flex items-center justify-center px-2 py-1 rounded-md border-[0.5px] border-[rgba(255,255,255,0.08)] bg-[#0d0f14] text-[10px] font-semibold",
+                availabilityClass
+              )}>
+                {availabilityLabel}
+              </div>
+            </div>
 
             {/* Metadata Grid */}
             <div className="space-y-1.5 md:space-y-2">

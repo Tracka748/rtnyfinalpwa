@@ -235,6 +235,7 @@ export type Database = {
           id: string
           invite_code: string | null
           is_private: boolean | null
+          is_public: boolean | null
           max_members: number | null
           name: string
         }
@@ -245,6 +246,7 @@ export type Database = {
           id?: string
           invite_code?: string | null
           is_private?: boolean | null
+          is_public?: boolean | null
           max_members?: number | null
           name: string
         }
@@ -255,6 +257,7 @@ export type Database = {
           id?: string
           invite_code?: string | null
           is_private?: boolean | null
+          is_public?: boolean | null
           max_members?: number | null
           name?: string
         }
@@ -267,6 +270,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      curated_plans: {
+        Row: {
+          active: boolean | null
+          cover_image_url: string | null
+          created_at: string | null
+          estimated_cost_max: number | null
+          estimated_cost_min: number | null
+          estimated_duration_hours: number | null
+          flash_deal_expires_at: string | null
+          flash_deal_label: string | null
+          id: string
+          is_featured: boolean | null
+          is_flash_deal: boolean | null
+          stops: Json
+          subtitle: string | null
+          tags: string[] | null
+          theme: string | null
+          time_of_day: string | null
+          title: string
+          vibe: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          estimated_cost_max?: number | null
+          estimated_cost_min?: number | null
+          estimated_duration_hours?: number | null
+          flash_deal_expires_at?: string | null
+          flash_deal_label?: string | null
+          id?: string
+          is_featured?: boolean | null
+          is_flash_deal?: boolean | null
+          stops?: Json
+          subtitle?: string | null
+          tags?: string[] | null
+          theme?: string | null
+          time_of_day?: string | null
+          title: string
+          vibe?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          estimated_cost_max?: number | null
+          estimated_cost_min?: number | null
+          estimated_duration_hours?: number | null
+          flash_deal_expires_at?: string | null
+          flash_deal_label?: string | null
+          id?: string
+          is_featured?: boolean | null
+          is_flash_deal?: boolean | null
+          stops?: Json
+          subtitle?: string | null
+          tags?: string[] | null
+          theme?: string | null
+          time_of_day?: string | null
+          title?: string
+          vibe?: string | null
+        }
+        Relationships: []
       }
       day_plans: {
         Row: {
@@ -1454,7 +1520,7 @@ export type Database = {
           first_name: string | null
           gender: string | null
           id: string
-          is_organizer: boolean
+          is_organizer: boolean | null
           is_parent: boolean | null
           last_name: string | null
           neighborhood: string | null
@@ -1471,7 +1537,7 @@ export type Database = {
           first_name?: string | null
           gender?: string | null
           id: string
-          is_organizer?: boolean
+          is_organizer?: boolean | null
           is_parent?: boolean | null
           last_name?: string | null
           neighborhood?: string | null
@@ -1488,7 +1554,7 @@ export type Database = {
           first_name?: string | null
           gender?: string | null
           id?: string
-          is_organizer?: boolean
+          is_organizer?: boolean | null
           is_parent?: boolean | null
           last_name?: string | null
           neighborhood?: string | null
@@ -1684,6 +1750,58 @@ export type Database = {
         }
         Relationships: []
       }
+      promoter_features: {
+        Row: {
+          expires_at: string | null
+          feature_id: string
+          granted_by: string | null
+          id: string
+          promoter_id: string
+          unlock_type: string
+          unlocked_at: string | null
+        }
+        Insert: {
+          expires_at?: string | null
+          feature_id: string
+          granted_by?: string | null
+          id?: string
+          promoter_id: string
+          unlock_type: string
+          unlocked_at?: string | null
+        }
+        Update: {
+          expires_at?: string | null
+          feature_id?: string
+          granted_by?: string | null
+          id?: string
+          promoter_id?: string
+          unlock_type?: string
+          unlocked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promoter_features_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "toolkit_features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promoter_features_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promoter_features_promoter_id_fkey"
+            columns: ["promoter_id"]
+            isOneToOne: false
+            referencedRelation: "promoters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       promoter_marketing_packages: {
         Row: {
           created_at: string | null
@@ -1773,6 +1891,76 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      saved_day_plans: {
+        Row: {
+          created_at: string | null
+          id: string
+          plan_date: string
+          preferences: Json | null
+          stops: Json
+          total_estimated_spend: number | null
+          total_time_minutes: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          plan_date: string
+          preferences?: Json | null
+          stops: Json
+          total_estimated_spend?: number | null
+          total_time_minutes?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          plan_date?: string
+          preferences?: Json | null
+          stops?: Json
+          total_estimated_spend?: number | null
+          total_time_minutes?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_day_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_events: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_events_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_types: {
         Row: {
@@ -1902,6 +2090,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      toolkit_features: {
+        Row: {
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_monthly: number | null
+          price_one_time: number | null
+          sort_order: number | null
+        }
+        Insert: {
+          description?: string | null
+          icon?: string | null
+          id: string
+          is_active?: boolean | null
+          name: string
+          price_monthly?: number | null
+          price_one_time?: number | null
+          sort_order?: number | null
+        }
+        Update: {
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_monthly?: number | null
+          price_one_time?: number | null
+          sort_order?: number | null
+        }
+        Relationships: []
       }
       user_behavior_snapshot: {
         Row: {
@@ -2193,45 +2414,75 @@ export type Database = {
       vendors: {
         Row: {
           active: boolean | null
+          available_days: string[] | null
+          base_price: number | null
           bio: string | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string | null
           id: string
+          instagram_handle: string | null
           instant_book: boolean | null
           location: string | null
           name: string
+          portfolio_images: string[] | null
+          price_unit: string | null
           profile_image_url: string | null
           rating: number | null
           review_count: number | null
+          service_radius_miles: number | null
           tier: string
           type: string
+          website: string | null
+          years_in_business: number | null
         }
         Insert: {
           active?: boolean | null
+          available_days?: string[] | null
+          base_price?: number | null
           bio?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id?: string
+          instagram_handle?: string | null
           instant_book?: boolean | null
           location?: string | null
           name: string
+          portfolio_images?: string[] | null
+          price_unit?: string | null
           profile_image_url?: string | null
           rating?: number | null
           review_count?: number | null
+          service_radius_miles?: number | null
           tier?: string
           type: string
+          website?: string | null
+          years_in_business?: number | null
         }
         Update: {
           active?: boolean | null
+          available_days?: string[] | null
+          base_price?: number | null
           bio?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id?: string
+          instagram_handle?: string | null
           instant_book?: boolean | null
           location?: string | null
           name?: string
+          portfolio_images?: string[] | null
+          price_unit?: string | null
           profile_image_url?: string | null
           rating?: number | null
           review_count?: number | null
+          service_radius_miles?: number | null
           tier?: string
           type?: string
+          website?: string | null
+          years_in_business?: number | null
         }
         Relationships: []
       }

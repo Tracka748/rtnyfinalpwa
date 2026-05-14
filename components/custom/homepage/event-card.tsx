@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { Heart } from "lucide-react"
 import type { Event } from "@/lib/homepage/types"
 import { getCategoryColor } from "@/lib/homepage/utils"
 import { DEFAULT_EVENT_IMAGE, getEventImage } from "@/lib/image-utils"
+import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 
 interface EventCardProps {
   event: Event
@@ -14,52 +16,143 @@ interface EventCardProps {
 
 export function EventCard({ event, size = "small" }: EventCardProps) {
   const [imageSrc, setImageSrc] = useState(() => getEventImage(event.image, event.category))
+  const [isSaved, setIsSaved] = useState(false)
+  const [savePending, setSavePending] = useState(false)
+
   const cardWidth = size === "small" ? "w-[220px]" : "w-[280px]"
-  const imageHeight = size === "small" ? "h-[120px]" : "h-[180px]"
-  const cardHeight = size === "small" ? "h-[240px]" : "h-[320px]"
+  const imageHeight = size === "small" ? "h-[120px]" : "h-[160px]"
+  const cardHeight = size === "small" ? "h-[260px]" : "h-[340px]"
 
   const categoryColor = getCategoryColor(event.category)
-
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const href = uuidRegex.test(event.id) ? `/events/${event.id}` : '/events'
 
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      supabase
+        .from('saved_events')
+        .select('event_id')
+        .eq('user_id', data.user.id)
+        .eq('event_id', event.id)
+        .maybeSingle()
+        .then(({ data: row }) => setIsSaved(!!row))
+    })
+  }, [event.id])
+
+  const handleSaveToggle = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (savePending) return
+
+    const supabase = createBrowserSupabaseClient()
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) return
+
+    const optimistic = !isSaved
+    setIsSaved(optimistic)
+    setSavePending(true)
+
+    try {
+      if (optimistic) {
+        const { error } = await supabase
+          .from('saved_events')
+          .insert({ user_id: userData.user.id, event_id: event.id })
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('saved_events')
+          .delete()
+          .eq('user_id', userData.user.id)
+          .eq('event_id', event.id)
+        if (error) throw error
+      }
+    } catch {
+      setIsSaved(!optimistic)
+    } finally {
+      setSavePending(false)
+    }
+  }, [isSaved, savePending, event.id])
+
   return (
     <Link href={href} className={`${cardWidth} ${cardHeight} shrink-0 snap-start`}>
-      <div className="h-full rounded-xl border border-border bg-surface overflow-hidden transition-all hover:border-accent-primary hover:shadow-lg group cursor-pointer">
+      <div className="relative h-full rounded-xl border border-border bg-surface overflow-hidden transition-all hover:border-accent-primary hover:shadow-lg group cursor-pointer flex flex-col">
+
         {/* Image */}
-        <div className={`relative ${imageHeight} w-full overflow-hidden bg-surface-elevated`}>
+        <div className={`relative ${imageHeight} w-full shrink-0 overflow-hidden bg-surface-elevated`}>
           <Image
             src={imageSrc}
             alt={event.title}
             fill
             className="object-cover transition-transform group-hover:scale-105"
-            onError={() => {
-              setImageSrc(DEFAULT_EVENT_IMAGE)
-            }}
+            onError={() => setImageSrc(DEFAULT_EVENT_IMAGE)}
           />
 
-          {/* Category badge */}
+          {/* Category pill — top left */}
           <div className={`absolute left-2 top-2 rounded-full px-2 py-1 text-xs font-medium ${categoryColor}`}>
             {event.category}
           </div>
+
+          {/* Heart button — top right */}
+          <button
+            type="button"
+            onClick={handleSaveToggle}
+            aria-label={isSaved ? 'Unsave event' : 'Save event'}
+            className="absolute top-2 right-2 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm transition-transform active:scale-90"
+          >
+            <Heart
+              size={14}
+              fill={isSaved ? '#ef4444' : 'none'}
+              stroke={isSaved ? '#ef4444' : 'rgba(255,255,255,0.75)'}
+              strokeWidth={2}
+            />
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="flex h-[140px] flex-col justify-between p-3">
-          <div>
-            <h3 className="line-clamp-2 text-[15px] font-bold leading-tight text-text-primary">{event.title}</h3>
-            <p className="mt-1 text-[13px] text-[#7DD8E8]">{event.venue}</p>
-            <p className="text-[13px] text-[#7DD8E8]">
-              {event.time} • {event.price}
-            </p>
-          </div>
+        {/* Card body */}
+        <div className="flex flex-col flex-1 pb-[12px]">
 
-          {/* Points badge */}
-          <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-primary/10 px-2 py-1 text-xs font-semibold text-accent-primary">
-              +{event.points}pts
+          {/* Event name */}
+          <h3 className="text-[18px] font-semibold text-[#F9FDFF] text-center leading-snug line-clamp-2 pt-[12px] px-[14px] pb-[4px]">
+            {event.title}
+          </h3>
+
+          {/* Venue */}
+          <p className="text-[12px] text-[#1AC8ED] text-center px-[14px]">
+            {event.venue}
+          </p>
+
+          {/* Deal description */}
+          {event.deal && (
+            <p className="text-[12px] text-[#59FFA0] italic text-center px-[14px] pt-[4px]">
+              {event.deal}
+            </p>
+          )}
+
+          {/* Event description */}
+          {event.description && (
+            <p className="text-[11px] text-[#F9FDFF] text-center px-[14px] pt-[2px] pb-[6px]">
+              {event.description}
+            </p>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Stat chips */}
+          <div className="flex gap-[5px] mx-[12px]">
+            <span className="flex-1 text-center bg-[#0d0f14] border-[0.5px] border-[rgba(255,255,255,0.08)] rounded-[6px] py-[5px] text-[10px] font-semibold uppercase tracking-[0.05em] text-[#59FFA0]">
+              {event.price}
+            </span>
+            <span className="flex-1 text-center bg-[#0d0f14] border-[0.5px] border-[rgba(255,255,255,0.08)] rounded-[6px] py-[5px] text-[10px] font-semibold uppercase tracking-[0.05em] text-[#888888]">
+              {event.time}
+            </span>
+            <span className="flex-1 text-center bg-[#0d0f14] border-[0.5px] border-[rgba(255,255,255,0.08)] rounded-[6px] py-[5px] text-[10px] font-semibold uppercase tracking-[0.05em] text-[#1AC8ED]">
+              Available
             </span>
           </div>
+
         </div>
       </div>
     </Link>
