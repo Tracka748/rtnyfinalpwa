@@ -67,10 +67,10 @@ export function EventRowWeek({ event }: { event: WeekEvent }) {
           <span className={`self-start px-2.5 py-0.5 rounded-full text-[10px] font-label font-semibold uppercase tracking-wide text-white ${categoryColors[event.category]}`}>
             {event.category}
           </span>
-          <h3 className="font-slab-serif font-bold text-lg text-[#F9FDFF] leading-tight truncate">
+          <h3 className="font-slab-serif font-bold text-lg text-[#F97316] leading-tight truncate">
             {event.name}
           </h3>
-          <p className="font-label text-sm text-[#7A7978]">
+          <p className="font-label text-sm text-[#1AC8ED]">
             {event.venue}
           </p>
           <p className="font-sans text-sm text-[#7A7978] italic line-clamp-1">

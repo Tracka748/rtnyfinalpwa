@@ -50,7 +50,7 @@ export function HeroPromo({ promos }: HeroPromoProps) {
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-6">
-      <div className="relative">
+      <div className="relative overflow-hidden rounded-2xl">
         {/* Active promo card */}
         <div
           className="relative h-[280px] overflow-hidden rounded-2xl border border-accent-primary/30 md:h-[360px]"
@@ -58,6 +58,8 @@ export function HeroPromo({ promos }: HeroPromoProps) {
             backgroundImage: `url('${promos[activeIndex].image}')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
+            boxShadow: 'inset 0 0 0 4px #121113',
+            position: 'relative',
           }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -95,6 +97,16 @@ export function HeroPromo({ promos }: HeroPromoProps) {
               />
             ))}
           </div>
+
+          {/* Hard border overlay — covers image bleed and seam artifacts */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: '4px solid #121113',
+            borderRadius: 'inherit',
+            pointerEvents: 'none',
+            zIndex: 20,
+          }} />
         </div>
       </div>
     </div>

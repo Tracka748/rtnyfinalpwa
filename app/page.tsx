@@ -17,6 +17,7 @@ import { Footer } from "@/components/custom/homepage/footer"
 import { HomepageCrewModule } from "@/components/custom/crews/HomepageCrewModule"
 import { HostedPlanCards } from "@/components/custom/plan/hosted-plan-cards"
 import { ThisWeekRochester } from "@/components/custom/events/this-week-rochester"
+import { FeaturedAdBanner } from "@/components/custom/ads/featured-ad-banner"
 import RewardStatusBar from "@/components/rewards/RewardStatusBar"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
 import { getEventImage } from "@/lib/image-utils"
@@ -423,6 +424,9 @@ export default function HomePage() {
 
       {/* Section 6: This Week in Rochester */}
       <ThisWeekRochester />
+
+      {/* Featured Ad Banner */}
+      <FeaturedAdBanner />
 
       {/* Section 7: Hosted Plan Cards */}
       <HostedPlanCards />
