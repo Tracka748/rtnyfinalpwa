@@ -17,6 +17,8 @@ import { Footer } from "@/components/custom/homepage/footer"
 import { HomepageCrewModule } from "@/components/custom/crews/HomepageCrewModule"
 import { HostedPlanCards } from "@/components/custom/plan/hosted-plan-cards"
 import { ThisWeekRochester } from "@/components/custom/events/this-week-rochester"
+import { LiveNowSection } from "@/components/custom/events/LiveNowSection"
+import { AnnouncementFeed } from "@/components/custom/homepage/announcement-feed"
 import { FeaturedAdBanner } from "@/components/custom/ads/featured-ad-banner"
 import RewardStatusBar from "@/components/rewards/RewardStatusBar"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
@@ -412,8 +414,14 @@ export default function HomePage() {
       {/* Reward Status Bar */}
       <RewardStatusBar points={240} stubs={2} stubsTarget={3} badgeCount={4} giftCount={1} />
 
+      {/* What's Happening feed */}
+      <AnnouncementFeed />
+
       {/* Section 3: Popular in Rochester */}
       <FeaturedEvents events={featuredEvents} />
+
+      {/* Live Now: today's active events */}
+      <LiveNowSection />
 
       {/* Section 4: Live Music */}
       {musicModule && <ModuleSection module={musicModule} />}

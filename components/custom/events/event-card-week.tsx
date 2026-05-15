@@ -1,6 +1,7 @@
 'use client'
 
 export type EventCategory = 'Music' | 'Nightlife' | 'Family' | 'Food' | 'Arts'
+export type EventDay = 'tonight' | 'tomorrow' | 'weekend'
 
 export interface WeekEvent {
   id: string
@@ -9,6 +10,7 @@ export interface WeekEvent {
   time: string
   price: string
   category: EventCategory
+  day: EventDay
   imageUrl: string
   description: string
 }
