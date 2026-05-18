@@ -3,90 +3,49 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
-interface LiveEvent {
+interface LiveSlot {
   id: string
-  name: string
-  flyer_image_url: string | null
-  event_date: string
-  status: string
-  venues: { name: string } | null
+  title: string
+  venue: string
+  img: string
+  live: boolean
+  featured: boolean
 }
 
-const DEV_MOCK: LiveEvent[] = [
-  {
-    id: 'mock-1',
-    name: 'Jazz Night at Montage',
-    flyer_image_url: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=200&h=220&fit=crop',
-    event_date: new Date().toISOString(),
-    status: 'active',
-    venues: { name: 'Montage Music Hall' },
-  },
-  {
-    id: 'mock-2',
-    name: 'Friday Night Vibes',
-    flyer_image_url: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=200&h=220&fit=crop',
-    event_date: new Date().toISOString(),
-    status: 'active',
-    venues: { name: 'Lux Lounge' },
-  },
-  {
-    id: 'mock-3',
-    name: 'Rooftop Sessions',
-    flyer_image_url: null,
-    event_date: new Date().toISOString(),
-    status: 'active',
-    venues: null,
-  },
-  {
-    id: 'mock-4',
-    name: 'Bug Jar Open Mic',
-    flyer_image_url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=200&h=220&fit=crop',
-    event_date: new Date().toISOString(),
-    status: 'active',
-    venues: { name: 'Bug Jar' },
-  },
-  {
-    id: 'mock-5',
-    name: 'Downtown Block Party',
-    flyer_image_url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=200&h=220&fit=crop',
-    event_date: new Date().toISOString(),
-    status: 'active',
-    venues: { name: 'East Ave' },
-  },
-]
-
 export function LiveNowSection() {
-  const [events, setEvents] = useState<LiveEvent[]>([])
-  const [loaded, setLoaded] = useState(false)
+  const [events, setEvents] = useState<LiveSlot[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchLiveEvents() {
-      const supabase = createBrowserSupabaseClient()
-
-      // Match the date format the events API uses (local time strings, not UTC)
-      const today = new Date().toISOString().split('T')[0]
-
-      const { data } = await supabase
-        .from('events')
-        .select('id, name, flyer_image_url, event_date, status, venues(name)')
-        .eq('status', 'active')
-        .gte('event_date', `${today}T00:00:00`)
-        .lte('event_date', `${today}T23:59:59`)
-        .order('event_date', { ascending: true })
-        .limit(10)
-
-      const real = data || []
-      // In dev with no real events, show mock cards so the UI is visible
-      setEvents(real.length > 0 ? real : process.env.NODE_ENV === 'development' ? DEV_MOCK : [])
-      setLoaded(true)
+    async function fetchLiveSlots() {
+      try {
+        const res = await fetch('/api/v1/live-now')
+        const json = await res.json()
+        if (json.success && json.data?.length) {
+          setEvents(
+            json.data.map((slot: any) => ({
+              id: slot.id,
+              title: slot.title,
+              venue: slot.venue,
+              img: slot.image_url ?? '/placeholder-event.jpg',
+              live: true,
+              featured: false,
+            }))
+          )
+        }
+      } catch (err) {
+        console.error('LiveNowSection fetch error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    fetchLiveEvents()
+    fetchLiveSlots()
   }, [])
 
-  if (!loaded || events.length === 0) return null
+  if (!loading && events.length === 0) return null
 
   return (
     <>
@@ -100,6 +59,16 @@ export function LiveNowSection() {
           to   { opacity: 1; transform: translateY(0); }
         }
         .live-now-row::-webkit-scrollbar { height: 0; }
+        @keyframes shimmer {
+          0%   { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
+        .skeleton {
+          background: linear-gradient(90deg, #1C1B1E 25%, #252428 50%, #1C1B1E 75%);
+          background-size: 800px 100%;
+          animation: shimmer 1.4s infinite linear;
+          border-radius: 8px;
+        }
       `}</style>
 
       <section style={{ marginTop: 32, background: '#121113' }}>
@@ -161,8 +130,18 @@ export function LiveNowSection() {
             paddingBottom: '8px',
           }}
         >
-          {events.map((event, i) => {
-            const venueName = event.venues?.name ?? null
+          {/* Skeleton rows while loading */}
+          {loading && Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ flexShrink: 0, scrollSnapAlign: 'start' }}>
+              <div className="skeleton" style={{ width: 90, height: 100 }} />
+              <div className="skeleton" style={{ width: 70, height: 8, marginTop: 6 }} />
+              <div className="skeleton" style={{ width: 50, height: 7, marginTop: 4 }} />
+            </div>
+          ))}
+
+          {/* Live cards */}
+          {!loading && events.map((event, i) => {
+            const isExpanded = expandedId === event.id
             return (
               <div
                 key={event.id}
@@ -175,37 +154,36 @@ export function LiveNowSection() {
               >
                 {/* Card poster */}
                 <div
+                  onClick={() => setExpandedId(prev => prev === event.id ? null : event.id)}
                   style={{
                     position: 'relative',
-                    width: 90,
+                    width: isExpanded ? 220 : 118,
                     height: 100,
                     borderRadius: 8,
                     overflow: 'hidden',
                     cursor: 'pointer',
-                    transition: 'transform 0.15s ease',
+                    transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
                   }}
-                  onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.94)' }}
-                  onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
-                  onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.94)' }}
-                  onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
                 >
                   {/* Poster image or gradient fallback */}
-                  {event.flyer_image_url ? (
-                    <Image
-                      src={event.flyer_image_url}
-                      alt={event.name}
-                      fill
-                      style={{ objectFit: 'cover' }}
-                      sizes="90px"
-                    />
-                  ) : (
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'linear-gradient(160deg, #1a0a2e, #0f3460)',
-                    }} />
-                  )}
+                  <Image
+                    src={event.img}
+                    alt={event.title}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="220px"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none'
+                    }}
+                  />
+
+                  {/* Gradient fallback layer (always behind image) */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(160deg, #1a0a2e, #0f3460)',
+                    zIndex: 0,
+                  }} />
 
                   {/* Pulsing live dot — top-left */}
                   <span style={{
@@ -220,6 +198,31 @@ export function LiveNowSection() {
                     animation: 'pulse 1.6s ease-in-out infinite',
                     zIndex: 2,
                   }} />
+
+                  {/* Expanded overlay: venue name */}
+                  {isExpanded && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 14,
+                      padding: '18px 10px 8px',
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)',
+                      zIndex: 3,
+                    }}>
+                      <p style={{
+                        fontFamily: 'Rubik, sans-serif',
+                        fontSize: 10,
+                        color: 'rgba(249,253,255,0.7)',
+                        margin: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        📍 {event.venue}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Admit One strip — right edge */}
                   <div style={{
@@ -264,7 +267,7 @@ export function LiveNowSection() {
                 </div>
 
                 {/* Text below card */}
-                <div style={{ marginTop: 5, width: 90 }}>
+                <div style={{ marginTop: 5, width: isExpanded ? 220 : 118, transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
                   <p style={{
                     fontFamily: 'Montserrat, sans-serif',
                     fontWeight: 700,
@@ -274,10 +277,9 @@ export function LiveNowSection() {
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    maxWidth: 90,
                     margin: 0,
                   }}>
-                    {event.name}
+                    {event.title}
                   </p>
                   <p style={{
                     fontFamily: 'Rubik, sans-serif',
@@ -289,7 +291,7 @@ export function LiveNowSection() {
                     gap: 3,
                     overflow: 'hidden',
                   }}>
-                    {venueName ? (
+                    {event.venue && event.venue !== 'Location TBD' ? (
                       <>
                         <span style={{
                           display: 'inline-block',
@@ -305,7 +307,7 @@ export function LiveNowSection() {
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}>
-                          {venueName}
+                          {event.venue}
                         </span>
                       </>
                     ) : (

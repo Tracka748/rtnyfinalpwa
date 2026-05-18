@@ -9,6 +9,7 @@ import { VenuePerformanceTable } from '@/components/admin/VenuePerformanceTable'
 import { PromoterPerformanceTable } from '@/components/admin/PromoterPerformanceTable';
 import { ExportButton } from '@/components/admin/ExportButton';
 import { DashboardSkeleton } from '@/components/admin/DashboardSkeleton';
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
 
 interface DashboardStats {
   activeEvents: number;
@@ -39,10 +40,12 @@ export default function AdminDashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [recalculating, setRecalculating] = useState(false);
   const [recalcToast, setRecalcToast] = useState<string | null>(null);
+  const [pendingSlots, setPendingSlots] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
     fetchAnalyticsData();
+    fetchPendingSlots();
   }, []);
 
   useEffect(() => {
@@ -109,6 +112,33 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error('Analytics fetch error:', err);
+    }
+  }
+
+  async function fetchPendingSlots() {
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { data } = await supabase
+        .from('live_now_slots')
+        .select('id, status, paid, starts_at, ends_at, notes, created_at, event_id, promoter_id')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+      setPendingSlots(data || []);
+    } catch (err) {
+      console.error('Failed to fetch pending slots:', err);
+    }
+  }
+
+  async function updateSlot(id: string, status: string, paid: boolean) {
+    try {
+      await fetch('/api/v1/live-now', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, paid }),
+      });
+      fetchPendingSlots();
+    } catch (err) {
+      console.error('Failed to update slot:', err);
     }
   }
 
@@ -339,6 +369,55 @@ export default function AdminDashboardPage() {
           <VenuePerformanceTable data={venuePerformance} />
           <PromoterPerformanceTable data={promoterPerformance} />
         </div>
+      </section>
+
+      {/* Section: Live Now Approval Queue */}
+      <section className="space-y-3 md:space-y-4">
+        <h2 className="text-base md:text-xl font-header font-bold text-white">
+          🔴 Live Now — Pending Approval
+        </h2>
+        {pendingSlots.length === 0 && (
+          <p className="text-[#7A7978] text-sm">No pending slots.</p>
+        )}
+        {pendingSlots.map(slot => (
+          <div
+            key={slot.id}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 mb-3 flex items-center justify-between"
+          >
+            <div>
+              <p className="font-label text-sm font-semibold text-[#F9FDFF]">
+                {slot.event_id}
+              </p>
+              <p className="text-xs text-[#7A7978] mt-1">
+                {new Date(slot.starts_at).toLocaleString()} →{' '}
+                {new Date(slot.ends_at).toLocaleString()}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  slot.paid ? 'bg-[#59FFA0]/20 text-[#59FFA0]' : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {slot.paid ? 'Paid' : 'Unpaid'}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => updateSlot(slot.id, 'approved', true)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#59FFA0] text-[#121113] font-bold"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSlot(slot.id, 'rejected', slot.paid)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#2a2a2a] text-[#F9FDFF]"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* Section: Recent Activity */}

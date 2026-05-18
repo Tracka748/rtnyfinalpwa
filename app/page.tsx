@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { CuratedPlanCard, type CuratedPlan } from "@/components/custom/plan/CuratedPlanCard"
+// {/* HIDDEN: PlanYourDay — moved to /plan nav route */}
 import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import { HomepageSearchBar } from "@/components/custom/homepage/search-bar"
 import { HeroPromo } from "@/components/custom/homepage/hero-promo"
@@ -14,8 +14,8 @@ import { ContextualAd } from "@/components/custom/homepage/contextual-ad"
 import { CategoryGrid } from "@/components/custom/homepage/category-grid"
 import { PointsFeedback } from "@/components/custom/homepage/points-feedback"
 import { Footer } from "@/components/custom/homepage/footer"
-import { HomepageCrewModule } from "@/components/custom/crews/HomepageCrewModule"
-import { HostedPlanCards } from "@/components/custom/plan/hosted-plan-cards"
+// {/* HIDDEN: HomepageCrewModule — moved to /crews nav route */}
+// {/* HIDDEN: HostedPlanCards — part of Plan Your Day, moved to /plan nav route */}
 import { ThisWeekRochester } from "@/components/custom/events/this-week-rochester"
 import { LiveNowSection } from "@/components/custom/events/LiveNowSection"
 import { AnnouncementFeed } from "@/components/custom/homepage/announcement-feed"
@@ -24,12 +24,15 @@ import RewardStatusBar from "@/components/rewards/RewardStatusBar"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
 import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
+import RTNYPicksSection from "@/components/custom/homepage/RTNYPicksSection"
+import SweepstakesSection from "@/components/custom/homepage/SweepstakesSection"
+import PartnerAdsSection from "@/components/custom/homepage/PartnerAdsSection"
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [allEvents, setAllEvents] = useState<any[]>([])
-  const [curatedPlans, setCuratedPlans] = useState<CuratedPlan[]>([])
-  const [selectedPlan, setSelectedPlan] = useState<CuratedPlan | null>(null)
+  const [curatedPlans, setCuratedPlans] = useState<any[]>([])
+  const [selectedPlan, setSelectedPlan] = useState<any>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [mobilePage, setMobilePage] = useState(0)
@@ -442,125 +445,26 @@ export default function HomePage() {
       {/* Featured Ad Banner */}
       <FeaturedAdBanner />
 
-      {/* Section 7: Hosted Plan Cards */}
-      <HostedPlanCards />
-
-      {/* Section 8: Plan Your Day grid */}
-      {curatedPlans.length > 0 && (
-        <section className="mt-8 bg-[#080808] py-8">
-          <div className="flex items-center justify-between mb-4 px-4">
-            <div>
-              <h2 className="font-slab-serif font-bold text-2xl text-foreground">
-                ✨ Plan Your Day
-              </h2>
-              <p className="text-sm text-foreground/40 mt-0.5">
-                Curated Rochester experiences — tap to customize
-              </p>
-            </div>
-            <a href="/plan" className="text-xs text-accent hover:underline shrink-0">
-              Build Your Own →
-            </a>
-          </div>
-          {/* Mobile: 3×2 grid, 6 cards per page */}
-          <div className="md:hidden px-4">
-            <div
-              className="grid grid-cols-3 grid-rows-2 gap-4"
-              onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
-              onTouchEnd={(e) => {
-                const delta = touchStartX.current - e.changedTouches[0].clientX
-                const totalPages = Math.ceil(curatedPlans.length / 6)
-                if (delta > 50 && mobilePage < totalPages - 1) setMobilePage(p => p + 1)
-                if (delta < -50 && mobilePage > 0) setMobilePage(p => p - 1)
-              }}
-            >
-              {curatedPlans.slice(mobilePage * 6, mobilePage * 6 + 6).map((plan) => (
-                <CuratedPlanCard
-                  key={plan.id}
-                  plan={plan}
-                  mobile
-                  onUseThisPlan={(plan) => {
-                    setSelectedPlan(plan)
-                    setSheetOpen(true)
-                  }}
-                />
-              ))}
-            </div>
-            {Math.ceil(curatedPlans.length / 6) > 1 && (
-              <div className="flex justify-center gap-2 mt-4">
-                {Array.from({ length: Math.ceil(curatedPlans.length / 6) }).map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    aria-label={`Go to page ${i + 1}`}
-                    onClick={() => setMobilePage(i)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      mobilePage === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Desktop: original 3-card carousel */}
-          <div className="hidden md:block px-4">
-            <div className="relative">
-              {/* Left Arrow */}
-              <button
-                type="button"
-                aria-label="Previous plans"
-                onClick={() => setCarouselIndex(i => Math.max(0, i - 3))}
-                disabled={carouselIndex === 0}
-                className="absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
-              >←</button>
-
-              {/* 3 Cards */}
-              <div className="grid grid-cols-3 gap-4">
-                {curatedPlans.slice(carouselIndex, carouselIndex + 3).map((plan) => (
-                  <CuratedPlanCard
-                    key={plan.id}
-                    plan={plan}
-                    onUseThisPlan={(plan) => {
-                      setSelectedPlan(plan)
-                      setSheetOpen(true)
-                    }}
-                  />
-                ))}
-              </div>
-
-              {/* Right Arrow */}
-              <button
-                type="button"
-                aria-label="Next plans"
-                onClick={() => setCarouselIndex(i => Math.min(curatedPlans.length - 3, i + 3))}
-                disabled={carouselIndex + 3 >= curatedPlans.length}
-                className="absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
-              >→</button>
-            </div>
-
-            {/* Dot indicators */}
-            <div className="flex justify-center gap-2 mt-5">
-              {Array.from({ length: Math.ceil(curatedPlans.length / 3) }).map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`Go to page ${i + 1}`}
-                  onClick={() => setCarouselIndex(i * 3)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    Math.floor(carouselIndex / 3) === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Section 9: Your Crew */}
-      <section className="px-4 py-6">
-        <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-3">Your Crew</p>
-        <HomepageCrewModule />
+      {/* RTNY Picks */}
+      <section className="w-full px-0 py-6">
+        <RTNYPicksSection />
       </section>
+
+      {/* Sweepstakes */}
+      <section className="w-full px-0 py-6">
+        <SweepstakesSection />
+      </section>
+
+      {/* Partner Ads */}
+      <section className="w-full px-0 py-6">
+        <PartnerAdsSection />
+      </section>
+
+      {/* HIDDEN: HostedPlanCards — part of Plan Your Day, moved to /plan nav route */}
+
+      {/* HIDDEN: PlanYourDay — moved to /plan nav route */}
+
+      {/* HIDDEN: HomepageCrewModule — moved to /crews nav route */}
 
       {/* Section 10: RTNY Merch */}
       <section className="py-12 px-4">
