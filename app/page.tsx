@@ -25,6 +25,7 @@ import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
 import RTNYPicksSection from "@/components/custom/homepage/RTNYPicksSection"
 import { DiscoveryModule } from "@/components/custom/homepage/discovery-module"
+import { PersonalizedRow } from "@/components/custom/homepage/personalized-row"
 import SweepstakesSection from "@/components/custom/homepage/SweepstakesSection"
 import PartnerAdsSection from "@/components/custom/homepage/PartnerAdsSection"
 
@@ -425,6 +426,9 @@ export default function HomePage() {
 
       {/* Section 3: Popular in Rochester */}
       <FeaturedEvents events={featuredEvents} />
+
+      {/* Personalized / Popular row */}
+      <PersonalizedRow />
 
       {/* Section 4: Live Music */}
       {musicModule && <ModuleSection module={musicModule} />}
