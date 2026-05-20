@@ -16,7 +16,6 @@ import { PointsFeedback } from "@/components/custom/homepage/points-feedback"
 import { Footer } from "@/components/custom/homepage/footer"
 // {/* HIDDEN: HomepageCrewModule — moved to /crews nav route */}
 // {/* HIDDEN: HostedPlanCards — part of Plan Your Day, moved to /plan nav route */}
-import { ThisWeekRochester } from "@/components/custom/events/this-week-rochester"
 import { LiveNowSection } from "@/components/custom/events/LiveNowSection"
 import { AnnouncementFeed } from "@/components/custom/homepage/announcement-feed"
 import { FeaturedAdBanner } from "@/components/custom/ads/featured-ad-banner"
@@ -25,6 +24,7 @@ import { getModulePriority } from "@/lib/homepage/get-module-priority"
 import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
 import RTNYPicksSection from "@/components/custom/homepage/RTNYPicksSection"
+import { DiscoveryModule } from "@/components/custom/homepage/discovery-module"
 import SweepstakesSection from "@/components/custom/homepage/SweepstakesSection"
 import PartnerAdsSection from "@/components/custom/homepage/PartnerAdsSection"
 
@@ -439,8 +439,8 @@ export default function HomePage() {
         ctaLink="/nye"
       />
 
-      {/* Section 6: This Week in Rochester */}
-      <ThisWeekRochester />
+      {/* Discovery Module */}
+      <DiscoveryModule />
 
       {/* Featured Ad Banner */}
       <FeaturedAdBanner />
