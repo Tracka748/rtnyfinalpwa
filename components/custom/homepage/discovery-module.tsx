@@ -62,13 +62,13 @@ function getMinPrice(ticketTypes: TicketTypeRow[]): string {
 
 function HeroSkeleton() {
   return (
-    <div className="w-full h-[200px] rounded-2xl bg-[#2a2929] animate-pulse" />
+    <div className="w-full h-[210px] rounded-2xl bg-[#2a2929] animate-pulse" />
   )
 }
 
 function CardSkeleton() {
   return (
-    <div className="shrink-0 w-[160px] h-[210px] rounded-2xl bg-[#2a2929] animate-pulse" />
+    <div className="shrink-0 w-[175px] h-[225px] rounded-2xl bg-[#2a2929] animate-pulse" />
   )
 }
 
@@ -84,7 +84,7 @@ function HeroCard({
   return (
     <Link
       href={`/events/${event.id}`}
-      className="relative block w-full h-[200px] rounded-2xl overflow-hidden"
+      className="relative block w-full h-[210px] rounded-2xl overflow-hidden"
     >
       {event.flyer_image_url ? (
         <Image
@@ -95,7 +95,7 @@ function HeroCard({
           sizes="100vw"
         />
       ) : (
-        <div className="absolute inset-0 bg-[#1a1819]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#1a1a2e_0%,#16213e_40%,#0f3460_100%)]" />
       )}
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
@@ -149,7 +149,7 @@ function EventCard({ event }: { event: CardEvent }) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="relative shrink-0 w-[160px] h-[210px] rounded-2xl overflow-hidden block"
+      className="relative shrink-0 w-[175px] h-[225px] rounded-2xl overflow-hidden block"
     >
       {event.flyer_image_url ? (
         <Image
@@ -298,7 +298,7 @@ export function DiscoveryModule() {
       ) : hero ? (
         <HeroCard event={hero} categoryLabel={activePill.label} />
       ) : (
-        <div className="w-full h-[200px] rounded-2xl bg-[#1a1819]" />
+        <div className="w-full h-[210px] rounded-2xl bg-[#1a1819]" />
       )}
 
       {/* ── Category Pills ── */}
@@ -307,7 +307,7 @@ export function DiscoveryModule() {
           <button
             key={pill.value}
             onClick={() => setActiveCategory(pill.value)}
-            className="px-4 py-1.5 rounded-full text-xs font-semibold transition-colors"
+            className="px-4 py-[10px] rounded-full text-xs font-semibold transition-colors"
             style={{
               backgroundColor:
                 activeCategory === pill.value ? pill.color : "#1A1A1A",
@@ -321,7 +321,7 @@ export function DiscoveryModule() {
       </div>
 
       {/* ── Card Row ── */}
-      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-3 px-5 overflow-x-auto pb-1 scrollbar-hide">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
           : cards.map((card) => <EventCard key={card.id} event={card} />)}
