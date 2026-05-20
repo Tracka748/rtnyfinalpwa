@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, ChevronRight } from 'lucide-react'
+import { LEDReveal, LEDText } from '@/components/ui/led'
 
 export interface Stop {
   time: string
@@ -249,10 +250,23 @@ export function CuratedPlanCard({ plan, onUseThisPlan, compact = false, mobile =
           <div>
             <div className="flex items-start gap-1 mb-0.5">
               <span className="text-base shrink-0">{config.emoji}</span>
-              <h3 className="font-slab-serif font-bold text-xs text-foreground leading-tight line-clamp-2">{plan.title}</h3>
+              <LEDReveal
+                text={plan.title.toUpperCase()}
+                dotSize={3}
+                gap={1}
+                charGap={2}
+                color="#59FFA0"
+                stagger={60}
+              />
             </div>
             <div className="flex items-center gap-1 text-[10px] text-foreground/40 mb-1">
-              <span>💵 ${plan.estimated_cost_min}–${plan.estimated_cost_max}</span>
+              <LEDText
+                text={`$${plan.estimated_cost_min}-$${plan.estimated_cost_max}`}
+                dotSize={2}
+                gap={0.8}
+                charGap={1}
+                color="#FFD166"
+              />
             </div>
             <div className="mb-1">
               {plan.stops.slice(0, 2).map((stop, i) => (
@@ -263,7 +277,15 @@ export function CuratedPlanCard({ plan, onUseThisPlan, compact = false, mobile =
               )}
             </div>
           </div>
-          <span className="text-[#59FFA0] text-xs font-label tracking-wide">View This Plan →</span>
+          <span className="text-[#59FFA0] text-xs font-label tracking-wide">
+            <LEDText
+              text="VIEW THIS PLAN"
+              dotSize={2}
+              gap={0.8}
+              charGap={2}
+              color="#59FFA0"
+            />
+          </span>
         </div>
         {modalOpen && (
           <PlanModal
