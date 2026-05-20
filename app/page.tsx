@@ -420,11 +420,11 @@ export default function HomePage() {
       {/* What's Happening feed */}
       <AnnouncementFeed />
 
-      {/* Section 3: Popular in Rochester */}
-      <FeaturedEvents events={featuredEvents} />
-
       {/* Live Now: today's active events */}
       <LiveNowSection />
+
+      {/* Section 3: Popular in Rochester */}
+      <FeaturedEvents events={featuredEvents} />
 
       {/* Section 4: Live Music */}
       {musicModule && <ModuleSection module={musicModule} />}

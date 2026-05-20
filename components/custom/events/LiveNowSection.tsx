@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 interface LiveSlot {
   id: string
@@ -21,6 +22,7 @@ export function LiveNowSection() {
   useEffect(() => {
     async function fetchLiveSlots() {
       try {
+        // Primary: paid live_now_slots from the API
         const res = await fetch('/api/v1/live-now')
         const json = await res.json()
         if (json.success && json.data?.length) {
@@ -34,9 +36,40 @@ export function LiveNowSection() {
               featured: false,
             }))
           )
+          setLoading(false)
+          return
         }
       } catch (err) {
-        console.error('LiveNowSection fetch error:', err)
+        console.error('LiveNowSection API error:', err)
+      }
+
+      // Fallback: today's active events directly from Supabase
+      try {
+        const supabase = createBrowserSupabaseClient()
+        const today = new Date().toISOString().split('T')[0]
+        const { data } = await supabase
+          .from('events')
+          .select('id, name, flyer_image_url, event_date, status, venues(name)')
+          .eq('status', 'active')
+          .gte('event_date', `${today}T00:00:00`)
+          .lte('event_date', `${today}T23:59:59`)
+          .order('event_date', { ascending: true })
+          .limit(10)
+
+        if (data?.length) {
+          setEvents(
+            data.map((e: any) => ({
+              id: e.id,
+              title: e.name,
+              venue: e.venues?.name ?? 'Location TBD',
+              img: e.flyer_image_url ?? '/placeholder-event.jpg',
+              live: true,
+              featured: false,
+            }))
+          )
+        }
+      } catch (err) {
+        console.error('LiveNowSection fallback error:', err)
       } finally {
         setLoading(false)
       }
