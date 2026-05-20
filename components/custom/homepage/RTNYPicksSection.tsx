@@ -5,6 +5,20 @@
 import { useState } from "react"
 import { Moon, Ticket, Sparkles, Music, Film, Store } from "lucide-react"
 
+// ─── Shared brand mark ───────────────────────────────────────────────────────
+
+function BrandMark() {
+  return (
+    <div className="flex justify-center mt-3">
+      <span className="font-header text-2xl font-black tracking-tight">
+        <span className="text-[#1AC8ED]">Roc</span>
+        <span className="text-[#F9FDFF]">Ticket</span>
+        <span className="text-[#59FFA0]">Ny</span>
+      </span>
+    </div>
+  )
+}
+
 // ─── Shared pagination dots ───────────────────────────────────────────────────
 
 function Dots({ active }: { active: 0 | 1 | 2 }) {
@@ -56,8 +70,10 @@ function NightPicksCard() {
         }}
       />
 
+      <BrandMark />
+
       {/* Header */}
-      <div className="flex items-center gap-2 relative z-10">
+      <div className="flex items-center gap-2 relative z-10 mt-3">
         <Moon size={18} className="text-yellow-200" />
         <span className="font-label text-sm font-bold tracking-widest text-[#F9FDFF] uppercase">
           NightPicks
@@ -157,8 +173,10 @@ function EventPicksCard() {
         }}
       />
 
+      <BrandMark />
+
       {/* Header */}
-      <div className="flex items-center gap-2 relative z-10">
+      <div className="flex items-center gap-2 relative z-10 mt-3">
         <Ticket size={18} className="text-[#1AC8ED]" />
         <span className="font-label text-sm font-bold tracking-widest text-[#F9FDFF] uppercase">
           EventPicks
@@ -172,14 +190,7 @@ function EventPicksCard() {
       <div className="flex-1 flex items-center gap-4 relative z-10">
         {/* Rock */}
         <div className="flex-1 flex flex-col items-center gap-2">
-          <div
-            className="flex items-center justify-center text-4xl rounded-2xl"
-            style={{
-              width: 72, height: 72,
-              background: "rgba(26,200,237,0.1)",
-              border: "1px solid rgba(26,200,237,0.2)",
-            }}
-          >
+          <div className="flex items-center justify-center text-4xl rounded-2xl w-[72px] h-[72px] bg-[rgba(26,200,237,0.1)] border border-[rgba(26,200,237,0.2)]">
             🎸
           </div>
           <span className="font-sans text-xs font-semibold text-[rgba(249,253,255,0.7)] text-center">
@@ -192,14 +203,7 @@ function EventPicksCard() {
 
         {/* Comedy */}
         <div className="flex-1 flex flex-col items-center gap-2">
-          <div
-            className="flex items-center justify-center text-4xl rounded-2xl"
-            style={{
-              width: 72, height: 72,
-              background: "rgba(255,159,67,0.1)",
-              border: "1px solid rgba(255,159,67,0.2)",
-            }}
-          >
+          <div className="flex items-center justify-center text-4xl rounded-2xl w-[72px] h-[72px] bg-[rgba(255,159,67,0.1)] border border-[rgba(255,159,67,0.2)]">
             🎭
           </div>
           <span className="font-sans text-xs font-semibold text-[rgba(249,253,255,0.7)] text-center">
@@ -214,24 +218,22 @@ function EventPicksCard() {
         <button
           type="button"
           onClick={() => setSelected("rock")}
-          className="flex-1 py-3 rounded-2xl font-label text-sm font-bold tracking-wider uppercase transition-all"
-          style={{
-            border:     selected === "rock" ? "1px solid #1AC8ED"          : "1px solid rgba(255,255,255,0.2)",
-            background: selected === "rock" ? "rgba(26,200,237,0.1)"       : "rgba(255,255,255,0.05)",
-            color:      selected === "rock" ? "#1AC8ED"                    : "#F9FDFF",
-          }}
+          className={`flex-1 py-3 rounded-2xl font-label text-sm font-bold tracking-wider uppercase transition-all border ${
+            selected === "rock"
+              ? "border-[#1AC8ED] bg-[rgba(26,200,237,0.1)] text-[#1AC8ED]"
+              : "border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] text-[#F9FDFF]"
+          }`}
         >
           Rock
         </button>
         <button
           type="button"
           onClick={() => setSelected("comedy")}
-          className="flex-1 py-3 rounded-2xl font-label text-sm font-bold tracking-wider uppercase transition-all"
-          style={{
-            border:     selected === "comedy" ? "1px solid #FF9F43"        : "1px solid rgba(255,255,255,0.2)",
-            background: selected === "comedy" ? "rgba(255,159,67,0.1)"     : "rgba(255,255,255,0.05)",
-            color:      selected === "comedy" ? "#FF9F43"                  : "#F9FDFF",
-          }}
+          className={`flex-1 py-3 rounded-2xl font-label text-sm font-bold tracking-wider uppercase transition-all border ${
+            selected === "comedy"
+              ? "border-[#FF9F43] bg-[rgba(255,159,67,0.1)] text-[#FF9F43]"
+              : "border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] text-[#F9FDFF]"
+          }`}
         >
           Comedy
         </button>
@@ -240,8 +242,7 @@ function EventPicksCard() {
       {/* CTA */}
       <button
         type="button"
-        className="mt-3 w-full py-4 rounded-full font-label font-bold text-sm tracking-widest uppercase text-[#121113]"
-        style={{ background: "#1AC8ED" }}
+        className="mt-3 w-full py-4 rounded-full font-label font-bold text-sm tracking-widest uppercase text-[#121113] bg-[#1AC8ED]"
       >
         Make Your Pick
       </button>
@@ -259,22 +260,22 @@ function EventPicksCard() {
 
 const ROC_PILLS = [
   {
-    iconBg:    "rgba(89,255,160,0.12)",
-    iconColor: "#59FFA0",
-    Icon:      Music,
-    text:      "Who headlines Rocfest 2026?",
+    iconBgClass:    "bg-[rgba(89,255,160,0.12)]",
+    iconColorClass: "text-[#59FFA0]",
+    Icon:           Music,
+    text:           "Who headlines Rocfest 2026?",
   },
   {
-    iconBg:    "rgba(26,200,237,0.12)",
-    iconColor: "#1AC8ED",
-    Icon:      Film,
-    text:      "Best movie at The Little this weekend?",
+    iconBgClass:    "bg-[rgba(26,200,237,0.12)]",
+    iconColorClass: "text-[#1AC8ED]",
+    Icon:           Film,
+    text:           "Best movie at The Little this weekend?",
   },
   {
-    iconBg:    "rgba(255,159,67,0.12)",
-    iconColor: "#FF9F43",
-    Icon:      Store,
-    text:      "Hottest new spot in the ROC?",
+    iconBgClass:    "bg-[rgba(255,159,67,0.12)]",
+    iconColorClass: "text-[#FF9F43]",
+    Icon:           Store,
+    text:           "Hottest new spot in the ROC?",
   },
 ] as const
 
@@ -283,32 +284,26 @@ function RocPicksCard() {
 
   return (
     <div
-      className="w-full max-w-sm mx-auto flex flex-col relative overflow-hidden"
+      className="w-full max-w-sm mx-auto flex flex-col relative overflow-hidden min-h-[85vh] rounded-3xl pt-7 px-[22px] pb-[22px]"
       style={{
-        minHeight: "85vh",
-        borderRadius: 24,
         background: "radial-gradient(ellipse at top, #1a0a0a, #120808)",
         border: "0.5px solid rgba(255,59,48,0.2)",
-        padding: "28px 22px 22px",
       }}
     >
       {/* Red ambient glow */}
       <div
         aria-hidden
-        className="absolute rounded-full pointer-events-none"
+        className="absolute rounded-full pointer-events-none -top-[60px] left-1/2 -translate-x-1/2 w-[200px] h-[200px]"
         style={{
-          top: -60,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 200,
-          height: 200,
           background: "rgba(255,59,48,0.15)",
           filter: "blur(50px)",
         }}
       />
 
+      <BrandMark />
+
       {/* Header */}
-      <div className="flex items-center gap-2 relative z-10">
+      <div className="flex items-center gap-2 relative z-10 mt-3">
         <Sparkles size={18} className="text-[#FF3B30]" />
         <span className="font-label text-sm font-bold tracking-widest text-[#F9FDFF] uppercase">
           RocPicks
@@ -320,22 +315,19 @@ function RocPicksCard() {
 
       {/* Culture pills */}
       <div className="flex-1 flex flex-col gap-3 justify-center relative z-10">
-        {ROC_PILLS.map(({ iconBg, iconColor, Icon, text }, i) => (
+        {ROC_PILLS.map(({ iconBgClass, iconColorClass, Icon, text }, i) => (
           <button
             key={i}
             type="button"
             onClick={() => setSelected(selected === i ? null : i)}
-            className="flex items-center gap-3 p-3 rounded-2xl w-full text-left transition-all"
-            style={{
-              background: selected === i ? "rgba(255,59,48,0.1)"        : "rgba(255,255,255,0.05)",
-              border:     selected === i ? "1px solid rgba(255,59,48,0.3)" : "1px solid rgba(255,255,255,0.09)",
-            }}
+            className={`flex items-center gap-3 p-3 rounded-2xl w-full text-left transition-all border ${
+              selected === i
+                ? "bg-[rgba(255,59,48,0.1)] border-[rgba(255,59,48,0.3)]"
+                : "bg-[rgba(255,255,255,0.05)] border-[rgba(255,255,255,0.09)]"
+            }`}
           >
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: iconBg }}
-            >
-              <Icon size={15} style={{ color: iconColor }} />
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBgClass}`}>
+              <Icon size={15} className={iconColorClass} />
             </div>
             <span className="font-sans text-sm text-[rgba(249,253,255,0.75)]">{text}</span>
           </button>
@@ -345,8 +337,7 @@ function RocPicksCard() {
       {/* CTA */}
       <button
         type="button"
-        className="mt-6 w-full py-4 rounded-full font-label font-bold text-sm tracking-widest uppercase text-white"
-        style={{ background: "#FF3B30" }}
+        className="mt-6 w-full py-4 rounded-full font-label font-bold text-sm tracking-widest uppercase text-white bg-[#FF3B30]"
       >
         Pick Now
       </button>
@@ -364,15 +355,12 @@ function RocPicksCard() {
 
 export default function RTNYPicksSection() {
   return (
-    <section style={{ background: "#121113" }}>
+    <section className="bg-[#121113]">
       <div className="relative min-h-[300vh]">
 
         {/* Section header — scrolls away normally, not sticky */}
         <div className="px-5 pt-8 pb-6">
-          <h2
-            className="font-slab-serif font-bold text-[#F9FDFF]"
-            style={{ fontSize: 26 }}
-          >
+          <h2 className="font-slab-serif font-bold text-[#F9FDFF] text-[26px]">
             🎯 RTNY Picks
           </h2>
           <p className="font-sans text-sm text-[rgba(249,253,255,0.5)] mt-1">

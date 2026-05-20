@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 const CHAR_MAPS = {
   A:[[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
@@ -171,6 +172,7 @@ const BADGE_COLORS = {
 };
 
 export default function PlanYourDayCard() {
+  const router = useRouter();
   const [current, setCurrent] = useState(0);
   const [removed, setRemoved] = useState([]);
   const [exiting, setExiting] = useState(false);
@@ -385,6 +387,26 @@ export default function PlanYourDayCard() {
           }}
             onMouseOver={e => { e.currentTarget.style.background="rgba(89,255,160,0.07)"; e.currentTarget.style.boxShadow="0 0 28px rgba(89,255,160,0.15)"; }}
             onMouseOut={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.boxShadow="0 0 20px rgba(89,255,160,0.05)"; }}
+            onClick={() => {
+              const planData = {
+                title: plan.name,
+                date: new Date().toISOString().split('T')[0],
+                badge: plan.badge,
+                stops: activeStops.map(s => ({
+                  name: s.name,
+                  category: 'venue',
+                  icon: s.icon,
+                  time: s.time,
+                  address: s.loc,
+                  estimatedSpend: s.price,
+                  durationMinutes: 90,
+                })),
+                totalSpend: total,
+                source: 'curated',
+              }
+              sessionStorage.setItem('rtny_pending_day_plan', JSON.stringify(planData))
+              router.push('/plan/confirm')
+            }}
           >
             ◈ Book This Plan ◈
           </button>

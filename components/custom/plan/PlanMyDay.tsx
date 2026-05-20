@@ -1159,6 +1159,39 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
   const [saved, setSaved] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
 
+  function handleConfirmPlan() {
+    const fmt = (t: string): string => {
+      const [h, m] = t.split(':').map(Number)
+      const ampm = h >= 12 ? 'PM' : 'AM'
+      return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`
+    }
+    const plan = {
+      title: 'My Day Plan',
+      date: selectedDate,
+      stops: enrichedStops.map(e => ({
+        name: e.stop.name,
+        category: e.stop.category,
+        time: fmt(e.stop.estimated_arrival),
+        address: e.stop.address ?? '',
+        estimatedSpend: e.stop.estimated_spend,
+        durationMinutes: e.stop.duration_minutes,
+        segment: e.segment,
+      })),
+      totalSpend,
+      totalMins,
+      source: 'generated' as const,
+      preferences: {
+        groupType:      form.groupType,
+        transportation: form.transportation,
+        energyType:     form.energyType,
+        tags:           form.tags,
+        budget:         form.budget,
+      },
+    }
+    sessionStorage.setItem('rtny_pending_day_plan', JSON.stringify(plan))
+    router.push('/plan/confirm')
+  }
+
   async function handleSaveDayPlan() {
     const supabase = createBrowserSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -1277,8 +1310,18 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
             <div className="mt-8 pb-16 space-y-3">
               <button
                 type="button"
+                onClick={handleConfirmPlan}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#59ffa0] text-[#121113] font-sans font-bold text-sm hover:bg-[#59ffa0]/90 hover:shadow-lg hover:shadow-[#59ffa0]/20 active:scale-[0.98] transition-all duration-200"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8l4 4 6-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Confirm This Plan
+              </button>
+              <button
+                type="button"
                 onClick={handleSaveDayPlan}
-                className="w-full py-4 rounded-2xl bg-accent text-background font-semibold text-base tracking-wide hover:opacity-90 transition"
+                className="w-full py-4 rounded-2xl border border-[#2a2829] bg-[#1a1819] text-[#f9fdff]/70 font-sans text-sm hover:border-[#59ffa0]/30 hover:text-[#f9fdff] transition-all"
               >
                 {saved ? '✓ Plan Saved!' : 'Save My Day Plan'}
               </button>
