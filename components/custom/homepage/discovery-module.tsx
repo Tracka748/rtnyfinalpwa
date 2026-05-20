@@ -17,18 +17,32 @@ interface TicketTypeRow {
   price: number
 }
 
-interface EventRow {
+interface HeroEvent {
   id: string
   name: string
-  event_date: string
+  flyer_image_url: string | null
+  venue: VenueRow | null
+}
+
+interface CardEvent {
+  id: string
+  name: string
   flyer_image_url: string | null
   featured: boolean | null
   category: string
-  venues: VenueRow | null
+  venue: VenueRow | null
   ticket_types: TicketTypeRow[]
 }
 
-// ─── Constants ──────────────────────────────────────────────────────────────
+// ─── Category mapping — pill value → DB enum value ───────────────────────────
+
+const DB_CATEGORY: Record<ActiveCategory, string> = {
+  concerts: "music",
+  bars: "nightlife",
+  movies: "movies",
+}
+
+// ─── Pills ───────────────────────────────────────────────────────────────────
 
 const PILLS: { label: string; value: ActiveCategory; color: string }[] = [
   { label: "Concerts", value: "concerts", color: "#59FFA0" },
@@ -36,9 +50,7 @@ const PILLS: { label: string; value: ActiveCategory; color: string }[] = [
   { label: "Movies", value: "movies", color: "#B87FFF" },
 ]
 
-function getCategoryFilter(cat: ActiveCategory): string[] {
-  return cat === "bars" ? ["bars", "nightlife"] : [cat]
-}
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getMinPrice(ticketTypes: TicketTypeRow[]): string {
   if (!ticketTypes || ticketTypes.length === 0) return "Free"
@@ -50,13 +62,13 @@ function getMinPrice(ticketTypes: TicketTypeRow[]): string {
 
 function HeroSkeleton() {
   return (
-    <div className="w-full h-[200px] rounded-2xl bg-[#1a1819] animate-pulse" />
+    <div className="w-full h-[200px] rounded-2xl bg-[#2a2929] animate-pulse" />
   )
 }
 
 function CardSkeleton() {
   return (
-    <div className="shrink-0 w-[160px] h-[210px] rounded-2xl bg-[#1a1819] animate-pulse" />
+    <div className="shrink-0 w-[160px] h-[210px] rounded-2xl bg-[#2a2929] animate-pulse" />
   )
 }
 
@@ -66,7 +78,7 @@ function HeroCard({
   event,
   categoryLabel,
 }: {
-  event: EventRow
+  event: HeroEvent
   categoryLabel: string
 }) {
   return (
@@ -74,7 +86,6 @@ function HeroCard({
       href={`/events/${event.id}`}
       className="relative block w-full h-[200px] rounded-2xl overflow-hidden"
     >
-      {/* Background image */}
       {event.flyer_image_url ? (
         <Image
           src={event.flyer_image_url}
@@ -87,10 +98,8 @@ function HeroCard({
         <div className="absolute inset-0 bg-[#1a1819]" />
       )}
 
-      {/* Dark gradient overlay — bottom to top */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
-      {/* SPONSORED label — top right */}
       <span
         className="absolute top-2.5 right-3 text-white/60 uppercase tracking-widest"
         style={{ fontSize: "9px", fontFamily: "var(--font-rubik), sans-serif" }}
@@ -98,9 +107,7 @@ function HeroCard({
         Sponsored
       </span>
 
-      {/* Content — bottom */}
       <div className="absolute bottom-0 left-0 right-0 p-3 space-y-1">
-        {/* Eyebrow */}
         <p
           className="text-[10px] font-semibold uppercase tracking-wider text-white/70"
           style={{ fontFamily: "var(--font-rubik), sans-serif" }}
@@ -108,22 +115,19 @@ function HeroCard({
           {categoryLabel} &nbsp;·&nbsp; 50+ Events
         </p>
 
-        {/* Event title */}
         <h3 className="font-header font-bold text-white text-xl leading-tight line-clamp-1">
           {event.name}
         </h3>
 
-        {/* Venue */}
-        {event.venues?.name && (
+        {event.venue?.name && (
           <p
             className="text-[11px] text-white/60"
             style={{ fontFamily: "var(--font-rubik), sans-serif" }}
           >
-            {event.venues.name}
+            {event.venue.name}
           </p>
         )}
 
-        {/* CTA */}
         <div className="pt-1">
           <span
             className="inline-block bg-white text-[#121113] text-[11px] font-bold px-3 py-1 rounded-full"
@@ -139,7 +143,7 @@ function HeroCard({
 
 // ─── Event Card ───────────────────────────────────────────────────────────────
 
-function EventCard({ event }: { event: EventRow }) {
+function EventCard({ event }: { event: CardEvent }) {
   const minPrice = getMinPrice(event.ticket_types)
 
   return (
@@ -147,7 +151,6 @@ function EventCard({ event }: { event: EventRow }) {
       href={`/events/${event.id}`}
       className="relative shrink-0 w-[160px] h-[210px] rounded-2xl overflow-hidden block"
     >
-      {/* Full-bleed image */}
       {event.flyer_image_url ? (
         <Image
           src={event.flyer_image_url}
@@ -160,10 +163,8 @@ function EventCard({ event }: { event: EventRow }) {
         <div className="absolute inset-0 bg-[#1a1819]" />
       )}
 
-      {/* Subtle dark overlay for text legibility */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-      {/* Badge — top left */}
       <div className="absolute top-2 left-2">
         {event.featured ? (
           <span
@@ -182,7 +183,6 @@ function EventCard({ event }: { event: EventRow }) {
         )}
       </div>
 
-      {/* Price — top right */}
       <div className="absolute top-2 right-2">
         <span
           className="bg-black/50 text-white text-[9px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm"
@@ -192,17 +192,16 @@ function EventCard({ event }: { event: EventRow }) {
         </span>
       </div>
 
-      {/* Bottom content */}
       <div className="absolute bottom-0 left-0 right-0 p-2.5 space-y-0.5">
         <h4 className="font-header font-bold text-white text-sm leading-tight line-clamp-2">
           {event.name}
         </h4>
-        {event.venues?.name && (
+        {event.venue?.name && (
           <p
             className="text-[10px] text-white/55 truncate"
             style={{ fontFamily: "var(--font-rubik), sans-serif" }}
           >
-            {event.venues.name}
+            {event.venue.name}
           </p>
         )}
       </div>
@@ -214,8 +213,8 @@ function EventCard({ event }: { event: EventRow }) {
 
 export function DiscoveryModule() {
   const [activeCategory, setActiveCategory] = useState<ActiveCategory>("concerts")
-  const [hero, setHero] = useState<EventRow | null>(null)
-  const [cards, setCards] = useState<EventRow[]>([])
+  const [hero, setHero] = useState<HeroEvent | null>(null)
+  const [cards, setCards] = useState<CardEvent[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -223,38 +222,66 @@ export function DiscoveryModule() {
     setLoading(true)
 
     const supabase = createBrowserSupabaseClient()
-    const filter = getCategoryFilter(activeCategory)
+    const dbCategory = DB_CATEGORY[activeCategory]
 
     async function fetchData() {
-      const [heroRes, cardsRes] = await Promise.all([
-        supabase
+      try {
+        // Query 1 — Hero: featured=true, fallback to top active
+        const { data: featuredHero } = await supabase
           .from("events")
-          .select(
-            "id, name, event_date, flyer_image_url, featured, category, venues(name), ticket_types(price)"
-          )
+          .select("id, name, flyer_image_url, venue:venues(name)")
+          .eq("category", dbCategory)
+          .eq("status", "active")
           .eq("featured", true)
-          .in("category", filter)
           .order("event_date", { ascending: true })
-          .limit(1),
-        supabase
+          .limit(1)
+          .maybeSingle()
+
+        let heroEvent = featuredHero as HeroEvent | null
+
+        if (!heroEvent) {
+          const { data: fallbackHero } = await supabase
+            .from("events")
+            .select("id, name, flyer_image_url, venue:venues(name)")
+            .eq("category", dbCategory)
+            .eq("status", "active")
+            .order("event_date", { ascending: true })
+            .limit(1)
+            .maybeSingle()
+
+          heroEvent = fallbackHero as HeroEvent | null
+        }
+
+        // Query 2 — Card row
+        const { data: eventsData } = await supabase
           .from("events")
-          .select(
-            "id, name, event_date, flyer_image_url, featured, category, venues(name), ticket_types(price)"
-          )
-          .in("category", filter)
+          .select(`
+            id,
+            name,
+            flyer_image_url,
+            featured,
+            category,
+            venue:venues(name),
+            ticket_types(price)
+          `)
+          .eq("category", dbCategory)
+          .eq("status", "active")
           .order("featured", { ascending: false })
           .order("event_date", { ascending: true })
-          .limit(4),
-      ])
+          .limit(4)
 
-      if (cancelled) return
+        if (cancelled) return
 
-      const heroEvent = (heroRes.data?.[0] ?? cardsRes.data?.[0] ?? null) as EventRow | null
-      const cardEvents = (cardsRes.data ?? []) as EventRow[]
-
-      setHero(heroEvent)
-      setCards(cardEvents)
-      setLoading(false)
+        setHero(heroEvent)
+        setCards((eventsData ?? []) as CardEvent[])
+      } catch {
+        if (!cancelled) {
+          setHero(null)
+          setCards([])
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
     fetchData()
@@ -271,9 +298,7 @@ export function DiscoveryModule() {
       ) : hero ? (
         <HeroCard event={hero} categoryLabel={activePill.label} />
       ) : (
-        <div className="w-full h-[200px] rounded-2xl bg-[#1a1819] flex items-center justify-center text-white/30 text-sm">
-          No events available
-        </div>
+        <div className="w-full h-[200px] rounded-2xl bg-[#1a1819]" />
       )}
 
       {/* ── Category Pills ── */}
@@ -303,7 +328,7 @@ export function DiscoveryModule() {
 
         {!loading && (
           <Link
-            href={`/events?category=${activeCategory}`}
+            href={`/events?category=${DB_CATEGORY[activeCategory]}`}
             className="shrink-0 w-[80px] h-[210px] rounded-2xl bg-[#1a1819] hover:bg-[#222] transition-colors flex flex-col items-center justify-center gap-1.5 text-white/50 hover:text-white/80"
             style={{ fontFamily: "var(--font-rubik), sans-serif" }}
           >
