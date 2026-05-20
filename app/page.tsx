@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-// {/* HIDDEN: PlanYourDay — moved to /plan nav route */}
 import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import { HomepageSearchBar } from "@/components/custom/homepage/search-bar"
 import { HeroPromo } from "@/components/custom/homepage/hero-promo"
@@ -25,6 +24,7 @@ import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
 import RTNYPicksSection from "@/components/custom/homepage/RTNYPicksSection"
 import { DiscoveryModule } from "@/components/custom/homepage/discovery-module"
+import { CuratedPlanCard, type CuratedPlan } from "@/components/custom/plan/CuratedPlanCard"
 import { PersonalizedRow } from "@/components/custom/homepage/personalized-row"
 import SweepstakesSection from "@/components/custom/homepage/SweepstakesSection"
 import PartnerAdsSection from "@/components/custom/homepage/PartnerAdsSection"
@@ -446,6 +446,109 @@ export default function HomePage() {
       {/* Discovery Module */}
       <DiscoveryModule />
 
+      {/* Plan Your Day */}
+      {curatedPlans.length > 0 && (
+        <section className="mt-8 bg-[#080808] py-8">
+          <div className="flex items-center justify-between mb-4 px-4">
+            <div>
+              <h2 className="font-slab-serif font-bold text-2xl text-foreground">
+                ✨ Plan Your Day
+              </h2>
+              <p className="text-sm text-foreground/40 mt-0.5">
+                Curated Rochester experiences — tap to customize
+              </p>
+            </div>
+            <a href="/plan" className="text-xs text-accent hover:underline shrink-0">
+              Build Your Own →
+            </a>
+          </div>
+          {/* Mobile: 3×2 grid, 6 cards per page */}
+          <div className="md:hidden px-4">
+            <div
+              className="grid grid-cols-3 grid-rows-2 gap-4"
+              onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
+              onTouchEnd={(e) => {
+                const delta = touchStartX.current - e.changedTouches[0].clientX
+                const totalPages = Math.ceil(curatedPlans.length / 6)
+                if (delta > 50 && mobilePage < totalPages - 1) setMobilePage(p => p + 1)
+                if (delta < -50 && mobilePage > 0) setMobilePage(p => p - 1)
+              }}
+            >
+              {curatedPlans.slice(mobilePage * 6, mobilePage * 6 + 6).map((plan) => (
+                <CuratedPlanCard
+                  key={plan.id}
+                  plan={plan}
+                  mobile
+                  onUseThisPlan={(plan) => {
+                    setSelectedPlan(plan)
+                    setSheetOpen(true)
+                  }}
+                />
+              ))}
+            </div>
+            {Math.ceil(curatedPlans.length / 6) > 1 && (
+              <div className="flex justify-center gap-2 mt-4">
+                {Array.from({ length: Math.ceil(curatedPlans.length / 6) }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setMobilePage(i)}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      mobilePage === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: original 3-card carousel */}
+          <div className="hidden md:block px-4">
+            <div className="relative">
+              {/* Left Arrow */}
+              <button
+                onClick={() => setCarouselIndex(i => Math.max(0, i - 3))}
+                disabled={carouselIndex === 0}
+                className="absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
+              >←</button>
+
+              {/* 3 Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                {curatedPlans.slice(carouselIndex, carouselIndex + 3).map((plan) => (
+                  <CuratedPlanCard
+                    key={plan.id}
+                    plan={plan}
+                    onUseThisPlan={(plan) => {
+                      setSelectedPlan(plan)
+                      setSheetOpen(true)
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Right Arrow */}
+              <button
+                onClick={() => setCarouselIndex(i => Math.min(curatedPlans.length - 3, i + 3))}
+                disabled={carouselIndex + 3 >= curatedPlans.length}
+                className="absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-background border border-white/10 flex items-center justify-center text-xl text-foreground hover:border-accent hover:text-accent transition disabled:opacity-20 disabled:cursor-not-allowed"
+              >→</button>
+            </div>
+
+            {/* Dot indicators */}
+            <div className="flex justify-center gap-2 mt-5">
+              {Array.from({ length: Math.ceil(curatedPlans.length / 3) }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCarouselIndex(i * 3)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    Math.floor(carouselIndex / 3) === i ? 'bg-accent w-6' : 'bg-white/20 w-1.5'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Featured Ad Banner */}
       <FeaturedAdBanner />
 
@@ -465,8 +568,6 @@ export default function HomePage() {
       </section>
 
       {/* HIDDEN: HostedPlanCards — part of Plan Your Day, moved to /plan nav route */}
-
-      {/* HIDDEN: PlanYourDay — moved to /plan nav route */}
 
       {/* HIDDEN: HomepageCrewModule — moved to /crews nav route */}
 

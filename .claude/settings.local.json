@@ -14,7 +14,11 @@
       "Bash(xxd \"c:/Users/Stock/rtnyfinalpwa/lib/supabase/client.ts\")",
       "Bash(grep -l \"checkIsAdmin\\\\|checkAdminAccess\" /c/Users/Stock/rtnyfinalpwa/app/api/v1/admin/**/*.ts)",
       "Bash(grep -L \"checkIsAdmin\\\\|checkAdminAccess\" /c/Users/Stock/rtnyfinalpwa/app/api/v1/admin/**/*.ts)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(git -C \"c:\\\\Users\\\\Stock\\\\rtnyfinalpwa\" show 5b896da --stat)",
+      "Bash(git -C \"c:\\\\Users\\\\Stock\\\\rtnyfinalpwa\" show 5b896da --name-only)",
+      "Bash(grep -v \"^commit\\\\|^Author\\\\|^Date\\\\|^$\\\\|^    \")",
+      "Bash(git -C \"c:\\\\Users\\\\Stock\\\\rtnyfinalpwa\" show f7e8783:app/page.tsx)"
     ],
     "deny": [],
     "ask": []
