@@ -241,51 +241,71 @@ export function CuratedPlanCard({ plan, onUseThisPlan, compact = false, mobile =
     return (
       <>
         <div
-          className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${config.gradient} p-2 flex flex-col justify-between h-full cursor-pointer`}
+          className="relative overflow-hidden cursor-pointer flex flex-col gap-2 p-3 bg-black border border-[#1a1a1a] rounded-2xl"
           style={{ boxShadow: shadow, transform, transition }}
           onClick={() => setModalOpen(true)}
           {...interactionHandlers}
         >
-          <GlassSurface shineColor={config.shineColor} rounded="rounded-t-xl" />
-          <div>
-            <div className="flex items-start gap-1 mb-0.5">
-              <span className="text-base shrink-0">{config.emoji}</span>
-              <LEDReveal
-                text={plan.title.toUpperCase()}
-                dotSize={3}
-                gap={1}
-                charGap={2}
-                color="#59FFA0"
-                stagger={60}
-              />
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-foreground/40 mb-1">
-              <LEDText
-                text={`$${plan.estimated_cost_min}-$${plan.estimated_cost_max}`}
-                dotSize={2}
-                gap={0.8}
-                charGap={1}
-                color="#FFD166"
-              />
-            </div>
-            <div className="mb-1">
-              {plan.stops.slice(0, 2).map((stop, i) => (
-                <div key={i} className="text-[10px] text-foreground/60 truncate">{stop.time} {stop.name}</div>
-              ))}
-              {plan.stops.length > 2 && (
-                <div className="text-[10px] text-accent/70">+{plan.stops.length - 2} more</div>
-              )}
-            </div>
+          {/* Dot grid background */}
+          <svg className="absolute inset-0 w-full h-full opacity-40">
+            <defs>
+              <pattern id="dotbg" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                <circle cx="4" cy="4" r="1" fill="#1a1a1a" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#dotbg)" />
+          </svg>
+
+          {/* Card content — above dot grid */}
+          <div className="relative">
+            <span className="text-base">{config.emoji}</span>
           </div>
-          <span className="text-[#59FFA0] text-xs font-label tracking-wide">
+
+          <div className="relative">
+            <LEDReveal
+              text={plan.title.toUpperCase()}
+              dotSize={4}
+              gap={1}
+              charGap={2}
+              color="#59FFA0"
+              boardMode
+              shape="rounded"
+              stagger={55}
+            />
+          </div>
+
+          <div className="relative">
+            <LEDText
+              text={`$${plan.estimated_cost_min}-$${plan.estimated_cost_max}`}
+              dotSize={3}
+              gap={1}
+              charGap={1}
+              color="#FFD166"
+              boardMode
+              shape="rounded"
+            />
+          </div>
+
+          <div className="relative flex flex-col gap-0.5">
+            {plan.stops.slice(0, 2).map((stop, i) => (
+              <div key={i} className="text-[10px] text-foreground/60 truncate">{stop.time} {stop.name}</div>
+            ))}
+            {plan.stops.length > 2 && (
+              <div className="text-[10px] text-accent/70">+{plan.stops.length - 2} more</div>
+            )}
+          </div>
+
+          <div className="relative">
             <LEDText
               text="VIEW THIS PLAN"
               dotSize={2}
               gap={0.8}
               charGap={2}
               color="#59FFA0"
+              boardMode
+              shape="rounded"
             />
-          </span>
+          </div>
         </div>
         {modalOpen && (
           <PlanModal
