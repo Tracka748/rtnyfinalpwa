@@ -7,6 +7,7 @@ const banners = [
     category: "Dining",
     offer: "Rochester's iconic brunch. 15% off with your RTNY code.",
     cta: "Claim →",
+    url: "#",
     tint: "rgba(89,255,160,0.07)",
     border: "rgba(89,255,160,0.15)",
     logoBg: "rgba(89,255,160,0.12)",
@@ -18,6 +19,7 @@ const banners = [
     category: "Nightlife",
     offer: "Skip the line. Free entry before 10PM Fri & Sat.",
     cta: "View Deal →",
+    url: "#",
     tint: "rgba(130,60,255,0.08)",
     border: "rgba(130,60,255,0.2)",
     logoBg: "rgba(130,60,255,0.15)",
@@ -29,6 +31,7 @@ const banners = [
     category: "Transport",
     offer: "Safe rides home after the show. $3 off your first trip.",
     cta: "Book →",
+    url: "#",
     tint: "rgba(26,200,237,0.07)",
     border: "rgba(26,200,237,0.18)",
     logoBg: "rgba(26,200,237,0.12)",
@@ -42,6 +45,7 @@ const cards = [
     name: "Bowl-O-Rama",
     category: "Fun",
     offer: "$5 off any lane",
+    url: "#",
     gradientA: "#1a2e1a",
     gradientB: "#0a140a",
   },
@@ -50,6 +54,7 @@ const cards = [
     name: "Good Luck",
     category: "Food",
     offer: "Free app w/ tickets",
+    url: "#",
     gradientA: "#2e1a0a",
     gradientB: "#140a0a",
   },
@@ -58,6 +63,7 @@ const cards = [
     name: "ROC Cuts",
     category: "Style",
     offer: "10% off first visit",
+    url: "#",
     gradientA: "#1a0a2e",
     gradientB: "#0a0a14",
   },
@@ -66,6 +72,7 @@ const cards = [
     name: "The Little",
     category: "Film",
     offer: "2-for-1 Tuesdays",
+    url: "#",
     gradientA: "#0a2e2e",
     gradientB: "#0a1414",
   },
@@ -178,23 +185,25 @@ export default function PartnerAdsSection() {
               </div>
 
               {/* CTA pill */}
-              <button
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: "0.5px solid rgba(255,255,255,0.15)",
-                  borderRadius: 999,
-                  padding: "8px 14px",
-                  fontFamily: "Montserrat, sans-serif",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#F9FDFF",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
-              >
-                {b.cta}
-              </button>
+              <a href={b.url} target="_blank" rel="noopener noreferrer">
+                <button
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    border: "0.5px solid rgba(255,255,255,0.15)",
+                    borderRadius: 999,
+                    padding: "8px 14px",
+                    fontFamily: "Montserrat, sans-serif",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#F9FDFF",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  {b.cta}
+                </button>
+              </a>
             </div>
           ))}
         </div>
@@ -316,22 +325,24 @@ export default function PartnerAdsSection() {
                 >
                   {c.offer}
                 </p>
-                <button
-                  style={{
-                    width: "100%",
-                    borderRadius: 10,
-                    background: "rgba(89,255,160,0.1)",
-                    border: "0.5px solid rgba(89,255,160,0.25)",
-                    padding: "8px 0",
-                    fontFamily: "Montserrat, sans-serif",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "#59FFA0",
-                    cursor: "pointer",
-                  }}
-                >
-                  Grab Deal
-                </button>
+                <a href={c.url} target="_blank" rel="noopener noreferrer">
+                  <button
+                    style={{
+                      width: "100%",
+                      borderRadius: 10,
+                      background: "rgba(89,255,160,0.1)",
+                      border: "0.5px solid rgba(89,255,160,0.25)",
+                      padding: "8px 0",
+                      fontFamily: "Montserrat, sans-serif",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#59FFA0",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Grab Deal
+                  </button>
+                </a>
               </div>
             </div>
           ))}

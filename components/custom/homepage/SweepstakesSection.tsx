@@ -1,14 +1,107 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createBrowserSupabaseClient } from "@/lib/supabase-browser";
+
+interface SweepstakesData {
+  id: string;
+  prize_name: string;
+  end_date: string;
+  entry_count: number;
+}
+
+type EntryState = "idle" | "loading" | "entered" | "already_entered";
+
+function getCountdownText(endDate: string): string {
+  const diffMs = new Date(endDate).getTime() - Date.now();
+  if (diffMs <= 0) return "Drawing soon";
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) return `Drawing in ${days} day${days !== 1 ? "s" : ""}`;
+  if (hours > 0) return `Drawing in ${hours} hour${hours !== 1 ? "s" : ""}`;
+  return "Drawing soon";
+}
 
 export default function SweepstakesSection() {
-  const [entries, setEntries] = useState(0);
-  const [entered, setEntered] = useState(false);
+  const router = useRouter();
+  const [sweepstakes, setSweepstakes] = useState<SweepstakesData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [entryState, setEntryState] = useState<EntryState>("idle");
+  const [entryCount, setEntryCount] = useState(0);
 
-  function handleEnter() {
-    setEntries((prev) => prev + 1);
-    setEntered(true);
+  async function fetchActive() {
+    try {
+      const res = await fetch("/api/v1/sweepstakes/active");
+      if (!res.ok) {
+        setSweepstakes(null);
+        return;
+      }
+      const data = await res.json();
+      setSweepstakes(data);
+      setEntryCount(data.entry_count);
+    } catch {
+      setSweepstakes(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchActive();
+  }, []);
+
+  async function handleEnter() {
+    if (!sweepstakes || entryState === "loading" || entryState === "entered" || entryState === "already_entered") return;
+
+    const supabase = createBrowserSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    setEntryState("loading");
+
+    try {
+      const res = await fetch("/api/v1/sweepstakes/enter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sweepstakes_id: sweepstakes.id }),
+      });
+
+      if (res.status === 409) {
+        setEntryState("already_entered");
+        return;
+      }
+
+      if (res.ok) {
+        setEntryState("entered");
+        const activeRes = await fetch("/api/v1/sweepstakes/active");
+        if (activeRes.ok) {
+          const data = await activeRes.json();
+          setEntryCount(data.entry_count);
+        }
+      } else {
+        setEntryState("idle");
+      }
+    } catch {
+      setEntryState("idle");
+    }
+  }
+
+  if (loading || !sweepstakes) return null;
+
+  const isEntered = entryState === "entered" || entryState === "already_entered";
+  const isLoading = entryState === "loading";
+  const progressPct = Math.min(95, Math.round((entryCount / 5000) * 100));
+
+  function getButtonLabel() {
+    if (entryState === "entered") return "✓ You're entered!";
+    if (entryState === "already_entered") return "✓ You're already in!";
+    if (isLoading) return "Entering…";
+    return "🎟️ Enter Now — It's Free";
   }
 
   return (
@@ -102,7 +195,7 @@ export default function SweepstakesSection() {
                 color: "#59FFA0",
               }}
             >
-              Drawing in 3 days
+              {getCountdownText(sweepstakes.end_date)}
             </span>
           </div>
 
@@ -154,17 +247,7 @@ export default function SweepstakesSection() {
                   lineHeight: 1.15,
                 }}
               >
-                VIP Weekend Package
-              </span>
-              <span
-                style={{
-                  fontFamily: "Montserrat, sans-serif",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#59FFA0",
-                }}
-              >
-                $500 value
+                {sweepstakes.prize_name}
               </span>
             </div>
           </div>
@@ -179,10 +262,10 @@ export default function SweepstakesSection() {
             }}
           >
             {[
-              { label: "Total Entries", value: "2,841", valueColor: "#1AC8ED" },
+              { label: "Total Entries", value: entryCount.toLocaleString(), valueColor: "#1AC8ED" },
               {
                 label: "Your Entries",
-                value: entries.toString(),
+                value: isEntered ? "1" : "0",
                 valueColor: "#F9FDFF",
               },
               { label: "Winners", value: "3", valueColor: "#F9FDFF" },
@@ -249,7 +332,7 @@ export default function SweepstakesSection() {
                   color: "#F9FDFF",
                 }}
               >
-                68%
+                {progressPct}%
               </span>
             </div>
             <div
@@ -263,7 +346,7 @@ export default function SweepstakesSection() {
               <div
                 style={{
                   height: "100%",
-                  width: "68%",
+                  width: `${progressPct}%`,
                   borderRadius: 999,
                   background:
                     "linear-gradient(90deg, #823CFF 0%, #1AC8ED 100%)",
@@ -314,17 +397,18 @@ export default function SweepstakesSection() {
                 color: "rgba(249,253,255,0.5)",
               }}
             >
-              2,841 people entered this week
+              {entryCount.toLocaleString()} people entered this week
             </span>
           </div>
 
           {/* 6. CTA button */}
           <button
             onClick={handleEnter}
+            disabled={isLoading}
             style={{
               width: "100%",
               borderRadius: 16,
-              background: entered
+              background: isEntered
                 ? "linear-gradient(90deg, #59FFA0 0%, #1AC8ED 100%)"
                 : "linear-gradient(90deg, #823CFF 0%, #1AC8ED 100%)",
               border: "none",
@@ -333,22 +417,19 @@ export default function SweepstakesSection() {
               fontSize: 14,
               fontWeight: 800,
               color: "#F9FDFF",
-              cursor: "pointer",
+              cursor: isLoading ? "not-allowed" : "pointer",
               letterSpacing: "0.01em",
+              opacity: isLoading ? 0.7 : 1,
               transition: "background 0.3s ease, transform 0.1s ease",
             }}
-            onMouseDown={(e) =>
-              ((e.currentTarget as HTMLButtonElement).style.transform =
-                "scale(0.98)")
-            }
-            onMouseUp={(e) =>
-              ((e.currentTarget as HTMLButtonElement).style.transform =
-                "scale(1)")
-            }
+            onMouseDown={(e) => {
+              if (!isLoading) (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.98)";
+            }}
+            onMouseUp={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+            }}
           >
-            {entered
-              ? "✓ Entered! Share for +1 entry"
-              : "🎟️ Enter Now — It's Free"}
+            {getButtonLabel()}
           </button>
         </div>
 
