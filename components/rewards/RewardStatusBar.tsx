@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import Link from "next/link"
 
 interface RewardStatusBarProps {
   points?: number
@@ -120,8 +121,9 @@ export default function RewardStatusBar({
           <div key={box.id} className="relative flex-1">
             {/* Popover */}
             {isActive && (
+              <Link href="/rewards">
               <div
-                className="absolute bottom-full mb-2 z-50 w-48"
+                className="absolute bottom-full mb-2 z-50 w-48 cursor-pointer"
                 style={{
                   ...popoverPositionStyle,
                   background: "#1E1D1F",
@@ -167,6 +169,7 @@ export default function RewardStatusBar({
                   {box.popoverStatus}
                 </p>
               </div>
+              </Link>
             )}
 
             {/* Box button */}
