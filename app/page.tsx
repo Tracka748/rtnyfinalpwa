@@ -27,6 +27,8 @@ import PlanYourDayCard from "@/components/plan/PlanYourDayCard"
 import { PersonalizedRow } from "@/components/custom/homepage/personalized-row"
 import SweepstakesSection from "@/components/custom/homepage/SweepstakesSection"
 import PartnerAdsSection from "@/components/custom/homepage/PartnerAdsSection"
+import RochesterSportsSection from "@/components/custom/homepage/RochesterSportsSection"
+import GetActiveSection from "@/components/custom/homepage/GetActiveSection"
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
@@ -433,6 +435,15 @@ export default function HomePage() {
       {/* Featured Ad Banner */}
       <FeaturedAdBanner />
 
+      {/* Rochester Sports */}
+      <RochesterSportsSection />
+
+      {/* Get Active */}
+      <GetActiveSection />
+
+      {/* Family Weekend */}
+      {familyModule && <ModuleSection module={familyModule} />}
+
       {/* RTNY Picks */}
       <section className="w-full px-0 py-6">
         <RTNYPicksSection />
@@ -442,15 +453,6 @@ export default function HomePage() {
       <section className="w-full px-0 py-6">
         <SweepstakesSection />
       </section>
-
-      {/* Partner Ads */}
-      <section className="w-full px-0 py-6">
-        <PartnerAdsSection />
-      </section>
-
-      {/* HIDDEN: HostedPlanCards — part of Plan Your Day, moved to /plan nav route */}
-
-      {/* HIDDEN: HomepageCrewModule — moved to /crews nav route */}
 
       {/* Section 10: RTNY Merch */}
       <section className="py-12 px-4">
@@ -547,8 +549,14 @@ export default function HomePage() {
       {/* Section 11: Movies This Week */}
       {moviesModule && <ModuleSection module={moviesModule} />}
 
-      {/* Section 12: Family Weekend */}
-      {familyModule && <ModuleSection module={familyModule} />}
+      {/* Partner Ads */}
+      <section className="w-full px-0 py-6">
+        <PartnerAdsSection />
+      </section>
+
+      {/* HIDDEN: HostedPlanCards — part of Plan Your Day, moved to /plan nav route */}
+
+      {/* HIDDEN: HomepageCrewModule — moved to /crews nav route */}
 
       {/* Contextual Ad */}
       <ContextualAd />
