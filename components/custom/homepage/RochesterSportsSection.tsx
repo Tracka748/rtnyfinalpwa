@@ -1,5 +1,7 @@
 "use client"
 
+import SectionTitleStrip from '@/components/custom/homepage/SectionTitleStrip'
+
 const SPORTS_EVENTS = [
   {
     id: "s1",
@@ -50,26 +52,14 @@ const SPORTS_EVENTS = [
 
 export default function RochesterSportsSection() {
   return (
-    <section className="w-full px-4 py-6 bg-[#121113]">
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-1">
-        <h2
-          className="text-[22px] font-bold text-[#F9FDFF]"
-          style={{ fontFamily: "Rokkitt, serif" }}
-        >
-          🏟️ Rochester Sports
-        </h2>
-        <a
-          href="/sports"
-          className="text-sm"
-          style={{ fontFamily: "Montserrat, sans-serif", color: "#1AC8ED", fontWeight: 500 }}
-        >
-          See All →
-        </a>
-      </div>
-      <p className="text-[13px] text-[rgba(249,253,255,0.45)] mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
-        Cheer on your city
-      </p>
+    <section className="w-full bg-[#121113]">
+      <SectionTitleStrip
+        label="Rochester Sports"
+        sublabel="ROCHESTER · NEW YORK"
+        accentColor="#59FFA0"
+      />
+
+      <div className="px-4 py-6">
 
       {/* Horizontal scroll row */}
       <div
@@ -146,6 +136,7 @@ export default function RochesterSportsSection() {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </section>
   )
