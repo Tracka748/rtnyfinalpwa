@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import SectionTitleStrip from "@/components/custom/homepage/SectionTitleStrip";
 
 const CHAR_MAPS = {
   A:[[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
@@ -220,7 +221,7 @@ export default function PlanYourDayCard() {
       {/* ── SECTION HEADER ── */}
       <div style={{ width:"100%", maxWidth:400, display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:18, animation:"fadeUp 0.35s ease both" }}>
         <div>
-          <div style={{ fontSize:22, fontWeight:600, color:"#F9FDFF", letterSpacing:"-0.02em" }}>✨ Plan Your Day</div>
+          <SectionTitleStrip label="Plan Your Day" accentColor="#1AC8ED" />
           <div style={{ fontSize:12, color:"#555566", marginTop:3, fontWeight:400 }}>Curated Rochester experiences</div>
         </div>
         <div style={{ fontFamily:"'Silkscreen',monospace", fontSize:8, color:"#59FFA0", textShadow:"0 0 10px rgba(89,255,160,0.5)", letterSpacing:"0.5px", cursor:"pointer" }}>

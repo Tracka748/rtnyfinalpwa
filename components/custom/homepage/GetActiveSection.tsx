@@ -1,5 +1,7 @@
 "use client"
 
+import SectionTitleStrip from '@/components/custom/homepage/SectionTitleStrip'
+
 const ACTIVE_EVENTS = [
   {
     id: "ga1",
@@ -77,29 +79,14 @@ const INTENSITY_TEXT: Record<string, string> = {
 
 export default function GetActiveSection() {
   return (
-    <section className="w-full px-4 py-6 bg-[#121113]">
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-1">
-        <h2
-          className="text-[22px] font-bold text-[#F9FDFF]"
-          style={{ fontFamily: "Rokkitt, serif" }}
-        >
-          💪 Get Active
-        </h2>
-        <a
-          href="/active"
-          className="text-sm"
-          style={{ fontFamily: "Montserrat, sans-serif", color: "#1AC8ED", fontWeight: 500 }}
-        >
-          See All →
-        </a>
-      </div>
-      <p
-        className="text-[13px] mb-4"
-        style={{ fontFamily: "Montserrat, sans-serif", color: "#7A7978" }}
-      >
-        Move with Rochester
-      </p>
+    <section className="w-full bg-[#121113]">
+      <SectionTitleStrip
+        label="Get Active"
+        sublabel="MOVE WITH ROCHESTER"
+        accentColor="#1AC8ED"
+      />
+
+      <div className="px-4 py-6">
 
       {/* Horizontal scroll row */}
       <div
@@ -206,6 +193,7 @@ export default function GetActiveSection() {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </section>
   )

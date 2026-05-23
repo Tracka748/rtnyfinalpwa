@@ -137,7 +137,7 @@ export function PersonalizedRow() {
             .limit(4)
 
           if (!cancelled) {
-            setLabel("🔥 Popular Right Now")
+            setLabel("✦ Your Favorites")
             setEvents((data ?? []) as PersonalizedEvent[])
           }
           return

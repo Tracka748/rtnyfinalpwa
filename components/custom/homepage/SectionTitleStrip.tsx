@@ -4,12 +4,14 @@ interface SectionTitleStripProps {
   label: string;
   sublabel?: string;
   accentColor?: string;
+  textColor?: string;
 }
 
 export default function SectionTitleStrip({
   label,
   sublabel = 'ROCHESTER · NEW YORK',
   accentColor = '#59FFA0',
+  textColor = '#ffffff',
 }: SectionTitleStripProps) {
   const cols = Math.ceil(1440 / 12);
   const rows = Math.ceil(100 / 12);
@@ -61,7 +63,7 @@ export default function SectionTitleStrip({
         {/* Layer 3 — LED title */}
         <LEDText
           text={label.toUpperCase()}
-          color="#ffffff"
+          color={textColor}
           dotSize={5}
           gap={1}
           charGap={6}
