@@ -31,7 +31,7 @@ export function DateHeader({ selectedDate, eventCount = 0, isAllDates }: DateHea
     return () => clearInterval(id)
   }, [])
 
-  const { isNight, isDawn, isDusk, isRain, isSnow, isClear, tempF } =
+  const { isNight, isDawn, isDusk, isRain, isSnow, isClear, isDayBackground, tempF } =
     useWeatherState(weather?.description ?? '', weather?.tempF ?? 60)
 
   const skyTint = isNight
@@ -68,9 +68,9 @@ export function DateHeader({ selectedDate, eventCount = 0, isAllDates }: DateHea
     <div className="px-4 pt-4 pb-2 mx-auto max-w-[1200px]">
       <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: '200px' }}>
 
-        {/* LAYER 1: Rochester skyline — always visible */}
+        {/* LAYER 1: Rochester skyline — day/night swap */}
         <img
-          src="/images/rochester-skyline.png"
+          src={isDayBackground ? '/images/rochester-skyline-day.webp' : '/images/rochester-skyline.png'}
           alt=""
           className="absolute inset-0 w-full h-full object-cover object-[center_65%]"
           style={{ filter: imgFilter, transition: 'filter 1.5s ease' }}
