@@ -9,7 +9,7 @@ import { FeaturedEvents } from "@/components/custom/homepage/featured-events"
 import { AnnouncementStrip } from "@/components/custom/homepage/announcement-strip"
 import { ModuleSection } from "@/components/custom/homepage/module-section"
 import { ContextualAd } from "@/components/custom/homepage/contextual-ad"
-import { CategoryGrid } from "@/components/custom/homepage/category-grid"
+import { ExploreCategoriesGrid } from "@/components/custom/homepage/ExploreCategoriesGrid"
 import { PointsFeedback } from "@/components/custom/homepage/points-feedback"
 import { Footer } from "@/components/custom/homepage/footer"
 // {/* HIDDEN: HomepageCrewModule — moved to /crews nav route */}
@@ -562,7 +562,7 @@ export default function HomePage() {
       <ContextualAd />
 
       {/* Category Grid */}
-      <CategoryGrid />
+      <ExploreCategoriesGrid />
 
       {/* Points Feedback */}
       {userData.isLoggedIn && (

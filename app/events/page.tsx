@@ -15,7 +15,7 @@ import { TonightSection } from '@/components/custom/events/tonight-section'
 import { TimelineSection } from '@/components/custom/events/timeline-section'
 import { MoreInCategory } from '@/components/custom/events/more-in-category'
 import { ThisWeekend } from '@/components/custom/events/this-weekend'
-import { CategoryGrid } from '@/components/custom/homepage/category-grid'
+import { ExploreCategoriesGrid } from '@/components/custom/homepage/ExploreCategoriesGrid'
 import { getEventImage } from '@/lib/image-utils'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -69,11 +69,14 @@ function EventsContent() {
     }
 
     setLoading(true)
-    fetch(`/api/v1/events?date=${selectedDate}`)
+    const catParam = selectedCategory !== 'all' && selectedCategory !== 'all-dates'
+      ? `&category=${selectedCategory}`
+      : ''
+    fetch(`/api/v1/events?date=${selectedDate}${catParam}`)
       .then((r) => r.json())
       .then((d) => setTodayEvents((d.data || d.events || []).map(normalizeEvent)))
       .finally(() => setLoading(false))
-  }, [selectedDate, isAllDates])
+  }, [selectedDate, isAllDates, selectedCategory])
 
   // Fetch all events when "All Dates" is selected
   useEffect(() => {
@@ -183,7 +186,7 @@ function EventsContent() {
     setParam('category', category)
   }
 
-  const ExploreMore = CategoryGrid
+  const ExploreMore = ExploreCategoriesGrid
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -555,7 +558,7 @@ function EventsContent() {
 
           {/* 10. Explore More — always renders */}
           <div className="h-2 bg-[#0a0a0b]" />
-          <CategoryGrid />
+          <ExploreCategoriesGrid />
         </>
       )}
 

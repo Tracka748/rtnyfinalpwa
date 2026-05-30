@@ -311,7 +311,7 @@ export function AnnouncementFeed() {
   return (
     <section style={{ paddingTop: '16px', paddingBottom: '4px' }}>
       <p
-        className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-3"
+        className="font-label text-xs uppercase tracking-widest text-amber-400 mb-3"
         style={{ paddingLeft: '16px' }}
       >
         What&apos;s Happening
