@@ -78,8 +78,6 @@ export function LiveNowSection() {
     fetchLiveSlots()
   }, [])
 
-  if (!loading && events.length === 0) return null
-
   return (
     <>
       <style>{`
@@ -171,6 +169,51 @@ export function LiveNowSection() {
               <div className="skeleton" style={{ width: 50, height: 7, marginTop: 4 }} />
             </div>
           ))}
+
+          {/* Empty state */}
+          {!loading && events.length === 0 && (
+            <div style={{
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: '#1C1B1E',
+              border: '1px solid rgba(89,255,160,0.15)',
+              borderRadius: 8,
+              padding: '12px 16px',
+              width: 220,
+              height: 100,
+            }}>
+              <span style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'rgba(89,255,160,0.3)',
+                flexShrink: 0,
+              }} />
+              <div>
+                <p style={{
+                  fontFamily: 'Montserrat, sans-serif',
+                  fontWeight: 700,
+                  fontSize: 10,
+                  color: '#F9FDFF',
+                  textTransform: 'uppercase',
+                  margin: 0,
+                }}>
+                  No live events right now
+                </p>
+                <p style={{
+                  fontFamily: 'Rubik, sans-serif',
+                  fontSize: 9,
+                  color: 'rgba(249,253,255,0.4)',
+                  margin: '4px 0 0',
+                }}>
+                  Check back soon or browse upcoming events
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Live cards */}
           {!loading && events.map((event, i) => {
