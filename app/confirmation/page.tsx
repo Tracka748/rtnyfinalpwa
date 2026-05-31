@@ -59,7 +59,20 @@ export default function ConfirmationPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let pollInterval: ReturnType<typeof setInterval> | null = null
+    let fallbackTimeout: ReturnType<typeof setTimeout> | null = null
+    let cleanupTimeout: ReturnType<typeof setTimeout> | null = null
+    let resolved = false
+
     function applyOrder(data: any) {
+      if (resolved) return
+      resolved = true
+      if (pollInterval) clearInterval(pollInterval)
+      if (fallbackTimeout) clearTimeout(fallbackTimeout)
+      if (cleanupTimeout) clearTimeout(cleanupTimeout)
+      channel?.unsubscribe()
+
       const tickets = data.tickets || []
       const groupedTickets = tickets.reduce((acc: any[], ticket: any) => {
         const existing = acc.find((t: any) => t.type === ticket.ticket_type)
@@ -92,67 +105,63 @@ export default function ConfirmationPage() {
       setIsLoading(false)
     }
 
-    let channel: ReturnType<typeof supabase.channel> | null = null
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-    let resolved = false
-
-    async function init() {
-      // Step 1 — immediate check (order may already exist)
-      const { data: existing } = await supabase
+    async function fetchOrder() {
+      const { data } = await supabase
         .from('orders')
         .select(`*, events!inner(id, name, event_date, venues!inner(id, name, address)), tickets(*)`)
         .eq('session_id', sessionId)
         .maybeSingle()
+      if (data) applyOrder(data)
+    }
 
-      if (existing) {
-        resolved = true
-        applyOrder(existing)
-        return
-      }
+    async function init() {
+      // Step 1 — immediate check
+      await fetchOrder()
+      if (resolved) return
 
-      // Step 2 — subscribe to realtime INSERT
+      // Step 2 — realtime subscription for the INSERT
       channel = supabase
         .channel('order-confirmation')
         .on(
           'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'orders',
-            filter: `session_id=eq.${sessionId}`,
-          },
+          { event: 'INSERT', schema: 'public', table: 'orders', filter: `session_id=eq.${sessionId}` },
           async (payload) => {
             if (resolved) return
-            resolved = true
-            if (timeoutId) clearTimeout(timeoutId)
-            // Fetch full order with relations
             const { data: full } = await supabase
               .from('orders')
               .select(`*, events!inner(id, name, event_date, venues!inner(id, name, address)), tickets(*)`)
               .eq('id', payload.new.id)
               .single()
             applyOrder(full ?? payload.new)
-            channel?.unsubscribe()
           }
         )
         .subscribe()
 
-      // Step 3 — 30 second fallback
-      timeoutId = setTimeout(() => {
+      // Step 3 — poll every 5 s in case realtime is delayed
+      pollInterval = setInterval(fetchOrder, 5000)
+
+      // Step 4 — show "Payment Received" banner after 20 s, but keep polling
+      fallbackTimeout = setTimeout(() => {
         if (!resolved) {
-          resolved = true
           setPaymentReceived(true)
           setIsLoading(false)
-          channel?.unsubscribe()
         }
-      }, 30000)
+      }, 20000)
+
+      // Step 5 — final cleanup after 3 minutes
+      cleanupTimeout = setTimeout(() => {
+        if (pollInterval) clearInterval(pollInterval)
+        channel?.unsubscribe()
+      }, 180000)
     }
 
     init()
 
     return () => {
+      if (pollInterval) clearInterval(pollInterval)
+      if (fallbackTimeout) clearTimeout(fallbackTimeout)
+      if (cleanupTimeout) clearTimeout(cleanupTimeout)
       channel?.unsubscribe()
-      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [sessionId, router])
 
@@ -162,29 +171,36 @@ export default function ConfirmationPage() {
         <div className="text-center max-w-sm px-6">
           {paymentReceived ? (
             <>
-              <CheckCircle2 className="h-12 w-12 text-[#59FFA0] mx-auto mb-4" />
+              <div className="relative mx-auto mb-4 w-12 h-12">
+                <CheckCircle2 className="h-12 w-12 text-[#59FFA0]" />
+                <Loader2 className="animate-spin h-4 w-4 text-[#F9FDFF]/40 absolute -bottom-1 -right-1" />
+              </div>
               <p className="font-sans text-[#F9FDFF] text-lg font-semibold mb-2">
                 Payment Received!
               </p>
-              <p className="font-sans text-sm text-[#F9FDFF]/60">
-                Your order is being processed. Check your email for your confirmation and tickets.
+              <p className="font-sans text-sm text-[#F9FDFF]/60 mb-1">
+                Your order is being confirmed — this page will update automatically.
+              </p>
+              <p className="font-sans text-xs text-[#F9FDFF]/40">
+                A confirmation email with your tickets is on its way.
               </p>
               <Button
-                onClick={() => router.push('/events')}
+                onClick={() => router.push('/dashboard/tickets')}
                 variant="ghost"
-                className="mt-6 text-[#F9FDFF]/60 hover:text-[#F9FDFF]"
+                className="mt-6 text-[#59FFA0]/80 hover:text-[#59FFA0]"
               >
-                Browse Events
+                View My Tickets
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </>
           ) : (
             <>
               <Loader2 className="animate-spin h-12 w-12 text-[#59FFA0] mx-auto mb-4" />
               <p className="font-sans text-[#F9FDFF]/60 mb-2">
-                Processing Your Order
+                Confirming Your Order
               </p>
               <p className="font-sans text-sm text-[#F9FDFF]/40">
-                Waiting for confirmation…
+                Hang tight, this only takes a moment…
               </p>
             </>
           )}

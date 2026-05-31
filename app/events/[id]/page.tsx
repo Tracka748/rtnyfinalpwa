@@ -1,10 +1,5 @@
 'use client'
 
-// app/events/[id]/page.tsx
-// FIXED: Now fetches real event data from Supabase with JSONB ticket_prices
-// All cart/checkout functionality preserved
-// UPDATED: Next.js 15 params handling with React.use()
-
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -24,7 +19,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ShareButton } from '@/components/custom/events/share-button'
 import { format } from 'date-fns'
 
@@ -61,41 +55,6 @@ interface CartItem {
   name: string
 }
 
-// ============================================
-// HELPER FUNCTION: Convert JSONB to TicketType[]
-// ============================================
-function convertTicketPricesToTypes(
-  ticketPrices: Record<string, number> | null,
-  totalTickets: number,
-  ticketsSold: number
-): TicketType[] {
-  if (!ticketPrices || typeof ticketPrices !== 'object') {
-    // Fallback if no ticket_prices defined
-    return [{
-      id: 'general',
-      name: 'General Admission',
-      description: 'Standard entry to the event',
-      price: 25.00,
-      quantity: totalTickets,
-      remaining: Math.max(0, totalTickets - ticketsSold)
-    }]
-  }
-
-  // Convert JSONB object to array of ticket types
-  return Object.entries(ticketPrices).map(([tierName, price]) => {
-    // Estimate remaining based on tier (simple split for now)
-    const estimatedRemaining = Math.floor((totalTickets - ticketsSold) / Object.keys(ticketPrices).length)
-
-    return {
-      id: tierName.toLowerCase().replace(/\s+/g, '_'),
-      name: tierName.charAt(0).toUpperCase() + tierName.slice(1), // Capitalize
-      description: `${tierName.charAt(0).toUpperCase() + tierName.slice(1)} admission`,
-      price: Number(price),
-      quantity: totalTickets,
-      remaining: Math.max(0, estimatedRemaining)
-    }
-  })
-}
 
 export default function EventDetailPage({
   params,
@@ -112,7 +71,7 @@ export default function EventDetailPage({
   const [error, setError] = useState<string | null>(null)
 
   // ============================================
-  // FETCH REAL EVENT DATA FROM SUPABASE
+  // FETCH EVENT DATA FROM API ROUTE
   // ============================================
   useEffect(() => {
     async function fetchEvent() {
@@ -120,97 +79,36 @@ export default function EventDetailPage({
         setIsLoading(true)
         setError(null)
 
-        // Validate UUID format before querying — Postgres throws 22P02 on non-UUID ids
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (!uuidRegex.test(id)) {
-          throw new Error('Event not found')
+        const res = await fetch(`/api/v1/events/${id}`)
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error || 'Event not found')
         }
+        const { data: eventData } = await res.json()
 
-        const supabase = createBrowserSupabaseClient()
-
-        // Fetch event with venue relationship and ticket types
-        const { data: eventData, error: eventError } = await supabase
-          .from('events')
-          .select(`
-            id,
-            name,
-            description,
-            event_date,
-            flyer_image_url,
-            category,
-            status,
-            featured,
-            total_tickets,
-            tickets_sold,
-            ticket_prices,
-            tier_discounts,
-            venue_id,
-            venues (
-              name,
-              address
-            ),
-            ticket_types (
-              id,
-              name,
-              description,
-              price,
-              quantity,
-              remaining
-            )
-          `)
-          .eq('id', id)
-          .single()
-
-        console.log('Supabase response:', { eventData, eventError, id })
-
-        if (eventError) {
-          console.error('Supabase error code:', eventError.code)
-          console.error('Supabase error message:', eventError.message)
-          console.error('Supabase error hint:', eventError.hint)
-          console.error('Supabase error details:', eventError.details)
-          throw new Error(`Supabase error: ${eventError.code} - ${eventError.message} - ${eventError.hint}`)
-        }
-        if (!eventData) throw new Error('Event not found')
-
-        // Convert database format to UI format
-        // Note: venues is an array from the relationship, but we only need the first item
-        const venue = eventData.venues as { name: string; address: string } | null
-
-        // Use actual ticket_types from database if available, otherwise fall back to derived types
-        const rawTicketTypes = eventData.ticket_types as unknown
-        const ticketTypesArray = Array.isArray(rawTicketTypes) ? rawTicketTypes : []
-
-        const ticketTypes: TicketType[] = ticketTypesArray.length > 0
-          ? ticketTypesArray.map((tt: any) => ({
-              id: tt.id, // Use the actual UUID from database
-              name: tt.name,
-              description: tt.description || `${tt.name} admission`,
-              price: Number(tt.price),
-              quantity: tt.quantity,
-              remaining: tt.remaining
-            }))
-          : convertTicketPricesToTypes(
-              eventData.ticket_prices as Record<string, number> | null,
-              eventData.total_tickets || 500,
-              eventData.tickets_sold || 0
-            )
-
-        console.log('Ticket types with IDs:', ticketTypes)
+        const ticketTypes: TicketType[] = (eventData.ticket_types ?? []).map((tt: any) => ({
+          id: tt.id,
+          name: tt.name,
+          description: tt.description || `${tt.name} admission`,
+          price: Number(tt.price),
+          quantity: tt.quantity,
+          remaining: tt.remaining,
+        }))
 
         const formattedEvent: Event = {
           id: eventData.id,
           name: eventData.name,
           description: eventData.description || 'No description available',
           event_date: eventData.event_date,
-          venue_name: venue?.name || 'Venue TBA',
-          venue_address: venue?.address || 'Address TBA',
+          venue_name: eventData.venue_name || 'Venue TBA',
+          venue_address: eventData.venue_address || 'Address TBA',
           flyer_image_url: eventData.flyer_image_url,
           category: eventData.category || 'Event',
           status: eventData.status,
           featured: eventData.featured || false,
           total_tickets: eventData.total_tickets || 500,
           tickets_sold: eventData.tickets_sold || 0,
-          ticket_types: ticketTypes
+          ticket_types: ticketTypes,
         }
 
         setEvent(formattedEvent)

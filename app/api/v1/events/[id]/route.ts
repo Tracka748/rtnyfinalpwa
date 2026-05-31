@@ -36,10 +36,29 @@ export async function GET(
       // Don't fail the whole request, just return empty ticket types
     }
 
-    // Combine event with its ticket types
+    // Fetch venue
+    let venueName = 'Venue TBA'
+    let venueAddress = 'Address TBA'
+
+    if (event.venue_id) {
+      const { data: venue } = await supabase
+        .from('venues')
+        .select('name, address')
+        .eq('id', event.venue_id)
+        .single()
+
+      if (venue) {
+        venueName = venue.name
+        venueAddress = venue.address
+      }
+    }
+
+    // Combine event with its ticket types and venue
     const eventWithTickets = {
       ...event,
-      ticket_types: ticketTypes || []
+      ticket_types: ticketTypes || [],
+      venue_name: venueName,
+      venue_address: venueAddress,
     }
 
     return NextResponse.json({

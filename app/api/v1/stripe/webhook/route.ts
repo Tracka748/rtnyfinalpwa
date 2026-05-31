@@ -339,16 +339,10 @@ export async function POST(req: NextRequest) {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
-      try {
-        await handleCheckoutComplete(session)
-        return NextResponse.json({ received: true }, { status: 200 })
-      } catch (err) {
-        console.error('Webhook processing failed:', err)
-        return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 })
-      }
+      handleCheckoutComplete(session).catch(console.error)
     }
 
-    return NextResponse.json({ received: true })
+    return NextResponse.json({ received: true }, { status: 200 })
   } catch (error: unknown) {
     console.error('❌ Webhook handler error:', JSON.stringify(error, Object.getOwnPropertyNames(error as object)))
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
