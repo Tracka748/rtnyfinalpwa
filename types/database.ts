@@ -1794,6 +1794,65 @@ export type Database = {
           },
         ]
       }
+      point_rules: {
+        Row: {
+          active: boolean
+          id: string
+          points: number
+          reason: Database["public"]["Enums"]["point_reason"]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          points: number
+          reason: Database["public"]["Enums"]["point_reason"]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          points?: number
+          reason?: Database["public"]["Enums"]["point_reason"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      point_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          metadata: Json | null
+          reason: Database["public"]["Enums"]["point_reason"]
+          reward_profile_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason: Database["public"]["Enums"]["point_reason"]
+          reward_profile_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: Database["public"]["Enums"]["point_reason"]
+          reward_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "point_transactions_reward_profile_id_fkey"
+            columns: ["reward_profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age_range: string | null
@@ -2430,6 +2489,24 @@ export type Database = {
           },
         ]
       }
+      tier_thresholds: {
+        Row: {
+          bonus_multiplier: number
+          min_points: number
+          tier: Database["public"]["Enums"]["reward_tier"]
+        }
+        Insert: {
+          bonus_multiplier?: number
+          min_points: number
+          tier: Database["public"]["Enums"]["reward_tier"]
+        }
+        Update: {
+          bonus_multiplier?: number
+          min_points?: number
+          tier?: Database["public"]["Enums"]["reward_tier"]
+        }
+        Relationships: []
+      }
       toolkit_features: {
         Row: {
           description: string | null
@@ -2498,6 +2575,98 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_rewards: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          last_visit_date: string | null
+          lifetime_total: number
+          referral_code: string
+          referred_by: string | null
+          streak_days: number
+          tier: Database["public"]["Enums"]["reward_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_visit_date?: string | null
+          lifetime_total?: number
+          referral_code?: string
+          referred_by?: string | null
+          streak_days?: number
+          tier?: Database["public"]["Enums"]["reward_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_visit_date?: string | null
+          lifetime_total?: number
+          referral_code?: string
+          referred_by?: string | null
+          streak_days?: number
+          tier?: Database["public"]["Enums"]["reward_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_rewards_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "user_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_rewards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_stubs: {
+        Row: {
+          count: number
+          created_at: string
+          id: string
+          lifetime_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          id?: string
+          lifetime_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          id?: string
+          lifetime_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_stubs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_vibes: {
         Row: {
@@ -2890,6 +3059,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_points: {
+        Args: {
+          p_metadata?: Json
+          p_reason: Database["public"]["Enums"]["point_reason"]
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_event: {
         Args: {
           p_category: Database["public"]["Enums"]["event_category"]
@@ -2955,6 +3132,7 @@ export type Database = {
         }
         Returns: string
       }
+      record_daily_visit: { Args: { p_user_id: string }; Returns: Json }
       record_promo_usage: {
         Args: {
           p_discount_amount: number
@@ -3017,6 +3195,23 @@ export type Database = {
         | "failed"
         | "refunded"
         | "partially_refunded"
+      point_reason:
+        | "ticket_purchase"
+        | "daily_visit"
+        | "profile_completed"
+        | "profile_photo_added"
+        | "event_saved"
+        | "event_shared"
+        | "referral_sent"
+        | "referral_converted"
+        | "admin_adjustment"
+        | "bonus_campaign"
+      reward_tier:
+        | "explorer"
+        | "insider"
+        | "connector"
+        | "ambassador"
+        | "legend"
       ticket_status: "available" | "reserved" | "sold" | "used" | "refunded"
     }
     CompositeTypes: {
@@ -3183,6 +3378,19 @@ export const Constants = {
         "refunded",
         "partially_refunded",
       ],
+      point_reason: [
+        "ticket_purchase",
+        "daily_visit",
+        "profile_completed",
+        "profile_photo_added",
+        "event_saved",
+        "event_shared",
+        "referral_sent",
+        "referral_converted",
+        "admin_adjustment",
+        "bonus_campaign",
+      ],
+      reward_tier: ["explorer", "insider", "connector", "ambassador", "legend"],
       ticket_status: ["available", "reserved", "sold", "used", "refunded"],
     },
   },
