@@ -3,9 +3,12 @@
 // Manages saved event state across the session.
 // Fetches all saved IDs once on mount; toggleSave() optimistically updates
 // local state and calls the API route (which uses the admin client to bypass RLS).
+// Only persists events with real UUID IDs — mock/placeholder events toggle locally only.
 
 import { useState, useEffect, useCallback } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function useSavedEvents() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
@@ -48,12 +51,15 @@ export function useSavedEvents() {
 
     const wasSaved = savedIds.has(eventId)
 
-    // Optimistic update
+    // Optimistic update — always flip the heart immediately
     setSavedIds(prev => {
       const next = new Set(prev)
       wasSaved ? next.delete(eventId) : next.add(eventId)
       return next
     })
+
+    // Only persist real database events (valid UUIDs); skip mock/placeholder IDs
+    if (!UUID_RE.test(eventId)) return
 
     try {
       const res = await fetch('/api/v1/saved-events', {
@@ -63,7 +69,7 @@ export function useSavedEvents() {
       })
       if (!res.ok) throw new Error('save failed')
     } catch {
-      // Revert optimistic update on failure
+      // Revert optimistic update on API failure
       setSavedIds(prev => {
         const next = new Set(prev)
         wasSaved ? next.add(eventId) : next.delete(eventId)
