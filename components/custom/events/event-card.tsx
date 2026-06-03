@@ -1,14 +1,13 @@
 // components/custom/events/event-card.tsx
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Heart } from 'lucide-react';
 import { EventCategory } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { DEFAULT_EVENT_IMAGE, getEventImage } from '@/lib/image-utils';
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
 
 const CATEGORY_CONFIG: Record<EventCategory, {
   icon: string;
@@ -64,12 +63,13 @@ interface EventCardProps {
       address?: string;
     };
   };
+  isSaved?: boolean;
+  onToggleSave?: () => void;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, isSaved = false, onToggleSave }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [savePending, setSavePending] = useState(false);
+  const [pulse, setPulse] = useState(false);
   const categoryConfig = CATEGORY_CONFIG[event.category];
 
   // Calculate lowest price
@@ -91,54 +91,13 @@ export function EventCard({ event }: EventCardProps) {
   const availabilityLabel = ticketsRemaining < 10 ? 'Last Few' : remainingPct < 0.2 ? 'Selling Fast' : 'Available';
   const availabilityClass = ticketsRemaining < 10 ? 'text-[#FF4D4D]' : remainingPct < 0.2 ? 'text-[#F59E0B]' : 'text-[#22D3EE]';
 
-  // Load saved state on mount
-  useEffect(() => {
-    const supabase = createBrowserSupabaseClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
-      supabase
-        .from('saved_events')
-        .select('event_id')
-        .eq('user_id', data.user.id)
-        .eq('event_id', event.id)
-        .maybeSingle()
-        .then(({ data: row }) => setIsSaved(!!row));
-    });
-  }, [event.id]);
-
-  const handleSaveToggle = useCallback(async (e: React.MouseEvent) => {
+  const handleSaveClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (savePending) return;
-
-    const supabase = createBrowserSupabaseClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
-
-    const optimistic = !isSaved;
-    setIsSaved(optimistic);
-    setSavePending(true);
-
-    try {
-      if (optimistic) {
-        const { error } = await supabase
-          .from('saved_events')
-          .insert({ user_id: userData.user.id, event_id: event.id });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('saved_events')
-          .delete()
-          .eq('user_id', userData.user.id)
-          .eq('event_id', event.id);
-        if (error) throw error;
-      }
-    } catch {
-      setIsSaved(!optimistic);
-    } finally {
-      setSavePending(false);
-    }
-  }, [isSaved, savePending, event.id]);
+    setPulse(true);
+    setTimeout(() => setPulse(false), 300);
+    onToggleSave?.();
+  };
 
   return (
     <Link
@@ -149,9 +108,12 @@ export function EventCard({ event }: EventCardProps) {
         {/* Heart / Save button */}
         <button
           type="button"
-          onClick={handleSaveToggle}
+          onClick={handleSaveClick}
           aria-label={isSaved ? 'Unsave event' : 'Save event'}
-          className="absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-black/45 backdrop-blur-sm transition-transform active:scale-90"
+          className={cn(
+            'absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-black/45 backdrop-blur-sm transition-transform',
+            pulse ? 'scale-125' : 'active:scale-90'
+          )}
         >
           <Heart
             size={16}

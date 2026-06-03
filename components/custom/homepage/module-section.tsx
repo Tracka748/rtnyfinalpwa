@@ -1,12 +1,17 @@
+'use client'
+
 import { EventCard } from "@/components/custom/homepage/event-card"
 import type { Module } from "@/lib/homepage/types"
 import { ArrowRight } from "lucide-react"
+import { useSavedEvents } from "@/hooks/useSavedEvents"
 
 interface ModuleSectionProps {
   module: Module
 }
 
 export function ModuleSection({ module }: ModuleSectionProps) {
+  const { isSaved, toggleSave } = useSavedEvents()
+
   return (
     <section className="mx-auto w-full max-w-[1200px] px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
@@ -24,7 +29,13 @@ export function ModuleSection({ module }: ModuleSectionProps) {
 
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
         {module.events.map((event) => (
-          <EventCard key={event.id} event={event} size="medium" />
+          <EventCard
+            key={event.id}
+            event={event}
+            size="medium"
+            isSaved={isSaved(event.id)}
+            onToggleSave={() => toggleSave(event.id)}
+          />
         ))}
       </div>
     </section>

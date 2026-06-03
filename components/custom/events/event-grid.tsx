@@ -2,6 +2,7 @@
 
 import type { Event } from "@/types/event"
 import { EventCard } from "./event-card"
+import { useSavedEvents } from "@/hooks/useSavedEvents"
 
 interface EventGridProps {
   events: Event[]
@@ -9,6 +10,8 @@ interface EventGridProps {
 }
 
 export function EventGrid({ events, onEventClick }: EventGridProps) {
+  const { isSaved, toggleSave } = useSavedEvents()
+
   // Separate featured and regular events
   const featuredEvents = events.filter((event) => event.featured)
   const regularEvents = events.filter((event) => !event.featured)
@@ -32,6 +35,8 @@ export function EventGrid({ events, onEventClick }: EventGridProps) {
                 key={event.id}
                 event={event}
                 onClick={() => onEventClick?.(event)}
+                isSaved={isSaved(event.id)}
+                onToggleSave={() => toggleSave(event.id)}
               />
             ))}
           </div>
@@ -51,10 +56,12 @@ export function EventGrid({ events, onEventClick }: EventGridProps) {
           {/* Responsive Grid: 1 col mobile, 2 cols tablet, 3 cols desktop */}
           <div className="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
             {regularEvents.map((event) => (
-              <EventCard 
-                key={event.id} 
-                event={event} 
-                onClick={() => onEventClick?.(event)} 
+              <EventCard
+                key={event.id}
+                event={event}
+                onClick={() => onEventClick?.(event)}
+                isSaved={isSaved(event.id)}
+                onToggleSave={() => toggleSave(event.id)}
               />
             ))}
           </div>

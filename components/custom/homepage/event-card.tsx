@@ -1,23 +1,23 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Heart } from "lucide-react"
 import type { Event } from "@/lib/homepage/types"
 import { getCategoryColor } from "@/lib/homepage/utils"
 import { DEFAULT_EVENT_IMAGE, getEventImage } from "@/lib/image-utils"
-import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 
 interface EventCardProps {
   event: Event
   size?: "small" | "medium"
+  isSaved?: boolean
+  onToggleSave?: () => void
 }
 
-export function EventCard({ event, size = "small" }: EventCardProps) {
+export function EventCard({ event, size = "small", isSaved = false, onToggleSave }: EventCardProps) {
   const [imageSrc, setImageSrc] = useState(() => getEventImage(event.image, event.category))
-  const [isSaved, setIsSaved] = useState(false)
-  const [savePending, setSavePending] = useState(false)
+  const [pulse, setPulse] = useState(false)
 
   const cardWidth = size === "small" ? "w-[220px]" : "w-[280px]"
   const imageHeight = size === "small" ? "h-[120px]" : "h-[160px]"
@@ -27,53 +27,13 @@ export function EventCard({ event, size = "small" }: EventCardProps) {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const href = uuidRegex.test(event.id) ? `/events/${event.id}` : '/events'
 
-  useEffect(() => {
-    const supabase = createBrowserSupabaseClient()
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return
-      supabase
-        .from('saved_events')
-        .select('event_id')
-        .eq('user_id', data.user.id)
-        .eq('event_id', event.id)
-        .maybeSingle()
-        .then(({ data: row }) => setIsSaved(!!row))
-    })
-  }, [event.id])
-
-  const handleSaveToggle = useCallback(async (e: React.MouseEvent) => {
+  const handleSaveClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (savePending) return
-
-    const supabase = createBrowserSupabaseClient()
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) return
-
-    const optimistic = !isSaved
-    setIsSaved(optimistic)
-    setSavePending(true)
-
-    try {
-      if (optimistic) {
-        const { error } = await supabase
-          .from('saved_events')
-          .insert({ user_id: userData.user.id, event_id: event.id })
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('saved_events')
-          .delete()
-          .eq('user_id', userData.user.id)
-          .eq('event_id', event.id)
-        if (error) throw error
-      }
-    } catch {
-      setIsSaved(!optimistic)
-    } finally {
-      setSavePending(false)
-    }
-  }, [isSaved, savePending, event.id])
+    setPulse(true)
+    setTimeout(() => setPulse(false), 300)
+    onToggleSave?.()
+  }
 
   return (
     <Link href={href} className={`${cardWidth} ${cardHeight} shrink-0 snap-start`}>
@@ -97,9 +57,9 @@ export function EventCard({ event, size = "small" }: EventCardProps) {
           {/* Heart button — top right */}
           <button
             type="button"
-            onClick={handleSaveToggle}
+            onClick={handleSaveClick}
             aria-label={isSaved ? 'Unsave event' : 'Save event'}
-            className="absolute top-2 right-2 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm transition-transform active:scale-90"
+            className={`absolute top-2 right-2 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm transition-transform ${pulse ? 'scale-125' : 'active:scale-90'}`}
           >
             <Heart
               size={14}
