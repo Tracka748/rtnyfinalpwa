@@ -23,8 +23,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('[API POST saved-events] hit')
   const anon = await createClient()
   const { data: { user } } = await anon.auth.getUser()
+  console.log('[API POST saved-events] user:', user?.id ?? 'NO SESSION')
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

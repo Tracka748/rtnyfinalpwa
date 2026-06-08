@@ -3,9 +3,8 @@
 // app/confirmation/page.tsx
 // Order confirmation page after successful purchase
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
 import {
   CheckCircle2,
   Ticket,
@@ -35,7 +34,7 @@ interface OrderData {
   email: string
 }
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
@@ -54,12 +53,6 @@ export default function ConfirmationPage() {
     setShowConfetti(true)
     setTimeout(() => setShowConfetti(false), 3000)
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
-    let channel: ReturnType<typeof supabase.channel> | null = null
     let pollInterval: ReturnType<typeof setInterval> | null = null
     let fallbackTimeout: ReturnType<typeof setTimeout> | null = null
     let cleanupTimeout: ReturnType<typeof setTimeout> | null = null
@@ -71,7 +64,6 @@ export default function ConfirmationPage() {
       if (pollInterval) clearInterval(pollInterval)
       if (fallbackTimeout) clearTimeout(fallbackTimeout)
       if (cleanupTimeout) clearTimeout(cleanupTimeout)
-      channel?.unsubscribe()
 
       const tickets = data.tickets || []
       const groupedTickets = tickets.reduce((acc: any[], ticket: any) => {
@@ -106,41 +98,27 @@ export default function ConfirmationPage() {
     }
 
     async function fetchOrder() {
-      const { data } = await supabase
-        .from('orders')
-        .select(`*, events!inner(id, name, event_date, venues!inner(id, name, address)), tickets(*)`)
-        .eq('session_id', sessionId)
-        .maybeSingle()
-      if (data) applyOrder(data)
+      try {
+        const res = await fetch(`/api/v1/orders/by-session/${sessionId}`)
+        if (res.ok) {
+          const data = await res.json()
+          applyOrder(data)
+        }
+        // 404 = order not yet created, keep polling
+        // 401/403 = auth not ready yet, keep polling
+      } catch {
+        // network error, keep polling
+      }
     }
 
     async function init() {
-      // Step 1 — immediate check
       await fetchOrder()
       if (resolved) return
 
-      // Step 2 — realtime subscription for the INSERT
-      channel = supabase
-        .channel('order-confirmation')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'orders', filter: `session_id=eq.${sessionId}` },
-          async (payload) => {
-            if (resolved) return
-            const { data: full } = await supabase
-              .from('orders')
-              .select(`*, events!inner(id, name, event_date, venues!inner(id, name, address)), tickets(*)`)
-              .eq('id', payload.new.id)
-              .single()
-            applyOrder(full ?? payload.new)
-          }
-        )
-        .subscribe()
-
-      // Step 3 — poll every 5 s in case realtime is delayed
+      // Poll every 5 s until the order appears
       pollInterval = setInterval(fetchOrder, 5000)
 
-      // Step 4 — show "Payment Received" banner after 20 s, but keep polling
+      // Show "Payment Received" fallback after 20 s, but keep polling
       fallbackTimeout = setTimeout(() => {
         if (!resolved) {
           setPaymentReceived(true)
@@ -148,10 +126,9 @@ export default function ConfirmationPage() {
         }
       }, 20000)
 
-      // Step 5 — final cleanup after 3 minutes
+      // Final cleanup after 3 minutes
       cleanupTimeout = setTimeout(() => {
         if (pollInterval) clearInterval(pollInterval)
-        channel?.unsubscribe()
       }, 180000)
     }
 
@@ -161,7 +138,6 @@ export default function ConfirmationPage() {
       if (pollInterval) clearInterval(pollInterval)
       if (fallbackTimeout) clearTimeout(fallbackTimeout)
       if (cleanupTimeout) clearTimeout(cleanupTimeout)
-      channel?.unsubscribe()
     }
   }, [sessionId, router])
 
@@ -547,5 +523,19 @@ export default function ConfirmationPage() {
         }
       `}</style>
     </div>
+  )
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#121113] flex items-center justify-center">
+          <Loader2 className="animate-spin h-12 w-12 text-[#59FFA0]" />
+        </div>
+      }
+    >
+      <ConfirmationContent />
+    </Suspense>
   )
 }

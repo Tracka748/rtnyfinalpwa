@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppNav } from "@/components/custom/layout/app-nav";
 import { Sidebar } from "@/components/custom/layout/sidebar";
 import { SidebarProvider } from "@/contexts/sidebar-context";
+import { SavedEventsProvider } from "@/contexts/saved-events-context";
 
 // RTNY Font Configuration
 const rokkitt = Rokkitt({
@@ -42,13 +43,15 @@ export default function RootLayout({
       <body
         className={`${rokkitt.variable} ${rubik.variable} ${robotoSlab.variable} antialiased bg-[#121113] text-[#F9FDFF]`}
       >
-        <SidebarProvider>
-          <AppNav />
-          <Sidebar />
-          <main className="pt-16">
-            {children}
-          </main>
-        </SidebarProvider>
+        <SavedEventsProvider>
+          <SidebarProvider>
+            <AppNav />
+            <Sidebar />
+            <main className="pt-16">
+              {children}
+            </main>
+          </SidebarProvider>
+        </SavedEventsProvider>
       </body>
     </html>
   );

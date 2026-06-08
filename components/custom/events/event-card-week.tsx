@@ -1,5 +1,10 @@
 'use client'
 
+import { useState } from 'react'
+import Link from 'next/link'
+import { Heart } from 'lucide-react'
+import { useSavedEvents } from '@/hooks/useSavedEvents'
+
 export type EventCategory = 'Music' | 'Nightlife' | 'Family' | 'Food' | 'Arts'
 export type EventDay = 'tonight' | 'tomorrow' | 'weekend'
 
@@ -24,33 +29,58 @@ const categoryColors: Record<EventCategory, string> = {
 }
 
 export function EventCardWeek({ event }: { event: WeekEvent }) {
+  const { isSaved, toggleSave } = useSavedEvents()
+  const [pulse, setPulse] = useState(false)
+
+  const handleSaveClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setPulse(true)
+    setTimeout(() => setPulse(false), 300)
+    toggleSave(event.id)
+  }
+
   return (
-    <button
-      type="button"
-      className="group relative w-full aspect-[3/4] rounded-xl overflow-hidden border border-white/[0.06] focus:outline-none transition-transform active:scale-[0.98]"
-      aria-label={`${event.name} at ${event.venue}, ${event.time}, ${event.price}`}
-    >
-      <img
-        src={event.imageUrl}
-        alt={event.name}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-      />
-      <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-label font-semibold uppercase tracking-wide text-white ${categoryColors[event.category]}`}>
-        {event.category}
-      </span>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col gap-0.5">
-        <h3 className="font-slab-serif font-bold text-sm text-[#F9FDFF] leading-tight line-clamp-2">
-          {event.name}
-        </h3>
-        <p className="font-label text-[10px] text-[#7A7978] uppercase tracking-wide">
-          {event.time}
-        </p>
-        <p className="font-label text-xs font-semibold text-[#59FFA0]">
-          {event.price}
-        </p>
+    <Link href={`/events/${event.id}`}>
+      <div
+        className="group relative w-full aspect-[3/4] rounded-xl overflow-hidden border border-white/[0.06] focus:outline-none transition-transform active:scale-[0.98]"
+        aria-label={`${event.name} at ${event.venue}, ${event.time}, ${event.price}`}
+      >
+        <img
+          src={event.imageUrl}
+          alt={event.name}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+        <button
+          type="button"
+          onClick={handleSaveClick}
+          aria-label={isSaved(event.id) ? 'Unsave event' : 'Save event'}
+          className={`absolute top-2 left-2 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm transition-transform ${pulse ? 'scale-125' : 'active:scale-90'}`}
+        >
+          <Heart
+            size={14}
+            fill={isSaved(event.id) ? '#ef4444' : 'none'}
+            stroke={isSaved(event.id) ? '#ef4444' : 'rgba(255,255,255,0.75)'}
+            strokeWidth={2}
+          />
+        </button>
+        <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-label font-semibold uppercase tracking-wide text-white ${categoryColors[event.category]}`}>
+          {event.category}
+        </span>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col gap-0.5">
+          <h3 className="font-slab-serif font-bold text-sm text-[#F9FDFF] leading-tight line-clamp-2">
+            {event.name}
+          </h3>
+          <p className="font-label text-[10px] text-[#7A7978] uppercase tracking-wide">
+            {event.time}
+          </p>
+          <p className="font-label text-xs font-semibold text-[#59FFA0]">
+            {event.price}
+          </p>
+        </div>
       </div>
-    </button>
+    </Link>
   )
 }
 

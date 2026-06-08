@@ -3,19 +3,21 @@
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  Users, 
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  Users,
   Info,
   Sparkles,
   ChevronRight,
   ShoppingCart,
   Minus,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Heart
 } from 'lucide-react'
+import { useSavedEvents } from '@/hooks/useSavedEvents'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -65,6 +67,7 @@ export default function EventDetailPage({
   const { id } = use(params)
   
   const router = useRouter()
+  const { isSaved, toggleSave } = useSavedEvents()
   const [event, setEvent] = useState<Event | null>(null)
   const [cart, setCart] = useState<Record<string, number>>({}) // ticketTypeId -> quantity
   const [isLoading, setIsLoading] = useState(true)
@@ -191,6 +194,8 @@ export default function EventDetailPage({
       [ticketTypeId]: newQty
     }))
   }
+
+  const saved = isSaved(event?.id ?? '')
 
   // Proceed to checkout
   const handleCheckout = () => {
@@ -440,6 +445,22 @@ export default function EventDetailPage({
                       <span>{totalTickets === 0 ? 'Select Tickets' : 'Proceed to Checkout'}</span>
                       <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                     </Button>
+                    <button
+                      type="button"
+                      onClick={() => toggleSave(event.id)}
+                      aria-label={saved ? 'Unsave event' : 'Save event'}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-sm font-medium transition-all hover:border-accent/50 bg-black/30 backdrop-blur-sm"
+                    >
+                      <Heart
+                        size={15}
+                        fill={saved ? '#ef4444' : 'none'}
+                        stroke={saved ? '#ef4444' : 'rgba(255,255,255,0.7)'}
+                        strokeWidth={2}
+                      />
+                      <span className={saved ? 'text-red-400' : 'text-foreground/80'}>
+                        {saved ? 'Saved' : 'Save'}
+                      </span>
+                    </button>
                     <ShareButton
                       eventId={event.id}
                       eventName={event.name}

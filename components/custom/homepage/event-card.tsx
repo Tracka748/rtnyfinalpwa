@@ -24,8 +24,7 @@ export function EventCard({ event, size = "small", isSaved = false, onToggleSave
   const cardHeight = size === "small" ? "h-[260px]" : "h-[340px]"
 
   const categoryColor = getCategoryColor(event.category)
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  const href = uuidRegex.test(event.id) ? `/events/${event.id}` : '/events'
+  const href = `/events/${event.id}`
 
   const handleSaveClick = (e: React.MouseEvent) => {
     e.preventDefault()

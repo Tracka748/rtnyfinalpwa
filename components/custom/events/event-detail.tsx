@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { ArrowLeft, Share2, MapPin, Calendar, Clock, Users, Music } from "lucide-react"
+import { ArrowLeft, Share2, MapPin, Calendar, Clock, Users, Music, Heart } from "lucide-react"
+import { useSavedEvents } from "@/hooks/useSavedEvents"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -65,6 +66,9 @@ export function EventDetail({
   totalPrice,
   isMember = false
 }: EventDetailProps) {
+  const { isSaved, toggleSave } = useSavedEvents()
+  const saved = isSaved(event.id)
+
   const [selectedBoosts, setSelectedBoosts] = useState<string[]>([])
 
   // Sample boost data - can be passed as prop later
@@ -117,14 +121,32 @@ export function EventDetail({
           >
             <ArrowLeft className="h-5 w-5 text-white" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onShare}
-            className="h-10 w-10 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all duration-300"
-          >
-            <Share2 className="h-5 w-5 text-white" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => toggleSave(event.id)}
+              aria-label={saved ? 'Unsave event' : 'Save event'}
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-sm font-medium transition-all hover:border-accent/50 bg-black/30 backdrop-blur-sm"
+            >
+              <Heart
+                size={15}
+                fill={saved ? '#ef4444' : 'none'}
+                stroke={saved ? '#ef4444' : 'rgba(255,255,255,0.7)'}
+                strokeWidth={2}
+              />
+              <span className={saved ? 'text-red-400' : 'text-foreground/80'}>
+                {saved ? 'Saved' : 'Save'}
+              </span>
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onShare}
+              className="h-10 w-10 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all duration-300"
+            >
+              <Share2 className="h-5 w-5 text-white" />
+            </Button>
+          </div>
         </div>
 
         {/* Category Badge */}

@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
+import { useState, useEffect } from "react"
 import { HomepageSearchBar } from "@/components/custom/homepage/search-bar"
 import { HeroPromo } from "@/components/custom/homepage/hero-promo"
 import { DateTabs } from "@/components/custom/homepage/date-tabs"
@@ -19,7 +18,6 @@ import { AnnouncementFeed } from "@/components/custom/homepage/announcement-feed
 import { FeaturedAdBanner } from "@/components/custom/ads/featured-ad-banner"
 import RewardStatusBar from "@/components/rewards/RewardStatusBar"
 import { getModulePriority } from "@/lib/homepage/get-module-priority"
-import { getEventImage } from "@/lib/image-utils"
 import type { Event, PromoCard, Module } from "@/lib/homepage/types"
 import RTNYPicksSection from "@/components/custom/homepage/RTNYPicksSection"
 import { DiscoveryModule } from "@/components/custom/homepage/discovery-module"
@@ -32,63 +30,24 @@ import GetActiveSection from "@/components/custom/homepage/GetActiveSection"
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
-  const [allEvents, setAllEvents] = useState<any[]>([])
+  const [homepageEvents, setHomepageEvents] = useState<Record<string, Event[]>>({})
 
-  // Fetch events from API
   useEffect(() => {
-    async function fetchEvents() {
+    async function fetchHomepageEvents() {
       try {
-        const response = await fetch('/api/v1/events')
+        const response = await fetch('/api/v1/events/homepage')
         const result = await response.json()
-
         if (result.success && result.data) {
-          setAllEvents(result.data)
+          setHomepageEvents(result.data)
         }
       } catch (error) {
-        console.error('Failed to fetch events:', error)
+        console.error('Failed to fetch homepage events:', error)
       }
     }
-
-    fetchEvents()
+    fetchHomepageEvents()
   }, [])
 
-
-  // Helper function to map API event to Event type
-  const mapEventToEventType = (apiEvent: any): Event => {
-    const lowestPrice = apiEvent.ticket_types?.[0]?.price || 0
-    const category = apiEvent.category || "nightlife"
-    return {
-      id: apiEvent.id,
-      title: apiEvent.name,
-      category: category,
-      image: getEventImage(apiEvent.flyer_image_url || apiEvent.image_url, category),
-      venue: apiEvent.venue_name || "TBA",
-      time: new Date(apiEvent.event_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      price: lowestPrice > 0 ? `$${lowestPrice}` : "Free",
-      points: Math.floor(lowestPrice * 5) || 50,
-      date: new Date(apiEvent.event_date).toISOString().split("T")[0],
-    }
-  }
-
-  // Deduplicate API events by ID to prevent triple-rendering from API duplicates
-  const uniqueEvents = [...new Map(allEvents.map(e => [e.id, e])).values()]
-
-  // Filter featured events (featured=true, limit 10)
-  const featuredEvents: Event[] = uniqueEvents
-    .filter(event => event.featured === true)
-    .slice(0, 10)
-    .map(mapEventToEventType)
-
-  // Filter tonight events (events in the next 24 hours)
-  const now = new Date()
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-
-  const tonightEvents: Event[] = uniqueEvents
-    .filter(event => {
-      const eventDate = new Date(event.event_date)
-      return eventDate >= now && eventDate < tomorrow
-    })
-    .map(mapEventToEventType)
+  const featuredEvents: Event[] = homepageEvents.nightlife ?? []
 
   // Mock user data for PointsFeedback
   const userData = {
@@ -132,52 +91,7 @@ export default function HomePage() {
   const isWeekend = [0, 6].includes(new Date().getDay())
   const moduleOrder = getModulePriority(userData.badges, currentHour, isWeekend, userData.points, userData.isLoggedIn)
 
-  const tonightDeals: Event[] = [
-    {
-      id: "d1",
-      title: "HAPPY HOUR",
-      category: "dining",
-      image: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=800&fit=crop",
-      venue: "5-7PM",
-      time: "All Bars",
-      price: "Specials",
-      points: 100,
-      date: selectedDate,
-    },
-    {
-      id: "d2",
-      title: "2-FOR-1 DRINKS",
-      category: "dining",
-      image: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=800&fit=crop",
-      venue: "Bug Jar",
-      time: "All Night",
-      price: "$10",
-      points: 50,
-      date: selectedDate,
-    },
-    {
-      id: "d3",
-      title: "LADIES NIGHT",
-      category: "nightlife",
-      image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=800&fit=crop",
-      venue: "Lux Club",
-      time: "Free Before 10PM",
-      price: "$0",
-      points: 75,
-      date: selectedDate,
-    },
-    {
-      id: "d4",
-      title: "VIP BOTTLE SERVICE",
-      category: "nightlife",
-      image: "https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=600&h=800&fit=crop",
-      venue: "All Venues",
-      time: "Reserve Now",
-      price: "$250",
-      points: 250,
-      date: selectedDate,
-    },
-  ]
+  const tonightDeals: Event[] = homepageEvents.dining ?? []
 
   const modules: Module[] = [
     {
@@ -185,192 +99,28 @@ export default function HomePage() {
       title: "Family Weekend",
       icon: "👨‍👩‍👧",
       priority: 0,
-      events: [
-        {
-          id: "f1",
-          title: "Zoo Day",
-          category: "family",
-          image: "/zoo-animals-family-kids.jpg",
-          venue: "Seneca Zoo",
-          time: "Sat • 10AM",
-          price: "$15",
-          points: 75,
-          date: selectedDate,
-        },
-        {
-          id: "f2",
-          title: "Museum Free Sunday",
-          category: "family",
-          image: "/museum-kids-exhibits.jpg",
-          venue: "Strong Museum",
-          time: "Sun • 12PM",
-          price: "$10",
-          points: 50,
-          date: selectedDate,
-        },
-        {
-          id: "f3",
-          title: "Park Festival",
-          category: "family",
-          image: "/park-festival-family-fun.jpg",
-          venue: "Highland Park",
-          time: "Sat • 11AM",
-          price: "Free",
-          points: 25,
-          date: selectedDate,
-        },
-        {
-          id: "f4",
-          title: "Aquarium Visit",
-          category: "family",
-          image: "/aquarium-fish-kids.jpg",
-          venue: "Seabreeze",
-          time: "Sun • 1PM",
-          price: "$20",
-          points: 100,
-          date: selectedDate,
-        },
-      ],
+      events: homepageEvents.family ?? [],
     },
     {
       id: "movies",
       title: "Movies This Week",
       icon: "🎬",
       priority: 0,
-      events: [
-        {
-          id: "m1",
-          title: "Wicked",
-          category: "movies",
-          image: "/wicked-musical-theater-movie.jpg",
-          venue: "Little Theatre",
-          time: "7:30 PM",
-          price: "$25",
-          points: 150,
-          date: selectedDate,
-        },
-        {
-          id: "m2",
-          title: "Gladiator II",
-          category: "movies",
-          image: "/gladiator-action-sequel.jpg",
-          venue: "Regal Henrietta",
-          time: "7:00 PM",
-          price: "$14",
-          points: 85,
-          date: selectedDate,
-        },
-        {
-          id: "m3",
-          title: "The Wild Robot",
-          category: "movies",
-          image: "/wild-robot-animated-film.jpg",
-          venue: "AMC Webster",
-          time: "2:00 PM",
-          price: "$12",
-          points: 75,
-          date: selectedDate,
-        },
-        {
-          id: "m4",
-          title: "Nosferatu",
-          category: "movies",
-          image: "/nosferatu-horror-vampire.jpg",
-          venue: "Little Theatre",
-          time: "9:00 PM",
-          price: "$18",
-          points: 90,
-          date: selectedDate,
-        },
-      ],
+      events: homepageEvents.movies ?? [],
     },
     {
       id: "music",
       title: "Live Music",
       icon: "🎸",
       priority: 0,
-      events: [
-        {
-          id: "mu1",
-          title: "Jazz Night",
-          category: "music",
-          image: "/jazz-live-band-saxophone.jpg",
-          venue: "Old Toad",
-          time: "8:00 PM",
-          price: "$15",
-          points: 80,
-          date: selectedDate,
-          deal: "Free entry before 10PM",
-          description: "A smooth evening of live jazz with Rochester's finest musicians",
-        },
-        {
-          id: "mu2",
-          title: "Rock Concert",
-          category: "music",
-          image: "/rock-concert-guitar-band.jpg",
-          venue: "Anthology",
-          time: "9:00 PM",
-          price: "$30",
-          points: 150,
-          date: selectedDate,
-          deal: "VIP includes open bar",
-          description: "High energy rock with full light show and multiple acts",
-        },
-        {
-          id: "mu3",
-          title: "Open Mic Night",
-          category: "music",
-          image: "/open-mic-acoustic-guitar.jpg",
-          venue: "Java's",
-          time: "7:00 PM",
-          price: "Free",
-          points: 40,
-          date: selectedDate,
-          deal: "Sign up to perform on stage",
-          description: "Local talent takes the spotlight every Tuesday night",
-        },
-      ],
+      events: homepageEvents.music ?? [],
     },
     {
       id: "plan-day",
       title: "Plan My Day",
       icon: "☀️",
       priority: 0,
-      events: [
-        {
-          id: "pd1",
-          title: "Brunch Specials",
-          category: "dining",
-          image: "/brunch-food-breakfast.jpg",
-          venue: "Good Luck",
-          time: "11:00 AM",
-          price: "$25",
-          points: 100,
-          date: selectedDate,
-        },
-        {
-          id: "pd2",
-          title: "Coffee & Pastries",
-          category: "dining",
-          image: "/coffee-pastries-cafe.jpg",
-          venue: "Java's",
-          time: "8:00 AM",
-          price: "$8",
-          points: 30,
-          date: selectedDate,
-        },
-        {
-          id: "pd3",
-          title: "Shopping Downtown",
-          category: "shopping",
-          image: "/shopping-downtown-stores.jpg",
-          venue: "East Ave",
-          time: "10:00 AM",
-          price: "Free",
-          points: 20,
-          date: selectedDate,
-        },
-      ],
+      events: homepageEvents.dining ?? [],
     },
   ]
 
