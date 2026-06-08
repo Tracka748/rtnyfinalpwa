@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type { EventDetails } from '@/hooks/usePlanBuilder'
+import { TimePicker } from '@/components/ui/time-picker/TimePicker'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -320,23 +321,17 @@ export function EventDetailsForm({ eventDetails, onUpdate, canProceed, onNext }:
           />
         </div>
         <div>
-          <FieldLabel>Start Time</FieldLabel>
-          <input
-            type="time"
+          <TimePicker
+            label="START TIME"
             value={eventDetails.timeStart}
-            onChange={e => onUpdate('timeStart', e.target.value)}
-            className={inputClass()}
-            style={{ colorScheme: 'dark' }}
+            onChange={val => onUpdate('timeStart', val)}
           />
         </div>
         <div>
-          <FieldLabel>End Time</FieldLabel>
-          <input
-            type="time"
+          <TimePicker
+            label="END TIME"
             value={eventDetails.timeEnd}
-            onChange={e => onUpdate('timeEnd', e.target.value)}
-            className={inputClass()}
-            style={{ colorScheme: 'dark' }}
+            onChange={val => onUpdate('timeEnd', val)}
           />
         </div>
       </div>

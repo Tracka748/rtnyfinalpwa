@@ -3,6 +3,31 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PromoCodeGenerator } from '@/app/components/admin/PromoCodeGenerator';
+import { TimePicker } from '@/components/ui/time-picker/TimePicker';
+
+// Converts "H:MM AM/PM" → "HH:MM" (24-hour) for ISO datetime assembly
+function to24Hour(time12: string): string {
+  const match = time12.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return '';
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = match[3].toUpperCase();
+  if (period === 'AM') { if (h === 12) h = 0; }
+  else { if (h !== 12) h += 12; }
+  return `${h.toString().padStart(2, '0')}:${m}`;
+}
+
+// Converts "HH:MM" (24-hour) → "H:MM AM/PM" for TimePicker value prop
+function to12Hour(time24: string): string {
+  const match = time24.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return '';
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = h < 12 ? 'AM' : 'PM';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h}:${m} ${period}`;
+}
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -317,16 +342,11 @@ export default function AdminCreateEventPage() {
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors [color-scheme:dark]"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
-                  Start Time
-                </label>
-                <input
-                  type="time"
-                  aria-label="Start Time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors [color-scheme:dark]"
+              <div>
+                <TimePicker
+                  label="START TIME"
+                  value={startTime ? to12Hour(startTime) : undefined}
+                  onChange={(val) => setStartTime(to24Hour(val))}
                 />
               </div>
             </div>

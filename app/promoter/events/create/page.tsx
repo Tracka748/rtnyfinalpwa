@@ -5,6 +5,29 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EventCategory } from '@/types/database';
 import { AIQuickBuildFlow } from '@/components/AIQuickBuildFlow';
+import { TimePicker } from '@/components/ui/time-picker/TimePicker';
+
+function to24Hour(time12: string): string {
+  const match = time12.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return '';
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = match[3].toUpperCase();
+  if (period === 'AM') { if (h === 12) h = 0; }
+  else { if (h !== 12) h += 12; }
+  return `${h.toString().padStart(2, '0')}:${m}`;
+}
+
+function to12Hour(time24: string): string {
+  const match = time24.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return '';
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = h < 12 ? 'AM' : 'PM';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h}:${m} ${period}`;
+}
 
 // Multi-step wizard steps
 type WizardStep = 'basics' | 'details' | 'tickets' | 'image' | 'review';
@@ -434,15 +457,10 @@ function CreateEventForm() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-2">
-                    Start Time *
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={formData.event_time}
-                    onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
+                  <TimePicker
+                    label="START TIME"
+                    value={formData.event_time ? to12Hour(formData.event_time) : undefined}
+                    onChange={(val) => setFormData({ ...formData, event_time: to24Hour(val) })}
                   />
                 </div>
               </div>
