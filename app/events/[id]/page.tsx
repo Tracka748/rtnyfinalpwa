@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ShareButton } from '@/components/custom/events/share-button'
+import { EventChallenges } from '@/components/custom/events/event-challenges'
 import { format } from 'date-fns'
 
 // Types matching your actual database schema
@@ -470,6 +471,8 @@ export default function EventDetailPage({
                 </div>
               </CardContent>
             </Card>
+
+            <EventChallenges eventId={event.id} />
           </div>
 
           {/* RIGHT COLUMN - Event Details */}

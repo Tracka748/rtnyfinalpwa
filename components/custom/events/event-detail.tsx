@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DEFAULT_EVENT_IMAGE, getEventImage } from "@/lib/image-utils"
+import { EventChallenges } from "@/components/custom/events/event-challenges"
 
 interface TicketType {
   id: string
@@ -305,6 +306,8 @@ export function EventDetail({
             </p>
           </div>
         </div>
+
+        <EventChallenges eventId={event.id} />
 
         {/* Status Messages */}
         {isCancelled && (
