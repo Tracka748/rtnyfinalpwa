@@ -21,6 +21,50 @@ interface RequestBody {
   contact_email: string | null
 }
 
+async function sendPlanRequestEmail(params: {
+  requestId: string
+  eventType: string
+  eventDate: string | null
+  guestCount: string | null
+  budgetRange: string | null
+  estimatedTotal: number | null
+  notes: string | null
+  contactEmail: string | null
+}) {
+  const { Resend } = await import('resend')
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const from = process.env.RESEND_FROM_EMAIL
+    ? `RTNY Planning <${process.env.RESEND_FROM_EMAIL}>`
+    : 'RTNY Planning <onboarding@resend.dev>'
+
+  const { data, error } = await resend.emails.send({
+    from,
+    to: 'hello@rocticketny.com',
+    subject: `New Plan Request — ${params.eventType}`,
+    html: `
+      <h2>New Plan My Event Submission</h2>
+      <p><strong>Request ID:</strong> ${params.requestId}</p>
+      <p><strong>Event Type:</strong> ${params.eventType}</p>
+      <p><strong>Event Date:</strong> ${params.eventDate ?? 'Not specified'}</p>
+      <p><strong>Guest Count:</strong> ${params.guestCount ?? 'Not specified'}</p>
+      <p><strong>Budget Range:</strong> ${params.budgetRange ?? 'Not specified'}</p>
+      <p><strong>Estimated Total:</strong> ${params.estimatedTotal ? '$' + params.estimatedTotal : 'Not specified'}</p>
+      <p><strong>Contact Email:</strong> ${params.contactEmail ?? 'Not provided'}</p>
+      <p><strong>Notes:</strong> ${params.notes ?? 'None'}</p>
+      <hr />
+      <p>View all plan requests in the <a href="https://rocticketny.com/admin">RTNY Admin Dashboard</a></p>
+    `
+  })
+
+  if (error) {
+    console.error('Resend email error:', error)
+    throw new Error(error.message)
+  }
+
+  console.log('Plan request email sent:', data?.id)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: RequestBody = await request.json()
@@ -91,6 +135,18 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Fire-and-forget admin notification
+    sendPlanRequestEmail({
+      requestId: data.id,
+      eventType: event_type,
+      eventDate: event_date,
+      guestCount: guest_count,
+      budgetRange: budget_range,
+      estimatedTotal: estimated_total,
+      notes: notes,
+      contactEmail: contact_email,
+    }).catch(console.error)
 
     return NextResponse.json({ success: true, data: { id: data.id } }, { status: 201 })
   } catch (err: any) {

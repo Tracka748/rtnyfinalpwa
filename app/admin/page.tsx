@@ -343,6 +343,13 @@ export default function AdminDashboardPage() {
                   <div className="font-medium text-[#59FFA0] text-sm">Create Event</div>
                   <div className="text-xs text-[#7DD8E8] mt-0.5">Add a new event</div>
                 </a>
+                <a
+                  href="/admin/partners"
+                  className="shrink-0 md:shrink p-3 bg-[#EF9F27]/10 border border-[#EF9F27]/30 rounded-lg hover:bg-[#EF9F27]/20 transition-colors min-w-[180px] md:min-w-0"
+                >
+                  <div className="font-medium text-[#EF9F27] text-sm">Partner Profiles</div>
+                  <div className="text-xs text-[#7DD8E8] mt-0.5">Manage business profiles</div>
+                </a>
                 <button
                   type="button"
                   onClick={recalculateAudienceData}
