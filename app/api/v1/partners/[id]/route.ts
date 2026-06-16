@@ -107,6 +107,19 @@ export async function PATCH(
     if (typeof body.active === 'boolean') updates.active = body.active
     if (typeof body.verified === 'boolean') updates.verified = body.verified
     if (body.visible_modules !== undefined) updates.visible_modules = body.visible_modules
+    if (body.partner_type !== undefined) updates.partner_type = body.partner_type
+    if (body.venue_id !== undefined) updates.venue_id = body.venue_id
+    if (body.vendor_id !== undefined) updates.vendor_id = body.vendor_id
+    if (body.owner_id !== undefined) updates.owner_id = body.owner_id
+    if (body.display_name !== undefined) updates.display_name = body.display_name
+    if (body.tagline !== undefined) updates.tagline = body.tagline
+    if (body.bio !== undefined) updates.bio = body.bio
+    if (body.category !== undefined) updates.category = body.category
+    if (body.contact_email !== undefined) updates.contact_email = body.contact_email
+    if (body.contact_phone !== undefined) updates.contact_phone = body.contact_phone
+    if (body.website_url !== undefined) updates.website_url = body.website_url
+    if (body.logo_url !== undefined) updates.logo_url = body.logo_url
+    if (body.cover_image_url !== undefined) updates.cover_image_url = body.cover_image_url
 
     const { data: updatedPartner, error } = await supabase
       .from('partners')
@@ -123,5 +136,45 @@ export async function PATCH(
   } catch (err) {
     console.error('partners/[id] PATCH error:', err)
     return NextResponse.json({ error: 'Failed to update partner' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = createSupabaseAdmin()
+    const supabaseServer = await createSupabaseServer()
+
+    const { data: { user } } = await supabaseServer.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const { error } = await supabase
+      .from('partners')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to delete partner' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('partners/[id] DELETE error:', err)
+    return NextResponse.json({ error: 'Failed to delete partner' }, { status: 500 })
   }
 }
