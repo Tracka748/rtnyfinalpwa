@@ -36,6 +36,13 @@ export default async function DashboardPage() {
       member_count: c.crew_members?.[0]?.count ?? 0,
     }))
 
+  const { data: partnerProfile } = await supabase
+    .from('partners')
+    .select('id, display_name, partner_type, verified, active, supporter_count, logo_url, tagline, category')
+    .eq('owner_id', user!.id)
+    .eq('active', true)
+    .single()
+
   return (
     <main className="min-h-screen bg-[#121113]">
       {/* Header */}
@@ -151,6 +158,80 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* My Partner Profile */}
+        {partnerProfile && (
+          <div className="bg-card border border-white/5 rounded-2xl p-6 mt-6">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
+              <span className="text-2xl">🏢</span>
+              <h2 className="text-xl font-bold text-foreground font-slab-serif">
+                My Partner Profile
+              </h2>
+              <div className="ml-auto flex items-center gap-4">
+                <a href="/profile/partner/edit" className="text-xs text-accent hover:underline">
+                  Edit Profile →
+                </a>
+                <a
+                  href={`/partners/${partnerProfile.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent hover:underline"
+                >
+                  View Public Page →
+                </a>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-white/5 rounded-2xl border border-white/5 p-4">
+              {/* Logo */}
+              <div className="flex-shrink-0">
+                {partnerProfile.logo_url ? (
+                  <img
+                    src={partnerProfile.logo_url}
+                    alt={partnerProfile.display_name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-[#59FFA0]"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-[#1f1f2e] border-2 border-[#59FFA0] flex items-center justify-center text-[#59FFA0] font-bold text-lg">
+                    {partnerProfile.display_name?.[0] ?? '?'}
+                  </div>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="font-slab-serif text-base font-bold text-foreground truncate">
+                  {partnerProfile.display_name}
+                </p>
+                <div className="flex items-center mt-0.5">
+                  <span className="text-xs text-foreground/40">{partnerProfile.category}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#59FFA0]/10 text-[#59FFA0] border border-[#59FFA0]/20 font-label uppercase tracking-wider ml-2">
+                    {partnerProfile.partner_type}
+                  </span>
+                </div>
+                {partnerProfile.tagline && (
+                  <p className="text-xs text-foreground/40 mt-1 italic truncate">{partnerProfile.tagline}</p>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="flex-shrink-0 flex gap-4 text-right">
+                <div>
+                  <p className="text-sm font-bold text-foreground">{partnerProfile.supporter_count ?? 0}</p>
+                  <p className="text-[10px] text-foreground/40 uppercase tracking-wider font-label">Supporters</p>
+                </div>
+                <div>
+                  {partnerProfile.verified ? (
+                    <p className="text-xs text-[#59FFA0] font-bold">✓ Verified</p>
+                  ) : (
+                    <p className="text-xs text-foreground/30">Unverified</p>
+                  )}
+                  <p className="text-[10px] text-foreground/40 uppercase tracking-wider font-label">Status</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* User Info (Debug) */}
         <div className="mt-8 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6">

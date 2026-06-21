@@ -92,34 +92,38 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    const [profileResult, partnerResult] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', user.id).single(),
+      supabase.from('partners').select('owner_id').eq('id', id).single(),
+    ])
 
-    if (!profile || profile.role !== 'admin') {
+    const isAdmin = profileResult.data?.role === 'admin'
+    const isOwner = partnerResult.data?.owner_id === user.id
+
+    if (!isAdmin && !isOwner) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
     const updates: Record<string, unknown> = {}
-    if (typeof body.active === 'boolean') updates.active = body.active
-    if (typeof body.verified === 'boolean') updates.verified = body.verified
-    if (body.visible_modules !== undefined) updates.visible_modules = body.visible_modules
-    if (body.partner_type !== undefined) updates.partner_type = body.partner_type
-    if (body.venue_id !== undefined) updates.venue_id = body.venue_id
-    if (body.vendor_id !== undefined) updates.vendor_id = body.vendor_id
-    if (body.owner_id !== undefined) updates.owner_id = body.owner_id
-    if (body.display_name !== undefined) updates.display_name = body.display_name
-    if (body.tagline !== undefined) updates.tagline = body.tagline
-    if (body.bio !== undefined) updates.bio = body.bio
-    if (body.category !== undefined) updates.category = body.category
-    if (body.contact_email !== undefined) updates.contact_email = body.contact_email
-    if (body.contact_phone !== undefined) updates.contact_phone = body.contact_phone
-    if (body.website_url !== undefined) updates.website_url = body.website_url
-    if (body.logo_url !== undefined) updates.logo_url = body.logo_url
-    if (body.cover_image_url !== undefined) updates.cover_image_url = body.cover_image_url
+
+    const ownerAllowedFields = new Set([
+      'display_name', 'tagline', 'bio', 'category', 'contact_email',
+      'contact_phone', 'website_url', 'logo_url', 'cover_image_url', 'visible_modules',
+    ])
+
+    if (isAdmin) {
+      if (typeof body.active === 'boolean') updates.active = body.active
+      if (typeof body.verified === 'boolean') updates.verified = body.verified
+      if (body.partner_type !== undefined) updates.partner_type = body.partner_type
+      if (body.venue_id !== undefined) updates.venue_id = body.venue_id
+      if (body.vendor_id !== undefined) updates.vendor_id = body.vendor_id
+      if (body.owner_id !== undefined) updates.owner_id = body.owner_id
+    }
+
+    for (const field of ownerAllowedFields) {
+      if (body[field] !== undefined) updates[field] = body[field]
+    }
 
     const { data: updatedPartner, error } = await supabase
       .from('partners')

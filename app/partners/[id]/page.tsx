@@ -10,17 +10,20 @@ interface PageProps {
 }
 
 function Divider() {
-  return <div style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }} />
+  return (
+    <div className="h-px bg-gradient-to-r from-transparent via-[#59FFA0]/15 to-transparent my-2" />
+  )
 }
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <p
-      className="font-label text-xs tracking-wider mb-4"
-      style={{ color: 'rgba(249,253,255,0.5)' }}
-    >
-      {children}
-    </p>
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-1 h-5 rounded-full bg-gradient-to-b from-[#59FFA0] to-[#1AC8ED]" />
+      <span className="font-label text-xs tracking-[0.3em] uppercase text-[#F9FDFF]/50">
+        {children}
+      </span>
+      <div className="flex-1 h-px bg-gradient-to-r from-[#59FFA0]/20 to-transparent" />
+    </div>
   )
 }
 
@@ -44,7 +47,7 @@ function ActionPill({
       href={href}
       target={href.startsWith('http') ? '_blank' : undefined}
       rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-      className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium"
+      className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full font-label text-xs tracking-wider"
       style={{
         backgroundColor: '#1a1819',
         border: '1px solid #1AC8ED',
@@ -160,9 +163,29 @@ export default async function PartnerProfilePage({ params }: PageProps) {
               </div>
             )}
 
+            {/* Category label */}
+            {partner.category && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-[#59FFA0] animate-pulse" />
+                <span className="font-label text-xs tracking-[0.25em] uppercase text-[#59FFA0]">
+                  {partner.category}
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-slab-serif text-2xl font-bold text-[#F9FDFF]">
-                {partner.display_name ?? partner.name}
+              <h1 className="font-slab-serif text-3xl font-bold leading-tight">
+                <span
+                  style={{
+                    background: 'linear-gradient(135deg, #59FFA0 0%, #1AC8ED 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    display: 'inline',
+                  }}
+                >
+                  {partner.display_name ?? partner.name}
+                </span>
               </h1>
               {partner.verified && (
                 <span
@@ -182,17 +205,14 @@ export default async function PartnerProfilePage({ params }: PageProps) {
             </div>
 
             {partner.tagline && (
-              <p
-                className="font-sans text-sm mt-1"
-                style={{ color: 'rgba(249,253,255,0.6)' }}
-              >
+              <p className="font-serif italic text-sm text-[#F9FDFF]/70 mt-1 leading-relaxed">
                 {partner.tagline}
               </p>
             )}
 
             {partner.partner_type && (
               <span
-                className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-label capitalize"
+                className="inline-block mt-2 px-3 py-1 rounded-full font-label text-xs tracking-widest uppercase"
                 style={{
                   color: '#59FFA0',
                   border: '1px solid rgba(89,255,160,0.3)',
@@ -244,27 +264,27 @@ export default async function PartnerProfilePage({ params }: PageProps) {
         <div className="px-4 py-6">
           <div className="grid grid-cols-3">
             <div className="text-center pr-4" style={{ borderRight: '0.5px solid rgba(255,255,255,0.1)' }}>
-              <p className="font-label text-xs" style={{ color: 'rgba(249,253,255,0.5)' }}>
+              <p className="font-label text-[10px] tracking-[0.2em] uppercase text-[#F9FDFF]/40 mt-1">
                 SUPPORTERS
               </p>
-              <p className="font-sans font-bold text-xl mt-1 text-[#F9FDFF]">
+              <p className="font-serif text-2xl font-bold text-[#F9FDFF]">
                 {supporter_count.toLocaleString()}
               </p>
             </div>
             <div className="text-center px-4" style={{ borderRight: '0.5px solid rgba(255,255,255,0.1)' }}>
-              <p className="font-label text-xs" style={{ color: 'rgba(249,253,255,0.5)' }}>
+              <p className="font-label text-[10px] tracking-[0.2em] uppercase text-[#F9FDFF]/40 mt-1">
                 EVENTS HOSTED
               </p>
-              <p className="font-sans font-bold text-xl mt-1 text-[#F9FDFF]">
+              <p className="font-serif text-2xl font-bold text-[#F9FDFF]">
                 {partner.events_count ?? '—'}
               </p>
             </div>
             <div className="text-center pl-4">
-              <p className="font-label text-xs" style={{ color: 'rgba(249,253,255,0.5)' }}>
+              <p className="font-label text-[10px] tracking-[0.2em] uppercase text-[#F9FDFF]/40 mt-1">
                 VERIFIED
               </p>
               <p
-                className="font-sans font-bold text-xl mt-1"
+                className="font-serif text-2xl font-bold"
                 style={{ color: partner.verified ? '#59FFA0' : 'rgba(249,253,255,0.3)' }}
               >
                 {partner.verified ? '✓ Yes' : '—'}
@@ -279,7 +299,7 @@ export default async function PartnerProfilePage({ params }: PageProps) {
             <Divider />
             <div className="px-4 py-6">
               <SectionLabel>ABOUT</SectionLabel>
-              <p className="font-sans text-sm leading-relaxed text-[#F9FDFF]">
+              <p className="font-sans text-sm text-[#F9FDFF]/70 leading-7 tracking-wide">
                 {partner.bio}
               </p>
             </div>
@@ -303,19 +323,16 @@ export default async function PartnerProfilePage({ params }: PageProps) {
                     }}
                   >
                     <div className="min-w-0 pr-3">
-                      <p className="font-sans text-sm font-medium text-[#F9FDFF] truncate">
+                      <p className="font-slab-serif text-sm font-semibold text-[#F9FDFF] truncate">
                         {event.name}
                       </p>
-                      <p
-                        className="font-sans text-xs mt-0.5"
-                        style={{ color: 'rgba(249,253,255,0.5)' }}
-                      >
+                      <p className="font-label text-xs tracking-wider text-[#1AC8ED] mt-0.5">
                         {formatEventDate(event.event_date)}
                       </p>
                     </div>
                     <Link
                       href={`/events/${event.id}`}
-                      className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg"
+                      className="flex-shrink-0 font-label text-xs tracking-widest uppercase px-3 py-1.5 rounded-lg"
                       style={{
                         backgroundColor: 'rgba(26,200,237,0.1)',
                         color: '#1AC8ED',
@@ -382,40 +399,56 @@ export default async function PartnerProfilePage({ params }: PageProps) {
             <Divider />
             <div className="px-4 py-6">
               <SectionLabel>CONTACT</SectionLabel>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 {partner.contact_email && (
-                  <a
-                    href={`mailto:${partner.contact_email}`}
-                    className="flex items-center gap-3 font-sans text-sm"
-                    style={{ color: '#1AC8ED' }}
-                  >
-                    <span className="text-base">✉️</span>
-                    <span className="truncate">{partner.contact_email}</span>
-                  </a>
+                  <div>
+                    <p className="font-label text-[10px] tracking-widest uppercase text-[#F9FDFF]/40 mb-1">
+                      EMAIL
+                    </p>
+                    <a
+                      href={`mailto:${partner.contact_email}`}
+                      className="flex items-center gap-3"
+                    >
+                      <span className="text-base">✉️</span>
+                      <span className="font-sans text-sm text-[#1AC8ED] truncate">
+                        {partner.contact_email}
+                      </span>
+                    </a>
+                  </div>
                 )}
                 {partner.contact_phone && (
-                  <a
-                    href={`tel:${partner.contact_phone}`}
-                    className="flex items-center gap-3 font-sans text-sm"
-                    style={{ color: '#1AC8ED' }}
-                  >
-                    <span className="text-base">📞</span>
-                    <span>{partner.contact_phone}</span>
-                  </a>
+                  <div>
+                    <p className="font-label text-[10px] tracking-widest uppercase text-[#F9FDFF]/40 mb-1">
+                      PHONE
+                    </p>
+                    <a
+                      href={`tel:${partner.contact_phone}`}
+                      className="flex items-center gap-3"
+                    >
+                      <span className="text-base">📞</span>
+                      <span className="font-sans text-sm text-[#1AC8ED]">
+                        {partner.contact_phone}
+                      </span>
+                    </a>
+                  </div>
                 )}
                 {partner.website_url && (
-                  <a
-                    href={partner.website_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 font-sans text-sm"
-                    style={{ color: '#1AC8ED' }}
-                  >
-                    <span className="text-base">🌐</span>
-                    <span className="truncate">
-                      {partner.website_url.replace(/^https?:\/\//, '')}
-                    </span>
-                  </a>
+                  <div>
+                    <p className="font-label text-[10px] tracking-widest uppercase text-[#F9FDFF]/40 mb-1">
+                      WEBSITE
+                    </p>
+                    <a
+                      href={partner.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3"
+                    >
+                      <span className="text-base">🌐</span>
+                      <span className="font-sans text-sm text-[#1AC8ED] truncate">
+                        {partner.website_url.replace(/^https?:\/\//, '')}
+                      </span>
+                    </a>
+                  </div>
                 )}
               </div>
             </div>
