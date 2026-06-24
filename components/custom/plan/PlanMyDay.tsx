@@ -73,14 +73,17 @@ const TAGS = [
 ]
 
 const ENERGY_OPTIONS = [
-  { value: 'relaxed', label: 'Relaxed', icon: '🌊' },
-  { value: 'active',  label: 'Active',  icon: '⚡' },
+  { value: 'relaxed',    label: 'Relaxed',    icon: '🌊' },
+  { value: 'active',     label: 'Active',     icon: '⚡' },
+  { value: 'family_fun', label: 'Family Fun', icon: '🎠' },
 ]
 
 const GROUP_OPTIONS = [
-  { value: 'solo',    label: 'Solo',    icon: '🙋' },
-  { value: 'couple',  label: 'Couple',  icon: '💑' },
-  { value: 'friends', label: 'Friends', icon: '👥' },
+  { value: 'solo',    label: 'Solo',          icon: '🙋' },
+  { value: 'couple',  label: 'Couple',        icon: '💑' },
+  { value: 'friends', label: 'Friends',       icon: '👥' },
+  { value: 'family',  label: 'Parent/Family', icon: '👨‍👩‍👧' },
+  { value: 'pet',     label: 'Pet Owner',     icon: '🐾' },
 ]
 
 const TRANSPORT_OPTIONS = [
@@ -311,7 +314,7 @@ interface FormState {
   budget:        string   // one of BUDGET_OPTIONS labels
   energyType:    string
   tags:          string[]
-  groupType:     string
+  groupType:     string[]
   transportation:string
 }
 
@@ -321,7 +324,7 @@ const DEFAULT_FORM: FormState = {
   budget:        '',
   energyType:    '',
   tags:          [],
-  groupType:     'friends',
+  groupType:     [],
   transportation:'car',
 }
 
@@ -334,7 +337,7 @@ function buildParams(form: FormState, planDate: string): URLSearchParams {
   if (budgetOpt?.apiValue != null) params.set('budget', String(budgetOpt.apiValue))
   if (form.energyType) params.set('energy_type', form.energyType)
   if (form.tags.length) params.set('tags', form.tags.join(','))
-  if (form.groupType)   params.set('group_type', form.groupType)
+  if (form.groupType.length) params.set('group_type', form.groupType.join(','))
   params.set('transportation', form.transportation)
   return params
 }
@@ -806,23 +809,26 @@ function InputPanel({ form, set, onGenerate, loading, groupSuggestion }: InputPa
         </div>
       </div>
 
-      {/* Group type */}
+      {/* Group type — multi-select */}
       <div className="p-4 md:p-5">
         <FieldLabel>Going as</FieldLabel>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {GROUP_OPTIONS.map(opt => {
-            const active = form.groupType === opt.value
+            const active = form.groupType.includes(opt.value)
             return (
               <button key={opt.value} type="button"
-                onClick={() => set('groupType', opt.value)}
+                onClick={() => {
+                  const current = form.groupType
+                  set('groupType', active ? current.filter(v => v !== opt.value) : [...current, opt.value])
+                }}
                 className={cn(
-                  'flex-1 flex flex-col items-center gap-1 py-2 rounded-xl border text-xs font-sans transition-all duration-150',
+                  'flex flex-col items-center gap-1 py-2 rounded-xl border text-xs font-sans transition-all duration-150',
                   active
                     ? 'border-[#ff6b9d] bg-[#ff6b9d]/10 text-[#ff6b9d]'
                     : 'border-[#2a2829] bg-[#121113] text-[#f9fdff]/70 hover:border-[#ff6b9d]/30'
                 )}>
                 <span className="text-lg">{opt.icon}</span>
-                <span className="font-medium">{opt.label}</span>
+                <span className="font-medium text-center leading-tight">{opt.label}</span>
               </button>
             )
           })}
@@ -1063,6 +1069,7 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
   // Core fetch function — returns enriched stops on success
   async function fetchPlan(f: FormState): Promise<EnrichedStop[] | null> {
     const params = buildParams(f, selectedDate)
+    console.log('[PlanMyDay] fetchPlan payload:', { groupType: f.groupType, energyType: f.energyType, queryString: params.toString() })
     const res = await fetch(`/api/v1/plan/day?${params.toString()}`)
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))

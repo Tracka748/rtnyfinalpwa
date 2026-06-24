@@ -93,9 +93,9 @@ export async function GET(request: NextRequest) {
     const timeStartParam  = searchParams.get('time_start') ?? '12:00'
     const timeEndParam    = searchParams.get('time_end')   ?? '23:00'
     const budgetParam     = searchParams.get('budget')
-    const energyType      = searchParams.get('energy_type')  // 'relaxed' | 'active'
-    const tagsParam       = searchParams.get('tags')          // comma-separated
-    const groupType       = searchParams.get('group_type')    // 'solo' | 'friends' | 'couple'
+    const energyType      = searchParams.get('energy_type')  // 'relaxed' | 'active' | 'family_fun'
+    const tagsParam       = searchParams.get('tags')          // comma-separated mood tags
+    const groupType       = searchParams.get('group_type')    // comma-separated: 'solo','couple','friends','family','pet'
     const transportation  = searchParams.get('transportation') ?? 'car'
 
     const userStart  = toMins(timeStartParam)
@@ -103,6 +103,24 @@ export async function GET(request: NextRequest) {
     const budget     = budgetParam ? Number(budgetParam) : Infinity
     const userTags   = tagsParam ? tagsParam.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : []
     const travelMins = TRAVEL_MINUTES[transportation] ?? 10
+
+    // Parse goingAs as an array (UI now sends comma-separated values)
+    const groupTypes = groupType
+      ? groupType.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+      : []
+    console.log('[day-plan] group_type raw:', groupType, '→ groupTypes:', groupTypes)
+
+    // Derive tag filters from group types and vibe.
+    // 'family' → family_friendly tag, 'pet' → pet_friendly tag.
+    // family_fun vibe maps to the same family_friendly filter (no energy_type='family' in DB).
+    // OR logic: a business qualifies if its tags include ANY entry in this list.
+    const groupTagFilters: string[] = []
+    if (groupTypes.includes('family') || energyType === 'family_fun') {
+      groupTagFilters.push('family_friendly')
+    }
+    if (groupTypes.includes('pet')) {
+      groupTagFilters.push('pet_friendly')
+    }
 
     if (userStart >= userEnd) {
       return NextResponse.json(
@@ -158,15 +176,24 @@ export async function GET(request: NextRequest) {
       )
       if (!opensInWindow) return false
 
-      // 2. Energy type match (skip filter if param not provided)
-      if (energyType && biz.energy_type && biz.energy_type.toLowerCase() !== energyType.toLowerCase()) {
+      // 2. Energy type match — skip for 'family_fun' (no such value in DB; handled via tag filter below)
+      if (energyType && energyType !== 'family_fun' && biz.energy_type &&
+          biz.energy_type.toLowerCase() !== energyType.toLowerCase()) {
         return false
       }
 
-      // 3. Tag overlap (skip filter if no tags requested)
+      // 3. Mood tag overlap (user's selected tags from the tag picker)
       if (userTags.length > 0) {
         const bizTags = (biz.tags ?? []).map(t => t.toLowerCase())
         const hasMatch = userTags.some(t => bizTags.includes(t))
+        if (!hasMatch) return false
+      }
+
+      // 4. Group-type tag filters — OR logic across family_friendly / pet_friendly.
+      //    Only applied when 'family' or 'pet' group types (or family_fun vibe) are active.
+      if (groupTagFilters.length > 0) {
+        const bizTags = (biz.tags ?? []).map(t => t.toLowerCase())
+        const hasMatch = groupTagFilters.some(t => bizTags.includes(t))
         if (!hasMatch) return false
       }
 
