@@ -50,6 +50,13 @@ interface EnrichedStop {
   locked: boolean
 }
 
+// An empty slot left behind in a segment after a stop is moved out of it.
+interface PlaceholderSlot {
+  id: string
+  segment: SegmentLabel
+  orderIndex: number   // position within the segment's stop list at the time it was vacated
+}
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const BUDGET_OPTIONS = [
@@ -293,6 +300,35 @@ function formatMins(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`
 }
 
+function toMins(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + (m ?? 0)
+}
+
+function fromMins(mins: number): string {
+  const h = Math.floor(mins / 60) % 24
+  const m = mins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+// Mirrors the cursor-based arrival calculation used server-side (app/api/v1/plan/day/route.ts)
+// duplicated here because Move recalculates times client-side, without an API round-trip.
+const MOVE_TRAVEL_MINUTES: Record<string, number> = {
+  car:       10,
+  walking:   20,
+  rideshare: 12,
+}
+
+function recalcArrivalTimes(stops: EnrichedStop[], transportation: string): EnrichedStop[] {
+  const travelMins = MOVE_TRAVEL_MINUTES[transportation] ?? 10
+  let cursorEnd = 0
+  return stops.map((s, i) => {
+    const startMins = i === 0 ? toMins(s.stop.estimated_arrival) : cursorEnd + travelMins
+    cursorEnd = startMins + s.stop.duration_minutes
+    return { ...s, stop: { ...s.stop, estimated_arrival: fromMins(startMins) } }
+  })
+}
+
 function buildEnrichedStops(result: DayPlanResult): EnrichedStop[] {
   const enriched: EnrichedStop[] = []
   let idx = 0
@@ -348,7 +384,7 @@ const DEFAULT_FORM: FormState = {
   transportation:'car',
 }
 
-function buildParams(form: FormState, planDate: string): URLSearchParams {
+function buildParams(form: FormState, planDate: string, excludeIds: string[] = []): URLSearchParams {
   const params = new URLSearchParams()
   params.set('plan_date',  planDate)
   params.set('time_start', form.timeStart)
@@ -359,6 +395,7 @@ function buildParams(form: FormState, planDate: string): URLSearchParams {
   if (form.tags.length) params.set('tags', form.tags.join(','))
   if (form.groupType.length) params.set('group_type', form.groupType.join(','))
   params.set('transportation', form.transportation)
+  if (excludeIds.length) params.set('exclude', excludeIds.join(','))
   return params
 }
 
@@ -520,12 +557,16 @@ interface StopCardProps {
   swapping: boolean
   onLock: () => void
   onSwap: () => void
+  onMove: (target: SegmentLabel) => void
+  availableSegments: SegmentLabel[]
   showSegHeader: boolean
 }
 
-function StopCard({ enriched, isLast, swapping, onLock, onSwap, showSegHeader }: StopCardProps) {
+function StopCard({ enriched, isLast, swapping, onLock, onSwap, onMove, availableSegments, showSegHeader }: StopCardProps) {
   const { stop, segment, locked } = enriched
   const seg = SEGMENT_CONFIG[segment]
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const canMove = !locked && availableSegments.length > 0
 
   return (
     <div>
@@ -694,8 +735,119 @@ function StopCard({ enriched, isLast, swapping, onLock, onSwap, showSegHeader }:
                   </>
                 )}
               </button>
+
+              {/* Move */}
+              <button
+                type="button"
+                onClick={() => setPickerOpen(o => !o)}
+                disabled={!canMove}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
+                  !canMove
+                    ? 'border-[#2a2829] text-[#7DD8E8]/25 cursor-not-allowed'
+                    : pickerOpen
+                    ? 'border-[#1ac8ed]/30 bg-[#1ac8ed]/5 text-[#1ac8ed]'
+                    : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] hover:bg-[#1ac8ed]/5'
+                )}
+              >
+                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v10M3 3.5L6 1l3 2.5M3 8.5L6 11l3-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Move
+              </button>
             </div>
+
+            {/* Inline move picker — not a modal, renders below the controls row */}
+            {pickerOpen && canMove && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2.5 border-t border-dashed border-[#2a2829]">
+                <span className="text-[10px] text-[#7DD8E8]/50 font-sans mr-1">Move to:</span>
+                {availableSegments.map(s => {
+                  const cfg = SEGMENT_CONFIG[s]
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => { onMove(s); setPickerOpen(false) }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#2a2829] text-[#7DD8E8] text-[11px] font-sans hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] transition-all duration-150"
+                    >
+                      <span>{cfg.icon}</span>{cfg.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Placeholder card ─────────────────────────────────────────────────────────
+
+interface PlaceholderCardProps {
+  segment: SegmentLabel
+  isLast: boolean
+  showSegHeader: boolean
+  generating: boolean
+  onGenerate: () => void
+}
+
+function PlaceholderCard({ segment, isLast, showSegHeader, generating, onGenerate }: PlaceholderCardProps) {
+  const seg = SEGMENT_CONFIG[segment]
+
+  return (
+    <div>
+      {showSegHeader && (
+        <div className="flex items-center gap-2 mb-3 mt-1">
+          <span className="text-sm">{seg.icon}</span>
+          <span className="font-label text-[10px] tracking-widest" style={{ color: seg.color }}>
+            {seg.label.toUpperCase()}
+          </span>
+          <div className="flex-1 h-px" style={{ background: `${seg.color}28` }} />
+        </div>
+      )}
+
+      <div className="flex gap-3 items-start">
+        {/* Left rail */}
+        <div className="flex flex-col items-center shrink-0 w-12">
+          <div
+            className="w-10 h-10 rounded-full border-2 border-dashed flex items-center justify-center shrink-0"
+            style={{ borderColor: `${seg.color}50`, color: `${seg.color}90` }}
+          >
+            <span className="text-sm leading-none">＋</span>
+          </div>
+          {!isLast && (
+            <div
+              className="w-px flex-1 mt-1"
+              style={{ minHeight: 40, background: `linear-gradient(${seg.color}30, #2a2829)` }}
+            />
+          )}
+        </div>
+
+        {/* Card */}
+        <div className={cn('flex-1 min-w-0', !isLast && 'pb-3')}>
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-dashed text-sm font-sans transition-all duration-150',
+              generating
+                ? 'border-[#2a2829] text-[#7DD8E8]/40 cursor-not-allowed'
+                : 'border-[#2a2829] text-[#7DD8E8]/60 hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed]'
+            )}
+          >
+            {generating ? (
+              <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 12 12" fill="none">
+                <circle className="opacity-25" cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="2" />
+                <path className="opacity-75" fill="currentColor" d="M2 6a4 4 0 014-4v2l1.5-1.5L6 1v2A4 4 0 012 6z" />
+              </svg>
+            ) : (
+              <span>＋</span>
+            )}
+            Generate a stop for this time
+          </button>
         </div>
       </div>
     </div>
@@ -1001,14 +1153,53 @@ function RegenerateControls({
 
 // ─── Timeline view ────────────────────────────────────────────────────────────
 
-interface TimelineViewProps {
-  enrichedStops: EnrichedStop[]
-  swappingIdx: number | null
-  onLock: (idx: number) => void
-  onSwap: (idx: number) => void
+type TimelineItem =
+  | { type: 'stop'; enriched: EnrichedStop; idx: number }
+  | { type: 'placeholder'; placeholder: PlaceholderSlot }
+
+function segmentOf(item: TimelineItem): SegmentLabel {
+  return item.type === 'stop' ? item.enriched.segment : item.placeholder.segment
 }
 
-function TimelineView({ enrichedStops, swappingIdx, onLock, onSwap }: TimelineViewProps) {
+const SEGMENT_ORDER: SegmentLabel[] = ['afternoon', 'evening', 'night']
+
+// Merges real stops and empty placeholder slots into one render-order list,
+// grouped by segment, with each placeholder reinserted at its recorded position.
+function buildTimelineItems(enrichedStops: EnrichedStop[], placeholders: PlaceholderSlot[]): TimelineItem[] {
+  const items: TimelineItem[] = []
+
+  for (const seg of SEGMENT_ORDER) {
+    const segItems: TimelineItem[] = []
+    enrichedStops.forEach((enriched, idx) => {
+      if (enriched.segment === seg) segItems.push({ type: 'stop', enriched, idx })
+    })
+    placeholders
+      .filter(p => p.segment === seg)
+      .forEach(p => {
+        const insertAt = Math.min(p.orderIndex, segItems.length)
+        segItems.splice(insertAt, 0, { type: 'placeholder', placeholder: p })
+      })
+    items.push(...segItems)
+  }
+
+  return items
+}
+
+interface TimelineViewProps {
+  enrichedStops: EnrichedStop[]
+  placeholders: PlaceholderSlot[]
+  swappingIdx: number | null
+  generatingPlaceholderId: string | null
+  onLock: (idx: number) => void
+  onSwap: (idx: number) => void
+  onMove: (idx: number, target: SegmentLabel) => void
+  onGeneratePlaceholder: (placeholder: PlaceholderSlot) => void
+}
+
+function TimelineView({
+  enrichedStops, placeholders, swappingIdx, generatingPlaceholderId,
+  onLock, onSwap, onMove, onGeneratePlaceholder,
+}: TimelineViewProps) {
   if (enrichedStops.length === 0) {
     return (
       <div className="py-16 text-center rounded-2xl border border-[#2a2829] bg-[#1a1819]">
@@ -1021,20 +1212,41 @@ function TimelineView({ enrichedStops, swappingIdx, onLock, onSwap }: TimelineVi
     )
   }
 
+  const items = buildTimelineItems(enrichedStops, placeholders)
+  const presentSegments = SEGMENT_ORDER.filter(s => enrichedStops.some(e => e.segment === s))
+
   return (
     <div>
-      {enrichedStops.map((enriched, i) => {
-        const showSegHeader =
-          i === 0 || enriched.segment !== enrichedStops[i - 1].segment
+      {items.map((item, i) => {
+        const seg = segmentOf(item)
+        const showSegHeader = i === 0 || seg !== segmentOf(items[i - 1])
+        const isLast = i === items.length - 1
+
+        if (item.type === 'placeholder') {
+          return (
+            <PlaceholderCard
+              key={item.placeholder.id}
+              segment={seg}
+              isLast={isLast}
+              showSegHeader={showSegHeader}
+              generating={generatingPlaceholderId === item.placeholder.id}
+              onGenerate={() => onGeneratePlaceholder(item.placeholder)}
+            />
+          )
+        }
+
+        const { enriched, idx } = item
         return (
           <StopCard
-            key={enriched.stop.business_id + i}
+            key={enriched.stop.business_id + idx}
             enriched={enriched}
-            index={i}
-            isLast={i === enrichedStops.length - 1}
-            swapping={swappingIdx === i}
-            onLock={() => onLock(i)}
-            onSwap={() => onSwap(i)}
+            index={idx}
+            isLast={isLast}
+            swapping={swappingIdx === idx}
+            onLock={() => onLock(idx)}
+            onSwap={() => onSwap(idx)}
+            onMove={target => onMove(idx, target)}
+            availableSegments={presentSegments.filter(s => s !== enriched.segment)}
             showSegHeader={showSegHeader}
           />
         )
@@ -1061,6 +1273,8 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
   const [error,      setError]            = useState<string | null>(null)
   const [hasResult,  setHasResult]        = useState(initEnriched.length > 0)
   const [groupSuggestion, setGroupSuggestion] = useState<GroupSuggestion | null>(null)
+  const [placeholders, setPlaceholders]   = useState<PlaceholderSlot[]>([])
+  const [generatingPlaceholderId, setGeneratingPlaceholderId] = useState<string | null>(null)
 
   const router   = useRouter()
   const dayPills = getDayPills()
@@ -1092,8 +1306,8 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
   const currentForm = form
 
   // Core fetch function — returns enriched stops on success
-  async function fetchPlan(f: FormState): Promise<EnrichedStop[] | null> {
-    const params = buildParams(f, selectedDate)
+  async function fetchPlan(f: FormState, excludeIds: string[] = []): Promise<EnrichedStop[] | null> {
+    const params = buildParams(f, selectedDate, excludeIds)
     console.log('[PlanMyDay] fetchPlan payload:', { groupType: f.groupType, energyType: f.energyType, queryString: params.toString() })
     const res = await fetch(`/api/v1/plan/day?${params.toString()}`)
     if (!res.ok) {
@@ -1116,6 +1330,7 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
       const stops = await fetchPlan(currentForm)
       if (stops) {
         setEnrichedStops(stops)
+        setPlaceholders([])
         setHasResult(true)
       }
     } catch (err: unknown) {
@@ -1131,7 +1346,10 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
     setError(null)
     try {
       const stops = await fetchPlan(currentForm)
-      if (stops) setEnrichedStops(stops)
+      if (stops) {
+        setEnrichedStops(stops)
+        setPlaceholders([])
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Regeneration failed')
     } finally {
@@ -1150,6 +1368,7 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
       const freshStops = await fetchPlan(currentForm)
       if (freshStops) {
         setEnrichedStops(mergeWithLocked(freshStops, locked))
+        setPlaceholders([])
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Regeneration failed')
@@ -1165,7 +1384,7 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
 
     setSwappingIdx(idx)
     try {
-      const freshStops = await fetchPlan(currentForm)
+      const freshStops = await fetchPlan(currentForm, enrichedStops.map(s => s.stop.business_id))
       if (!freshStops) return
 
       const currentIds = new Set(enrichedStops.map(s => s.stop.business_id))
@@ -1185,6 +1404,72 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
       // Swap is best-effort; don't surface errors to avoid disrupting the UI
     } finally {
       setSwappingIdx(null)
+    }
+  }
+
+  // Move a stop to a different segment, leaving a placeholder in its old slot,
+  // then recompute arrival times for the whole sequence.
+  function handleMoveStop(idx: number, targetSegment: SegmentLabel) {
+    const target = enrichedStops[idx]
+    if (!target || target.locked) return
+
+    const originSegment = target.segment
+    const segSiblings = enrichedStops.filter(s => s.segment === target.segment)
+    const orderIndex = segSiblings.findIndex(s => s.stop.business_id === target.stop.business_id)
+
+    setEnrichedStops(prev => {
+      const moved = { ...prev[idx], segment: targetSegment }
+      const withoutMoved = prev.filter((_, i) => i !== idx)
+
+      let insertAt = withoutMoved.length
+      for (let i = withoutMoved.length - 1; i >= 0; i--) {
+        if (withoutMoved[i].segment === targetSegment) { insertAt = i + 1; break }
+      }
+
+      const next = [...withoutMoved.slice(0, insertAt), moved, ...withoutMoved.slice(insertAt)]
+      return recalcArrivalTimes(next, form.transportation)
+    })
+
+    setPlaceholders(prev => {
+      const next = [...prev, {
+        id: `ph-${target.stop.business_id}-${Date.now()}`,
+        segment: originSegment,
+        orderIndex,
+      }]
+      // The destination segment just gained a stop — clear one of its own open slots, if any.
+      const fillIdx = next.findIndex(p => p.segment === targetSegment)
+      if (fillIdx !== -1) next.splice(fillIdx, 1)
+      return next
+    })
+  }
+
+  // Fill a placeholder slot — same single-stop generation logic as Swap, scoped to that segment.
+  async function handleGeneratePlaceholder(placeholder: PlaceholderSlot) {
+    setGeneratingPlaceholderId(placeholder.id)
+    try {
+      const freshStops = await fetchPlan(currentForm, enrichedStops.map(s => s.stop.business_id))
+      if (!freshStops) return
+
+      const currentIds = new Set(enrichedStops.map(s => s.stop.business_id))
+      const alt = freshStops.find(
+        s => s.segment === placeholder.segment && !currentIds.has(s.stop.business_id)
+      )
+
+      if (alt) {
+        setEnrichedStops(prev => {
+          let insertAt = prev.length
+          for (let i = prev.length - 1; i >= 0; i--) {
+            if (prev[i].segment === placeholder.segment) { insertAt = i + 1; break }
+          }
+          return [...prev.slice(0, insertAt), { ...alt, locked: false }, ...prev.slice(insertAt)]
+        })
+        setPlaceholders(prev => prev.filter(p => p.id !== placeholder.id))
+      }
+      // If no alternative found, leave the placeholder in place (silent — no error)
+    } catch {
+      // Best-effort, same as Swap; don't surface errors to avoid disrupting the UI
+    } finally {
+      setGeneratingPlaceholderId(null)
     }
   }
 
@@ -1331,9 +1616,13 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
           ) : (
             <TimelineView
               enrichedStops={enrichedStops}
+              placeholders={placeholders}
               swappingIdx={swappingIdx}
+              generatingPlaceholderId={generatingPlaceholderId}
               onLock={toggleLock}
               onSwap={handleSwap}
+              onMove={handleMoveStop}
+              onGeneratePlaceholder={handleGeneratePlaceholder}
             />
           )}
 

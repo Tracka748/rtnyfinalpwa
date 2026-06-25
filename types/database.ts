@@ -216,6 +216,7 @@ export type Database = {
           is_featured: boolean | null
           lat: number | null
           lng: number | null
+          logo_url: string | null
           name: string
           neighborhood: string | null
           tags: string[] | null
@@ -232,6 +233,7 @@ export type Database = {
           is_featured?: boolean | null
           lat?: number | null
           lng?: number | null
+          logo_url?: string | null
           name: string
           neighborhood?: string | null
           tags?: string[] | null
@@ -248,6 +250,7 @@ export type Database = {
           is_featured?: boolean | null
           lat?: number | null
           lng?: number | null
+          logo_url?: string | null
           name?: string
           neighborhood?: string | null
           tags?: string[] | null

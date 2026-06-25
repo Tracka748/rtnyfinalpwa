@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
     const tagsParam       = searchParams.get('tags')          // comma-separated mood tags
     const groupType       = searchParams.get('group_type')    // comma-separated: 'solo','couple','friends','family','pet'
     const transportation  = searchParams.get('transportation') ?? 'car'
+    const excludeParam    = searchParams.get('exclude')        // comma-separated business_id values to omit
 
     console.log('[day-plan] full querystring:', request.url)
 
@@ -106,6 +107,7 @@ export async function GET(request: NextRequest) {
     const budget     = budgetParam ? Number(budgetParam) : Infinity
     const userTags   = tagsParam ? tagsParam.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : []
     const travelMins = TRAVEL_MINUTES[transportation] ?? 10
+    const excludeIds = excludeParam ? excludeParam.split(',').map(id => id.trim()).filter(Boolean) : []
 
     // Parse goingAs as an array (UI now sends comma-separated values)
     const groupTypes = groupType
@@ -168,8 +170,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // ── Exclude businesses already shown in the current plan ─────────────────
+    const excludeSet = new Set(excludeIds)
+    const candidateBusinesses = excludeSet.size > 0
+      ? (businesses ?? []).filter(biz => !excludeSet.has(biz.id))
+      : (businesses ?? [])
+
     // ── Filter businesses ─────────────────────────────────────────────────────
-    const eligible = (businesses ?? []).filter(biz => {
+    const eligible = candidateBusinesses.filter(biz => {
       // 1. Must have hours today that overlap with the user's window
       const todayHours = biz.business_hours.filter(h => h.day_of_week.toLowerCase() === todayName)
       if (todayHours.length === 0) return false
