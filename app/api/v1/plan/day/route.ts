@@ -29,6 +29,7 @@ interface TimelineStop {
   name: string
   category: string
   address: string | null
+  logo_url: string | null
   estimated_arrival: string   // 'HH:MM'
   duration_minutes: number
   estimated_spend: number
@@ -97,6 +98,8 @@ export async function GET(request: NextRequest) {
     const tagsParam       = searchParams.get('tags')          // comma-separated mood tags
     const groupType       = searchParams.get('group_type')    // comma-separated: 'solo','couple','friends','family','pet'
     const transportation  = searchParams.get('transportation') ?? 'car'
+
+    console.log('[day-plan] full querystring:', request.url)
 
     const userStart  = toMins(timeStartParam)
     const userEnd    = toMins(timeEndParam)
@@ -195,6 +198,16 @@ export async function GET(request: NextRequest) {
         const bizTags = (biz.tags ?? []).map(t => t.toLowerCase())
         const hasMatch = groupTagFilters.some(t => bizTags.includes(t))
         if (!hasMatch) return false
+      }
+
+      // 5. Exclusive tags — suppress family/pet businesses unless explicitly requested.
+      //    Prevents family_friendly and pet_friendly venues from appearing in general plans.
+      const bizTagsLower = (biz.tags ?? []).map(t => t.toLowerCase())
+      if (!groupTagFilters.includes('family_friendly') && bizTagsLower.includes('family_friendly')) {
+        return false
+      }
+      if (!groupTagFilters.includes('pet_friendly') && bizTagsLower.includes('pet_friendly')) {
+        return false
       }
 
       return true
@@ -320,6 +333,7 @@ export async function GET(request: NextRequest) {
           name:              biz.name,
           category:          biz.category,
           address:           biz.address,
+          logo_url:          biz.logo_url ?? null,
           estimated_arrival: fromMins(clampedArrival),
           duration_minutes:  duration,
           estimated_spend:   spend,

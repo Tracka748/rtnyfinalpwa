@@ -21,6 +21,7 @@ interface TimelineStop {
   name: string
   category: string
   address: string | null
+  logo_url: string | null
   estimated_arrival: string
   duration_minutes: number
   estimated_spend: number
@@ -213,6 +214,7 @@ function preloadedToEnriched(stops: PreloadedStop[]): EnrichedStop[] {
       name: stop.name,
       category: stop.category,
       address: stop.address,
+      logo_url: null,
       estimated_arrival: parseTimeTo24h(stop.time),
       duration_minutes: stop.duration_minutes,
       estimated_spend: stop.estimatedCost,
@@ -255,6 +257,24 @@ function getCategoryIcon(category: string): string {
   const lower = category.toLowerCase()
   for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
     if (lower.includes(key)) return icon
+  }
+  return '📍'
+}
+
+const AVATAR_EMOJI: Record<string, string> = {
+  activity:      '🎯',
+  food:          '🍽️',
+  shopping:      '🛍️',
+  entertainment: '🎭',
+  cafe:          '☕',
+  bar:           '🍸',
+  self_care:     '💆',
+}
+
+function getAvatarEmoji(category: string): string {
+  const lower = category.toLowerCase()
+  for (const [key, emoji] of Object.entries(AVATAR_EMOJI)) {
+    if (lower.includes(key)) return emoji
   }
   return '📍'
 }
@@ -560,18 +580,23 @@ function StopCard({ enriched, isLast, swapping, onLock, onSwap, showSegHeader }:
               locked ? 'border-[#59ffa0]/30' : 'border-[#2a2829] hover:border-[#2a2829]/70'
             )}
           >
-            <div className="flex items-start gap-4">
-              {/* Category icon */}
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                style={{ background: `${seg.color}10` }}
-              >
-                {getCategoryIcon(stop.category)}
+            <div className="flex items-start gap-3">
+              {/* Business avatar */}
+              <div className="w-10 h-10 rounded-xl border border-[#2a2829] overflow-hidden shrink-0 flex items-center justify-center bg-[#1a1819]">
+                {stop.logo_url ? (
+                  <img
+                    src={stop.logo_url}
+                    alt={stop.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-lg leading-none">{getAvatarEmoji(stop.category)}</span>
+                )}
               </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-2 min-w-0">
                   <div className="min-w-0">
                     <h4 className="font-header text-sm font-bold text-[#f9fdff] leading-snug truncate">
                       {stop.name}
