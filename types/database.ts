@@ -155,6 +155,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           offer_type: string | null
+          promo_text: string | null
           time_end: string | null
           time_start: string | null
           title: string
@@ -171,6 +172,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           offer_type?: string | null
+          promo_text?: string | null
           time_end?: string | null
           time_start?: string | null
           title: string
@@ -187,6 +189,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           offer_type?: string | null
+          promo_text?: string | null
           time_end?: string | null
           time_start?: string | null
           title?: string
@@ -208,7 +211,9 @@ export type Database = {
           address: string | null
           avg_duration_minutes: number | null
           avg_spend: number | null
+          brand_color: string | null
           category: string
+          cover_image_url: string | null
           created_at: string | null
           energy_type: string | null
           id: string
@@ -225,7 +230,9 @@ export type Database = {
           address?: string | null
           avg_duration_minutes?: number | null
           avg_spend?: number | null
+          brand_color?: string | null
           category: string
+          cover_image_url?: string | null
           created_at?: string | null
           energy_type?: string | null
           id?: string
@@ -242,7 +249,9 @@ export type Database = {
           address?: string | null
           avg_duration_minutes?: number | null
           avg_spend?: number | null
+          brand_color?: string | null
           category?: string
+          cover_image_url?: string | null
           created_at?: string | null
           energy_type?: string | null
           id?: string

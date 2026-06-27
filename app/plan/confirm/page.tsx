@@ -115,52 +115,47 @@ function StopRow({ stop, index, isLast }: { stop: ConfirmStop; index: number; is
       {/* Content */}
       <div className={cn('flex-1 min-w-0', !isLast && 'pb-4')}>
         <div className="rounded-2xl border border-[#2a2829] bg-[#1a1819] p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span
-                  className="font-label text-[9px] tracking-widest"
-                  style={{ color: segColor }}
-                >
-                  STOP {index + 1}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-label font-semibold text-[13px] tracking-widest" style={{ color: '#F9FDFF' }}>
+                STOP {index + 1}
+              </span>
+              {stop.segment && (
+                <span className="font-label text-[9px] tracking-widest text-[#7DD8E8]/30">
+                  · {stop.segment.toUpperCase()}
                 </span>
-                {stop.segment && (
-                  <span className="font-label text-[9px] tracking-widest text-[#7DD8E8]/30">
-                    · {stop.segment.toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <h4 className="font-header text-sm font-bold text-[#f9fdff] leading-snug">
-                {stop.name}
-              </h4>
-              {stop.address && (
-                <p className="flex items-center gap-1 text-[#7DD8E8]/50 text-[10px] mt-0.5 truncate">
-                  <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 10 10" fill="none">
-                    <path d="M5 1a3 3 0 0 1 3 3c0 2.5-3 5-3 5S2 6.5 2 4a3 3 0 0 1 3-3z" stroke="currentColor" strokeWidth="1" />
-                    <circle cx="5" cy="4" r="1" fill="currentColor" />
-                  </svg>
-                  {stop.address}
-                </p>
               )}
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-[#59ffa0] font-slab-serif font-bold text-sm">
-                ${stop.estimatedSpend}
+            <h4 className="font-header text-sm font-bold text-[#f9fdff] leading-snug">
+              {stop.name}
+            </h4>
+            {stop.address && (
+              <p className="flex items-center gap-1 text-[#7DD8E8]/50 text-[10px] mt-0.5 truncate">
+                <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 10 10" fill="none">
+                  <path d="M5 1a3 3 0 0 1 3 3c0 2.5-3 5-3 5S2 6.5 2 4a3 3 0 0 1 3-3z" stroke="currentColor" strokeWidth="1" />
+                  <circle cx="5" cy="4" r="1" fill="currentColor" />
+                </svg>
+                {stop.address}
               </p>
-              <p className="text-[#7DD8E8]/40 text-[10px]">
-                {formatMins(stop.durationMinutes)}
-              </p>
-            </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#242324] border border-[#2a2829] text-[#7DD8E8]">
               🕐 {stop.time}
             </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#242324] border border-[#2a2829] text-[#7DD8E8]">
+              ⏱ {formatMins(stop.durationMinutes)}
+            </span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#242324] border border-[#2a2829] text-[#7DD8E8] capitalize">
               {stop.category}
             </span>
           </div>
+
+          {/* Price — plain text, right-aligned, bottom of the card content area */}
+          <p className="mt-2 text-right font-[family-name:var(--font-playfair)] text-sm font-bold text-[#59ffa0]">
+            ${stop.estimatedSpend}
+          </p>
         </div>
       </div>
     </div>

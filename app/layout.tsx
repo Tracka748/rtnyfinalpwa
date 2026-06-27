@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Rokkitt, Rubik, Roboto_Slab } from "next/font/google";
+import { Rokkitt, Rubik, Roboto_Slab, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AppNav } from "@/components/custom/layout/app-nav";
 import { Sidebar } from "@/components/custom/layout/sidebar";
@@ -28,6 +28,13 @@ const robotoSlab = Roboto_Slab({
   display: "swap",
 });
 
+const playfairDisplay = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["400", "600", "700", "900"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "RTNY - ROCticketNy Event Ticketing",
   description: "Your premier destination for event tickets in Rochester, NY",
@@ -41,7 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${rokkitt.variable} ${rubik.variable} ${robotoSlab.variable} antialiased bg-[#121113] text-[#F9FDFF]`}
+        className={`${rokkitt.variable} ${rubik.variable} ${robotoSlab.variable} ${playfairDisplay.variable} antialiased bg-[#121113] text-[#F9FDFF]`}
       >
         <SavedEventsProvider>
           <SidebarProvider>

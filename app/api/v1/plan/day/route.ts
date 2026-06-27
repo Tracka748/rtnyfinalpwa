@@ -22,6 +22,7 @@ interface ActiveOffer {
   offer_type: string | null
   discount_amount: number | null
   discount_percent: number | null
+  promo_text: string | null
 }
 
 interface TimelineStop {
@@ -30,6 +31,8 @@ interface TimelineStop {
   category: string
   address: string | null
   logo_url: string | null
+  cover_image_url: string | null
+  brand_color: string | null
   estimated_arrival: string   // 'HH:MM'
   duration_minutes: number
   estimated_spend: number
@@ -250,6 +253,7 @@ export async function GET(request: NextRequest) {
           offer_type:       offer.offer_type,
           discount_amount:  offer.discount_amount,
           discount_percent: offer.discount_percent,
+          promo_text:       offer.promo_text ?? null,
         }
       }
       return null
@@ -342,6 +346,8 @@ export async function GET(request: NextRequest) {
           category:          biz.category,
           address:           biz.address,
           logo_url:          biz.logo_url ?? null,
+          cover_image_url:   biz.cover_image_url ?? null,
+          brand_color:       biz.brand_color ?? null,
           estimated_arrival: fromMins(clampedArrival),
           duration_minutes:  duration,
           estimated_spend:   spend,

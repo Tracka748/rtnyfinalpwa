@@ -14,6 +14,7 @@ interface ActiveOffer {
   offer_type: string | null
   discount_amount: number | null
   discount_percent: number | null
+  promo_text: string | null
 }
 
 interface TimelineStop {
@@ -22,6 +23,8 @@ interface TimelineStop {
   category: string
   address: string | null
   logo_url: string | null
+  cover_image_url: string | null
+  brand_color: string | null
   estimated_arrival: string
   duration_minutes: number
   estimated_spend: number
@@ -222,6 +225,8 @@ function preloadedToEnriched(stops: PreloadedStop[]): EnrichedStop[] {
       category: stop.category,
       address: stop.address,
       logo_url: null,
+      cover_image_url: null,
+      brand_color: null,
       estimated_arrival: parseTimeTo24h(stop.time),
       duration_minutes: stop.duration_minutes,
       estimated_spend: stop.estimatedCost,
@@ -284,6 +289,38 @@ function getAvatarEmoji(category: string): string {
     if (lower.includes(key)) return emoji
   }
   return '📍'
+}
+
+// Category-based overlay/gradient tint — used when a business has no brand_color set.
+const CATEGORY_TINTS: Record<string, string> = {
+  restaurant:    '#f59e0b', // warm amber/orange
+  food:          '#f59e0b',
+  museum:        '#3b82f6', // blue
+  activity:      '#3b82f6',
+  coffee:        '#92400e', // brown
+  cafe:          '#92400e',
+  bar:           '#9333ea', // purple (nightlife)
+  club:          '#9333ea',
+  nightclub:     '#9333ea',
+  lounge:        '#9333ea',
+  beauty:        '#ec4899', // pink
+  spa:           '#ec4899',
+  self_care:     '#ec4899',
+  wellness:      '#ec4899',
+  park:          '#22c55e', // green
+  outdoor:       '#22c55e',
+  shopping:      '#ef4444', // red
+  entertainment: '#2563eb', // royal blue
+  theater:       '#2563eb',
+  cinema:        '#2563eb',
+}
+
+function getCategoryTint(category: string): string {
+  const lower = category.toLowerCase()
+  for (const [key, color] of Object.entries(CATEGORY_TINTS)) {
+    if (lower.includes(key)) return color
+  }
+  return '#3a3a3c'
 }
 
 function formatTime(t: string): string {
@@ -514,20 +551,6 @@ function GroupSuggestionStrip({ suggestion, currentTags, onApply }: GroupSuggest
   )
 }
 
-function OfferBadge({ offer }: { offer: ActiveOffer }) {
-  const discount = offer.discount_percent
-    ? `${offer.discount_percent}% off`
-    : offer.discount_amount
-    ? `$${offer.discount_amount} off`
-    : offer.offer_type ?? null
-
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ff6b9d]/10 border border-[#ff6b9d]/25 text-[#ff6b9d] text-[10px] font-sans">
-      🏷️ {offer.title}{discount ? ` · ${discount}` : ''}
-    </span>
-  )
-}
-
 function TimelineSkeleton() {
   return (
     <div className="space-y-3 mt-2 animate-pulse">
@@ -562,18 +585,124 @@ interface StopCardProps {
   showSegHeader: boolean
 }
 
-function StopCard({ enriched, isLast, swapping, onLock, onSwap, onMove, availableSegments, showSegHeader }: StopCardProps) {
+function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, availableSegments, showSegHeader }: StopCardProps) {
   const { stop, segment, locked } = enriched
   const seg = SEGMENT_CONFIG[segment]
   const [pickerOpen, setPickerOpen] = useState(false)
   const canMove = !locked && availableSegments.length > 0
+  const tintColor = stop.brand_color ?? getCategoryTint(stop.category)
+  const textShadow = { textShadow: '0 1px 3px rgba(0,0,0,0.8)' }
+
+  // Rendered once and reused — every card now shares the same image/gradient-overlay background.
+  const controlsAndPicker = (
+    <>
+      {/* Controls */}
+      <div className="flex items-center justify-end gap-2 mt-3 pt-2.5 border-t border-white/15">
+        {/* Swap */}
+        <button
+          type="button"
+          onClick={onSwap}
+          disabled={swapping || locked}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
+            locked
+              ? 'border-[#2a2829] text-[#7DD8E8]/25 cursor-not-allowed'
+              : swapping
+              ? 'border-[#1ac8ed]/30 bg-[#1ac8ed]/5 text-[#1ac8ed]'
+              : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] hover:bg-[#1ac8ed]/5'
+          )}
+        >
+          {swapping ? (
+            <svg className="w-3 h-3 animate-spin" viewBox="0 0 12 12" fill="none">
+              <circle className="opacity-25" cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="2" />
+              <path className="opacity-75" fill="currentColor" d="M2 6a4 4 0 014-4v2l1.5-1.5L6 1v2A4 4 0 012 6z" />
+            </svg>
+          ) : (
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+              <path d="M1 3.5h8M7 1.5l2 2-2 2M11 8.5H3M5 6.5l-2 2 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+          Swap
+        </button>
+
+        {/* Lock toggle */}
+        <button
+          type="button"
+          onClick={onLock}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
+            locked
+              ? 'border-[#59ffa0]/40 bg-[#59ffa0]/10 text-[#59ffa0]'
+              : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#59ffa0]/40 hover:text-[#59ffa0] hover:bg-[#59ffa0]/5'
+          )}
+        >
+          {locked ? (
+            <>
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M4 5V3.5a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+              Locked
+            </>
+          ) : (
+            <>
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M4 5V3.5a2 2 0 014 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+              Lock
+            </>
+          )}
+        </button>
+
+        {/* Move */}
+        <button
+          type="button"
+          onClick={() => setPickerOpen(o => !o)}
+          disabled={!canMove}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
+            !canMove
+              ? 'border-[#2a2829] text-[#7DD8E8]/25 cursor-not-allowed'
+              : pickerOpen
+              ? 'border-[#1ac8ed]/30 bg-[#1ac8ed]/5 text-[#1ac8ed]'
+              : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] hover:bg-[#1ac8ed]/5'
+          )}
+        >
+          <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1v10M3 3.5L6 1l3 2.5M3 8.5L6 11l3-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Move
+        </button>
+      </div>
+
+      {/* Inline move picker — not a modal, renders below the controls row */}
+      {pickerOpen && canMove && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2.5 border-t border-dashed border-[#2a2829]">
+          <span className="text-[10px] text-[#7DD8E8]/50 font-sans mr-1">Move to:</span>
+          {availableSegments.map(s => {
+            const cfg = SEGMENT_CONFIG[s]
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => { onMove(s); setPickerOpen(false) }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#2a2829] text-[#7DD8E8] text-[11px] font-sans hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] transition-all duration-150"
+              >
+                <span>{cfg.icon}</span>{cfg.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
 
   return (
     <div>
       {/* Segment header */}
       {showSegHeader && (
         <div className="flex items-center gap-2 mb-3 mt-1">
-          <span className="text-sm">{seg.icon}</span>
           <span className="font-label text-[10px] tracking-widest" style={{ color: seg.color }}>
             {seg.label.toUpperCase()}
           </span>
@@ -583,24 +712,28 @@ function StopCard({ enriched, isLast, swapping, onLock, onSwap, onMove, availabl
 
       <div className="flex gap-3 items-start">
         {/* Left rail */}
-        <div className="flex flex-col items-center shrink-0 w-12">
-          {/* Time bubble */}
+        <div className="flex flex-col items-center shrink-0 w-16">
+          {/* Time label */}
           <div
-            className="w-10 h-10 rounded-full border-2 flex items-center justify-center shrink-0"
-            style={{
-              borderColor: locked ? '#59ffa0' : seg.color,
-              background:  locked ? 'rgba(89,255,160,0.12)' : `${seg.color}14`,
-              color:        locked ? '#59ffa0' : seg.color,
-            }}
+            className="font-[family-name:var(--font-playfair)] font-bold text-base text-center leading-tight"
+            style={{ color: locked ? '#59ffa0' : seg.color }}
           >
-            <span className="text-[9px] font-bold leading-none text-center">
-              {formatTime(stop.estimated_arrival).replace(' AM','').replace(' PM','')}
-              <br />
-              <span className="text-[8px] opacity-60">
-                {formatTime(stop.estimated_arrival).slice(-2)}
-              </span>
-            </span>
+            {formatTime(stop.estimated_arrival)}
           </div>
+
+          {/* Business avatar — centered below the time label */}
+          <div className="w-10 h-10 rounded-xl border border-[#2a2829] overflow-hidden shrink-0 flex items-center justify-center bg-[#1a1819] mt-1.5">
+            {stop.logo_url ? (
+              <img
+                src={stop.logo_url}
+                alt={stop.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-lg leading-none">{getAvatarEmoji(stop.category)}</span>
+            )}
+          </div>
+
           {/* Connector */}
           {!isLast && (
             <div
@@ -615,167 +748,99 @@ function StopCard({ enriched, isLast, swapping, onLock, onSwap, onMove, availabl
 
         {/* Card */}
         <div className={cn('flex-1 min-w-0', !isLast && 'pb-3')}>
-          <div
-            className={cn(
-              'rounded-2xl border bg-[#1a1819] p-4 transition-all duration-200',
-              locked ? 'border-[#59ffa0]/30' : 'border-[#2a2829] hover:border-[#2a2829]/70'
+          <div className="relative overflow-hidden rounded-[26px] border border-[#2A2A2A] shadow-lg">
+            {/* Background — cover photo, or a category/brand gradient when no photo exists */}
+            {stop.cover_image_url ? (
+              <img
+                src={stop.cover_image_url}
+                alt=""
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ filter: 'blur(2px) brightness(0.75)', transform: 'scale(1.05)' }}
+              />
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{ background: `linear-gradient(135deg, ${tintColor}, #121113)` }}
+              />
             )}
-          >
-            <div className="flex items-start gap-3">
-              {/* Business avatar */}
-              <div className="w-10 h-10 rounded-xl border border-[#2a2829] overflow-hidden shrink-0 flex items-center justify-center bg-[#1a1819]">
-                {stop.logo_url ? (
-                  <img
-                    src={stop.logo_url}
-                    alt={stop.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-lg leading-none">{getAvatarEmoji(stop.category)}</span>
-                )}
-              </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 min-w-0">
-                  <div className="min-w-0">
-                    <h4 className="font-header text-sm font-bold text-[#f9fdff] leading-snug truncate">
-                      {stop.name}
-                    </h4>
-                    <p className="text-[#7DD8E8] text-[11px] capitalize mt-0.5">{stop.category}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[#59ffa0] font-slab-serif font-bold text-sm">
-                      ${stop.estimated_spend.toLocaleString()}
-                    </p>
-                    <p className="text-[#7DD8E8]/50 text-[10px]">
-                      {formatMins(stop.duration_minutes)}
-                    </p>
-                  </div>
-                </div>
+            {/* Dark overlay for readability */}
+            <div className="absolute inset-0 bg-black/65" />
+            {/* Brand/category tint, applied slightly on top */}
+            <div className="absolute inset-0" style={{ backgroundColor: `${tintColor}40` }} />
+            {/* Vignette — fades to black at edges/corners, lighter in the center, keeps controls readable */}
+            <div
+              className="absolute inset-0"
+              style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.9) 100%)' }}
+            />
 
-                {stop.address && (
-                  <p className="flex items-center gap-1 text-[#7DD8E8]/50 text-[10px] mt-1.5 truncate">
-                    <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 10 10" fill="none">
-                      <path d="M5 1a3 3 0 0 1 3 3c0 2.5-3 5-3 5S2 6.5 2 4a3 3 0 0 1 3-3z" stroke="currentColor" strokeWidth="1" />
-                      <circle cx="5" cy="4" r="1" fill="currentColor" />
-                    </svg>
-                    {stop.address}
+            {/* Content */}
+            <div className="relative z-10 p-4">
+              <div className="flex items-start justify-between gap-3">
+                {/* Top-left: name, category, address */}
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-header text-sm font-bold text-white leading-snug truncate" style={textShadow}>
+                    {stop.name}
+                  </h4>
+                  <p className="text-[11px] font-semibold mt-0.5" style={{ color: tintColor, ...textShadow }}>
+                    {stop.category}
                   </p>
-                )}
+                  {stop.address && (
+                    <p className="flex items-center gap-1 text-white/70 text-[10px] mt-1.5 truncate" style={textShadow}>
+                      <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 10 10" fill="none">
+                        <path d="M5 1a3 3 0 0 1 3 3c0 2.5-3 5-3 5S2 6.5 2 4a3 3 0 0 1 3-3z" stroke="currentColor" strokeWidth="1" />
+                        <circle cx="5" cy="4" r="1" fill="currentColor" />
+                      </svg>
+                      {stop.address}
+                    </p>
+                  )}
 
-                {/* Tags row */}
-                <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#242324] border border-[#2a2829] text-[#7DD8E8]">
-                    🕐 {formatTime(stop.estimated_arrival)}
+                  {/* Promo text — magazine-style callout, only when an offer has one */}
+                  {stop.offer?.promo_text && (
+                    <p
+                      className="mt-1.5 text-base font-bold leading-snug line-clamp-2"
+                      style={{ color: '#FFF4E0', ...textShadow }}
+                    >
+                      {stop.offer.promo_text}
+                    </p>
+                  )}
+                </div>
+
+                {/* Top-right: stop number, logo */}
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className="font-label font-semibold text-[13px]" style={{ color: '#F9FDFF', ...textShadow }}>
+                    STOP {index + 1}
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#242324] border border-[#2a2829] text-[#7DD8E8]">
-                    ⏱ {formatMins(stop.duration_minutes)}
-                  </span>
-                  {stop.offer && <OfferBadge offer={stop.offer} />}
+                  {stop.logo_url && (
+                    <img
+                      src={stop.logo_url}
+                      alt={stop.name}
+                      loading="lazy"
+                      className="max-h-14 max-w-[120px] w-auto object-contain"
+                    />
+                  )}
                 </div>
               </div>
-            </div>
 
-            {/* Controls */}
-            <div className="flex items-center justify-end gap-2 mt-3 pt-2.5 border-t border-[#2a2829]">
-              {/* Swap */}
-              <button
-                type="button"
-                onClick={onSwap}
-                disabled={swapping || locked}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
-                  locked
-                    ? 'border-[#2a2829] text-[#7DD8E8]/25 cursor-not-allowed'
-                    : swapping
-                    ? 'border-[#1ac8ed]/30 bg-[#1ac8ed]/5 text-[#1ac8ed]'
-                    : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] hover:bg-[#1ac8ed]/5'
-                )}
-              >
-                {swapping ? (
-                  <svg className="w-3 h-3 animate-spin" viewBox="0 0 12 12" fill="none">
-                    <circle className="opacity-25" cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="2" />
-                    <path className="opacity-75" fill="currentColor" d="M2 6a4 4 0 014-4v2l1.5-1.5L6 1v2A4 4 0 012 6z" />
-                  </svg>
-                ) : (
-                  <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-                    <path d="M1 3.5h8M7 1.5l2 2-2 2M11 8.5H3M5 6.5l-2 2 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-                Swap
-              </button>
-
-              {/* Lock toggle */}
-              <button
-                type="button"
-                onClick={onLock}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
-                  locked
-                    ? 'border-[#59ffa0]/40 bg-[#59ffa0]/10 text-[#59ffa0]'
-                    : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#59ffa0]/40 hover:text-[#59ffa0] hover:bg-[#59ffa0]/5'
-                )}
-              >
-                {locked ? (
-                  <>
-                    <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-                      <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
-                      <path d="M4 5V3.5a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                    Locked
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-                      <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
-                      <path d="M4 5V3.5a2 2 0 014 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                    Lock
-                  </>
-                )}
-              </button>
-
-              {/* Move */}
-              <button
-                type="button"
-                onClick={() => setPickerOpen(o => !o)}
-                disabled={!canMove}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
-                  !canMove
-                    ? 'border-[#2a2829] text-[#7DD8E8]/25 cursor-not-allowed'
-                    : pickerOpen
-                    ? 'border-[#1ac8ed]/30 bg-[#1ac8ed]/5 text-[#1ac8ed]'
-                    : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] hover:bg-[#1ac8ed]/5'
-                )}
-              >
-                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 1v10M3 3.5L6 1l3 2.5M3 8.5L6 11l3-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Move
-              </button>
-            </div>
-
-            {/* Inline move picker — not a modal, renders below the controls row */}
-            {pickerOpen && canMove && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2.5 border-t border-dashed border-[#2a2829]">
-                <span className="text-[10px] text-[#7DD8E8]/50 font-sans mr-1">Move to:</span>
-                {availableSegments.map(s => {
-                  const cfg = SEGMENT_CONFIG[s]
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => { onMove(s); setPickerOpen(false) }}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#2a2829] text-[#7DD8E8] text-[11px] font-sans hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] transition-all duration-150"
-                    >
-                      <span>{cfg.icon}</span>{cfg.label}
-                    </button>
-                  )
-                })}
+              {/* Middle: time + duration chips */}
+              <div className="flex items-center gap-1.5 flex-wrap mt-3">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/40 border border-white/10 text-[#7DD8E8]">
+                  🕐 {formatTime(stop.estimated_arrival)}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/40 border border-white/10 text-[#7DD8E8]">
+                  ⏱ {formatMins(stop.duration_minutes)}
+                </span>
               </div>
-            )}
+
+              {/* Price — plain text, right-aligned, directly above the controls row */}
+              <p className="mt-2 text-right font-[family-name:var(--font-playfair)] text-sm font-bold text-[#59ffa0]" style={textShadow}>
+                ${stop.estimated_spend.toLocaleString()}
+              </p>
+
+              {/* Bottom: divider + Swap/Lock/Move */}
+              {controlsAndPicker}
+            </div>
           </div>
         </div>
       </div>
@@ -800,7 +865,6 @@ function PlaceholderCard({ segment, isLast, showSegHeader, generating, onGenerat
     <div>
       {showSegHeader && (
         <div className="flex items-center gap-2 mb-3 mt-1">
-          <span className="text-sm">{seg.icon}</span>
           <span className="font-label text-[10px] tracking-widest" style={{ color: seg.color }}>
             {seg.label.toUpperCase()}
           </span>
@@ -810,7 +874,7 @@ function PlaceholderCard({ segment, isLast, showSegHeader, generating, onGenerat
 
       <div className="flex gap-3 items-start">
         {/* Left rail */}
-        <div className="flex flex-col items-center shrink-0 w-12">
+        <div className="flex flex-col items-center shrink-0 w-16">
           <div
             className="w-10 h-10 rounded-full border-2 border-dashed flex items-center justify-center shrink-0"
             style={{ borderColor: `${seg.color}50`, color: `${seg.color}90` }}
