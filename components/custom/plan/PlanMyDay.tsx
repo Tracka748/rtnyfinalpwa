@@ -763,14 +763,14 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, a
               style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.9) 100%)' }}
             />
 
-            {/* Logo — embedded watermark, behind the text content but above the dark overlay */}
+            {/* Brand layer — large faint white screen-blended logo mark, vertically centered, right side, behind text but above the overlay */}
             {stop.logo_url && (
               <img
                 src={stop.logo_url}
                 alt=""
                 loading="lazy"
-                className="absolute bottom-3 right-3 z-[5] w-20 h-20 object-contain"
-                style={{ filter: 'grayscale(50%) opacity(35%)' }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-[5] w-[45%] object-contain object-right"
+                style={{ filter: 'brightness(0) invert(1)', opacity: 0.3, mixBlendMode: 'screen' }}
               />
             )}
 
@@ -808,7 +808,7 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, a
 
                 {/* Top-right: stop number */}
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="font-label font-semibold text-[13px]" style={{ color: '#F9FDFF', ...textShadow }}>
+                  <span className="font-label font-semibold text-[13px]" style={{ color: 'rgba(255,255,255,0.55)', ...textShadow }}>
                     STOP {index + 1}
                   </span>
                 </div>
