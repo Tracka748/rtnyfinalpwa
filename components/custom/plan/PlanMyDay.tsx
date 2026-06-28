@@ -604,24 +604,22 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, a
           onClick={onSwap}
           disabled={swapping || locked}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
-            locked
-              ? 'border-[#2a2829] text-[#7DD8E8]/25 cursor-not-allowed'
-              : swapping
-              ? 'border-[#1ac8ed]/30 bg-[#1ac8ed]/5 text-[#1ac8ed]'
-              : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] hover:bg-[#1ac8ed]/5'
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/15 bg-white/[0.08] backdrop-blur-[8px] shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-[11px] font-sans text-[#F9FDFF] transition-all duration-150',
+            locked ? 'opacity-50 cursor-not-allowed' : swapping && 'cursor-not-allowed'
           )}
         >
-          {swapping ? (
-            <svg className="w-3 h-3 animate-spin" viewBox="0 0 12 12" fill="none">
-              <circle className="opacity-25" cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="2" />
-              <path className="opacity-75" fill="currentColor" d="M2 6a4 4 0 014-4v2l1.5-1.5L6 1v2A4 4 0 012 6z" />
-            </svg>
-          ) : (
-            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-              <path d="M1 3.5h8M7 1.5l2 2-2 2M11 8.5H3M5 6.5l-2 2 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
+          <span className={locked ? 'text-[#7DD8E8]/40' : swapping ? 'text-[#1ac8ed]' : 'text-[#7DD8E8]'}>
+            {swapping ? (
+              <svg className="w-3 h-3 animate-spin" viewBox="0 0 12 12" fill="none">
+                <circle className="opacity-25" cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="2" />
+                <path className="opacity-75" fill="currentColor" d="M2 6a4 4 0 014-4v2l1.5-1.5L6 1v2A4 4 0 012 6z" />
+              </svg>
+            ) : (
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                <path d="M1 3.5h8M7 1.5l2 2-2 2M11 8.5H3M5 6.5l-2 2 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
           Swap
         </button>
 
@@ -629,30 +627,22 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, a
         <button
           type="button"
           onClick={onLock}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
-            locked
-              ? 'border-[#59ffa0]/40 bg-[#59ffa0]/10 text-[#59ffa0]'
-              : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#59ffa0]/40 hover:text-[#59ffa0] hover:bg-[#59ffa0]/5'
-          )}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/15 bg-white/[0.08] backdrop-blur-[8px] shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-[11px] font-sans text-[#F9FDFF] transition-all duration-150"
         >
-          {locked ? (
-            <>
+          <span className={locked ? 'text-[#59ffa0]' : 'text-[#7DD8E8]'}>
+            {locked ? (
               <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
                 <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M4 5V3.5a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
-              Locked
-            </>
-          ) : (
-            <>
+            ) : (
               <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
                 <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M4 5V3.5a2 2 0 014 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
-              Lock
-            </>
-          )}
+            )}
+          </span>
+          {locked ? 'Locked' : 'Lock'}
         </button>
 
         {/* Move */}
@@ -661,17 +651,15 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, a
           onClick={() => setPickerOpen(o => !o)}
           disabled={!canMove}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-sans transition-all duration-150',
-            !canMove
-              ? 'border-[#2a2829] text-[#7DD8E8]/25 cursor-not-allowed'
-              : pickerOpen
-              ? 'border-[#1ac8ed]/30 bg-[#1ac8ed]/5 text-[#1ac8ed]'
-              : 'border-[#2a2829] text-[#7DD8E8] hover:border-[#1ac8ed]/40 hover:text-[#1ac8ed] hover:bg-[#1ac8ed]/5'
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/15 bg-white/[0.08] backdrop-blur-[8px] shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-[11px] font-sans text-[#F9FDFF] transition-all duration-150',
+            !canMove && 'opacity-50 cursor-not-allowed'
           )}
         >
-          <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v10M3 3.5L6 1l3 2.5M3 8.5L6 11l3-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <span className={!canMove ? 'text-[#7DD8E8]/40' : pickerOpen ? 'text-[#1ac8ed]' : 'text-[#7DD8E8]'}>
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M3 3.5L6 1l3 2.5M3 8.5L6 11l3-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
           Move
         </button>
       </div>
@@ -775,6 +763,17 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, a
               style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.9) 100%)' }}
             />
 
+            {/* Logo — embedded watermark, behind the text content but above the dark overlay */}
+            {stop.logo_url && (
+              <img
+                src={stop.logo_url}
+                alt=""
+                loading="lazy"
+                className="absolute bottom-3 right-3 z-[5] w-20 h-20 object-contain"
+                style={{ filter: 'grayscale(50%) opacity(35%)' }}
+              />
+            )}
+
             {/* Content */}
             <div className="relative z-10 p-4">
               <div className="flex items-start justify-between gap-3">
@@ -807,19 +806,11 @@ function StopCard({ enriched, index, isLast, swapping, onLock, onSwap, onMove, a
                   )}
                 </div>
 
-                {/* Top-right: stop number, logo */}
+                {/* Top-right: stop number */}
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="font-label font-semibold text-[13px]" style={{ color: '#F9FDFF', ...textShadow }}>
                     STOP {index + 1}
                   </span>
-                  {stop.logo_url && (
-                    <img
-                      src={stop.logo_url}
-                      alt={stop.name}
-                      loading="lazy"
-                      className="max-h-14 max-w-[120px] w-auto object-contain"
-                    />
-                  )}
                 </div>
               </div>
 
