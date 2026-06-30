@@ -436,7 +436,7 @@ export default function EventDetailPage({
                       ${subtotal.toFixed(2)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
                     <Button
                       size="lg"
                       onClick={handleCheckout}
@@ -450,7 +450,7 @@ export default function EventDetailPage({
                       type="button"
                       onClick={() => toggleSave(event.id)}
                       aria-label={saved ? 'Unsave event' : 'Save event'}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-sm font-medium transition-all hover:border-accent/50 bg-black/30 backdrop-blur-sm"
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-white/20 text-sm font-medium transition-all hover:border-accent/50 bg-black/30 backdrop-blur-sm shrink-0"
                     >
                       <Heart
                         size={15}
@@ -458,7 +458,7 @@ export default function EventDetailPage({
                         stroke={saved ? '#ef4444' : 'rgba(255,255,255,0.7)'}
                         strokeWidth={2}
                       />
-                      <span className={saved ? 'text-red-400' : 'text-foreground/80'}>
+                      <span className={`hidden sm:inline ${saved ? 'text-red-400' : 'text-foreground/80'}`}>
                         {saved ? 'Saved' : 'Save'}
                       </span>
                     </button>
