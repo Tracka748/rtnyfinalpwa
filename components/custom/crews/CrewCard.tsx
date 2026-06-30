@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { createSupabaseBrowser } from "@/lib/supabase"
 import { MemberAvatarStack } from "@/components/custom/crews/MemberAvatarStack"
 import { GroupTabWidget } from "@/components/custom/crews/GroupTabWidget"
 import { PerkTracker } from "@/components/custom/crews/PerkTracker"
@@ -15,12 +16,14 @@ interface Crew {
   member_count: number
   user_role: string | null
   is_public?: boolean
+  total_events?: number
 }
 
 interface Stats {
   total_spend: number
   locked_in_count: number
   total_members: number
+  review_count: number
 }
 
 interface CrewCardProps {
@@ -43,7 +46,15 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
         const res = await fetch(`/api/v1/crews/${crew.id}/stats`)
         if (!res.ok) return
         const json = await res.json()
-        if (json.success) setStats(json.data)
+        if (!json.success) return
+
+        const supabase = createSupabaseBrowser()
+        const { count: reviewCount } = await supabase
+          .from('reviews')
+          .select('*', { count: 'exact', head: true })
+          .eq('crew_id', crew.id)
+
+        setStats({ ...json.data, review_count: reviewCount ?? 0 })
       } finally {
         setStatsLoading(false)
       }
@@ -96,16 +107,42 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
 
   async function handleInviteFriends() {
     const text = `Join my crew on RTNY! Use code ${crew.invite_code} at rocticketny.com/crews`
+
+    // Try native share sheet first (best on mobile)
     if (navigator.share) {
       try {
         await navigator.share({ text })
+        return
       } catch {
-        await navigator.clipboard.writeText(text).catch(() => {})
-        onToast("Invite link copied!")
+        // User cancelled or share failed — fall through to copy
       }
-    } else {
-      await navigator.clipboard.writeText(text).catch(() => {})
+    }
+
+    // Clipboard API (works on HTTPS / desktop)
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text)
+        onToast("Invite link copied!")
+        return
+      } catch {
+        // Fall through to textarea fallback
+      }
+    }
+
+    // Universal fallback — works on HTTP, iOS webview, old browsers
+    try {
+      const textarea = document.createElement("textarea")
+      textarea.value = text
+      textarea.style.position = "fixed"
+      textarea.style.opacity = "0"
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textarea)
       onToast("Invite link copied!")
+    } catch {
+      onToast("Couldn't copy — share code: " + crew.invite_code)
     }
   }
 
@@ -165,10 +202,15 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
         loading={statsLoading}
       />
       <PerkTracker
-        lockedInCount={lockedIn}
-        totalMembers={effectiveMembers}
+        memberCount={effectiveMembers}
+        totalEvents={crew.total_events ?? 0}
+        reviewCount={stats?.review_count ?? 0}
       />
-      <UnlockTimeline totalMembers={effectiveMembers} />
+      <UnlockTimeline
+        memberCount={effectiveMembers}
+        totalEvents={crew.total_events ?? 0}
+        reviewCount={stats?.review_count ?? 0}
+      />
 
       {/* Bottom row */}
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">

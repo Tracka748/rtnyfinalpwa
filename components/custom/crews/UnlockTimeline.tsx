@@ -1,14 +1,25 @@
+interface MilestoneValues {
+  memberCount: number
+  totalEvents: number
+  reviewCount: number
+}
+
 const MILESTONES = [
-  { threshold: 3, icon: "🎟️", label: "Group Discount" },
-  { threshold: 5, icon: "⚡", label: "Skip the Line" },
-  { threshold: 7, icon: "🍾", label: "Bottle Service" },
+  { icon: '🧑‍🤝‍🧑', label: 'Squad Up',      getValue: (p: MilestoneValues) => p.memberCount, threshold: 3 },
+  { icon: '🎟️',      label: 'First Outing',  getValue: (p: MilestoneValues) => p.totalEvents,  threshold: 1 },
+  { icon: '⭐',      label: 'Critics Circle', getValue: (p: MilestoneValues) => p.reviewCount,  threshold: 6 },
+  { icon: '👑',      label: 'Crew Royalty',   getValue: (p: MilestoneValues) => p.memberCount,  threshold: 5 },
 ]
 
 interface UnlockTimelineProps {
-  totalMembers: number
+  memberCount: number
+  totalEvents: number
+  reviewCount: number
 }
 
-export function UnlockTimeline({ totalMembers }: UnlockTimelineProps) {
+export function UnlockTimeline({ memberCount, totalEvents, reviewCount }: UnlockTimelineProps) {
+  const values: MilestoneValues = { memberCount, totalEvents, reviewCount }
+
   return (
     <div className="bg-white/5 rounded-xl p-3">
       <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-3">
@@ -16,10 +27,10 @@ export function UnlockTimeline({ totalMembers }: UnlockTimelineProps) {
       </p>
       <div className="flex items-center">
         {MILESTONES.map((m, i) => {
-          const unlocked = totalMembers >= m.threshold
-          const isUnlocked = i < MILESTONES.length - 1 && totalMembers >= MILESTONES[i + 1].threshold
+          const unlocked = m.getValue(values) >= m.threshold
+          const isUnlocked = i < MILESTONES.length - 1 && MILESTONES[i + 1].getValue(values) >= MILESTONES[i + 1].threshold
           return (
-            <div key={m.threshold} className="flex items-center flex-1 last:flex-none">
+            <div key={m.label} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center gap-1">
                 {unlocked ? (
                   <div

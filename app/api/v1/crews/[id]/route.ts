@@ -61,7 +61,6 @@ export async function GET(
           .select('user_id, total_amount')
           .in('user_id', memberIds)
           .eq('status', 'completed')
-          .gte('created_at', crew.created_at)
       : { data: [] as any[] }
 
     const profileMap = new Map((profileRows ?? []).map((p: any) => [p.id, p]))

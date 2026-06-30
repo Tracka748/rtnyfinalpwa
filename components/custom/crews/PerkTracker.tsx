@@ -1,16 +1,31 @@
-interface PerkTrackerProps {
-  lockedInCount: number
-  totalMembers: number
+interface MilestoneValues {
+  memberCount: number
+  totalEvents: number
+  reviewCount: number
 }
 
-export function PerkTracker({ lockedInCount, totalMembers }: PerkTrackerProps) {
-  const underThreshold = totalMembers < 3
-  const pct = underThreshold
-    ? (lockedInCount / 3) * 100
-    : totalMembers > 0
-    ? (lockedInCount / totalMembers) * 100
-    : 0
-  const full = !underThreshold && totalMembers >= 3 && lockedInCount >= totalMembers
+const MILESTONES = [
+  { icon: '🧑‍🤝‍🧑', label: 'Squad Up',      getValue: (p: MilestoneValues) => p.memberCount, threshold: 3 },
+  { icon: '🎟️',      label: 'First Outing',  getValue: (p: MilestoneValues) => p.totalEvents,  threshold: 1 },
+  { icon: '⭐',      label: 'Critics Circle', getValue: (p: MilestoneValues) => p.reviewCount,  threshold: 6 },
+  { icon: '👑',      label: 'Crew Royalty',   getValue: (p: MilestoneValues) => p.memberCount,  threshold: 5 },
+]
+
+interface PerkTrackerProps {
+  memberCount: number
+  totalEvents: number
+  reviewCount: number
+}
+
+export function PerkTracker({ memberCount, totalEvents, reviewCount }: PerkTrackerProps) {
+  const values: MilestoneValues = { memberCount, totalEvents, reviewCount }
+
+  const allDone = MILESTONES.every((m) => (m.getValue(values) ?? 0) >= m.threshold)
+  const next = allDone ? null : MILESTONES.find((m) => (m.getValue(values) ?? 0) < m.threshold)!
+
+  const pct = allDone
+    ? 100
+    : Math.min(100, ((next.getValue(values) ?? 0) / next.threshold) * 100)
 
   return (
     <div className="bg-white/5 rounded-xl p-3">
@@ -23,15 +38,11 @@ export function PerkTracker({ lockedInCount, totalMembers }: PerkTrackerProps) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      {full ? (
-        <p className="text-accent text-xs font-sans">🎉 Full crew locked in!</p>
-      ) : underThreshold ? (
-        <p className="text-foreground/50 text-xs font-sans">
-          {lockedInCount} of 3 needed to unlock first perk
-        </p>
+      {allDone ? (
+        <p className="text-accent text-xs font-sans">🎉 All crew milestones unlocked!</p>
       ) : (
         <p className="text-foreground/50 text-xs font-sans">
-          {lockedInCount} of {totalMembers} members locked in
+          {next.getValue(values) ?? 0} of {next.threshold} needed to unlock {next.label}
         </p>
       )}
     </div>
