@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { createSupabaseBrowser } from "@/lib/supabase"
+import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import { MemberAvatarStack } from "@/components/custom/crews/MemberAvatarStack"
 import { GroupTabWidget } from "@/components/custom/crews/GroupTabWidget"
 import { PerkTracker } from "@/components/custom/crews/PerkTracker"
@@ -48,7 +48,7 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
         const json = await res.json()
         if (!json.success) return
 
-        const supabase = createSupabaseBrowser()
+        const supabase = createBrowserSupabaseClient()
         const { count: reviewCount } = await supabase
           .from('reviews')
           .select('*', { count: 'exact', head: true })

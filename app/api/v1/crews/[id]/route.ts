@@ -63,10 +63,21 @@ export async function GET(
           .eq('status', 'completed')
       : { data: [] as any[] }
 
+    const { data: spendOrders } = memberIds.length > 0
+      ? await supabase
+          .from('orders')
+          .select('user_id, total_amount')
+          .in('user_id', memberIds)
+          .eq('status', 'completed')
+          .gte('created_at', crew.created_at)
+      : { data: [] as any[] }
+
     const profileMap = new Map((profileRows ?? []).map((p: any) => [p.id, p]))
     const ordersData = orders ?? []
     const lockedInIds = new Set(ordersData.map((o: any) => o.user_id as string))
-    const total_spend = ordersData.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0)
+    const total_spend = (spendOrders ?? []).reduce(
+      (sum: number, o: any) => sum + (o.total_amount || 0), 0
+    )
 
     const members = (memberRows ?? []).map((m: any) => {
       const profile = profileMap.get(m.user_id) as any
