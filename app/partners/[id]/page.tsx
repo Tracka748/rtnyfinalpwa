@@ -4,27 +4,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import SupportButton from '@/components/custom/partners/SupportButton'
 import PartnerSharePill from '@/components/custom/partners/PartnerSharePill'
+import ProfileSection from '@/components/custom/partners/ProfileSection'
 
 interface PageProps {
   params: Promise<{ id: string }>
-}
-
-function Divider() {
-  return (
-    <div className="h-px bg-gradient-to-r from-transparent via-[#59FFA0]/15 to-transparent my-2" />
-  )
-}
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <div className="w-1 h-5 rounded-full bg-gradient-to-b from-[#59FFA0] to-[#1AC8ED]" />
-      <span className="font-label text-xs tracking-[0.3em] uppercase text-[#F9FDFF]/50">
-        {children}
-      </span>
-      <div className="flex-1 h-px bg-gradient-to-r from-[#59FFA0]/20 to-transparent" />
-    </div>
-  )
 }
 
 function formatEventDate(dateStr: string) {
@@ -225,10 +208,8 @@ export default async function PartnerProfilePage({ params }: PageProps) {
           </div>
         </div>
 
-        <Divider />
-
         {/* ── 2. QUICK ACTION BAR ── */}
-        <div className="px-4 py-5">
+        <ProfileSection color="mint" label="Quick Actions">
           <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {partner.website_url && (
               <ActionPill href={partner.website_url}>🌐 Website</ActionPill>
@@ -249,19 +230,15 @@ export default async function PartnerProfilePage({ params }: PageProps) {
             )}
             <PartnerSharePill name={partner.name} />
           </div>
-        </div>
-
-        <Divider />
+        </ProfileSection>
 
         {/* ── 3. SUPPORT BUTTON ── */}
-        <div className="px-4 py-6">
+        <ProfileSection color="cyan" label="Support">
           <SupportButton partnerId={id} initialCount={supporter_count} />
-        </div>
-
-        <Divider />
+        </ProfileSection>
 
         {/* ── 4. STATS ROW ── */}
-        <div className="px-4 py-6">
+        <ProfileSection color="mint" label="Community">
           <div className="grid grid-cols-3">
             <div className="text-center pr-4" style={{ borderRight: '0.5px solid rgba(255,255,255,0.1)' }}>
               <p className="font-label text-[10px] tracking-[0.2em] uppercase text-[#F9FDFF]/40 mt-1">
@@ -291,28 +268,21 @@ export default async function PartnerProfilePage({ params }: PageProps) {
               </p>
             </div>
           </div>
-        </div>
+        </ProfileSection>
 
         {/* ── 5. ABOUT ── */}
         {modules.about && partner.bio && (
-          <>
-            <Divider />
-            <div className="px-4 py-6">
-              <SectionLabel>ABOUT</SectionLabel>
-              <p className="font-sans text-sm text-[#F9FDFF]/70 leading-7 tracking-wide">
-                {partner.bio}
-              </p>
-            </div>
-          </>
+          <ProfileSection color="cyan" label="About">
+            <p className="font-sans text-sm text-[#F9FDFF]/70 leading-7 tracking-wide">
+              {partner.bio}
+            </p>
+          </ProfileSection>
         )}
 
         {/* ── 6. UPCOMING EVENTS ── */}
         {modules.upcoming_events && upcoming_events?.length > 0 && (
-          <>
-            <Divider />
-            <div className="px-4 py-6">
-              <SectionLabel>UPCOMING EVENTS</SectionLabel>
-              <div className="flex flex-col gap-2">
+          <ProfileSection color="mint" label="Upcoming Events">
+            <div className="flex flex-col gap-2">
                 {upcoming_events.map((event) => (
                   <div
                     key={event.id}
@@ -344,62 +314,50 @@ export default async function PartnerProfilePage({ params }: PageProps) {
                   </div>
                 ))}
               </div>
-            </div>
-          </>
+          </ProfileSection>
         )}
 
         {/* ── 7. GALLERY ── */}
         {modules.gallery && media?.length > 0 && (
-          <>
-            <Divider />
-            <div className="px-4 py-6">
-              <SectionLabel>GALLERY</SectionLabel>
-              <div className="grid grid-cols-3 gap-2">
-                {media.map((item) => (
-                  <div key={item.id} className="aspect-square rounded-lg overflow-hidden">
-                    <img
-                      src={item.url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-              </div>
+          <ProfileSection color="cyan" label="Gallery">
+            <div className="grid grid-cols-3 gap-2">
+              {media.map((item) => (
+                <div key={item.id} className="aspect-square rounded-lg overflow-hidden">
+                  <img
+                    src={item.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
             </div>
-          </>
+          </ProfileSection>
         )}
 
         {/* ── 8. PLAN YOUR EVENT ── */}
         {modules.plan_your_event && (
-          <>
-            <Divider />
-            <div className="px-4 py-6">
-              <SectionLabel>PLAN YOUR EVENT</SectionLabel>
-              <p
-                className="font-sans text-sm mb-4"
-                style={{ color: 'rgba(249,253,255,0.7)' }}
-              >
-                Book this partner for your next event
-              </p>
-              <Link
-                href={`/plan?partner_id=${id}`}
-                className="block w-full text-center py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#EF9F27', color: '#121113' }}
-              >
-                Start Planning
-              </Link>
-            </div>
-          </>
+          <ProfileSection color="mint" label="Plan Your Event">
+            <p
+              className="font-sans text-sm mb-4"
+              style={{ color: 'rgba(249,253,255,0.7)' }}
+            >
+              Book this partner for your next event
+            </p>
+            <Link
+              href={`/plan?partner_id=${id}`}
+              className="block w-full text-center py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#EF9F27', color: '#121113' }}
+            >
+              Start Planning
+            </Link>
+          </ProfileSection>
         )}
 
         {/* ── 9. CONTACT ── */}
         {(partner.contact_email || partner.contact_phone || partner.website_url) && (
-          <>
-            <Divider />
-            <div className="px-4 py-6">
-              <SectionLabel>CONTACT</SectionLabel>
-              <div className="flex flex-col gap-4">
+          <ProfileSection color="cyan" label="Contact">
+            <div className="flex flex-col gap-4">
                 {partner.contact_email && (
                   <div>
                     <p className="font-label text-[10px] tracking-widest uppercase text-[#F9FDFF]/40 mb-1">
@@ -451,8 +409,7 @@ export default async function PartnerProfilePage({ params }: PageProps) {
                   </div>
                 )}
               </div>
-            </div>
-          </>
+          </ProfileSection>
         )}
 
         <div className="h-10" />
