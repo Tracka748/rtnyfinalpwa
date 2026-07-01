@@ -4,7 +4,16 @@ import { createSupabaseServer } from "@/lib/supabase"
 import { redirect } from "next/navigation"
 import { LogoutButton } from "@/components/custom/auth/logout-button"
 import { SavedDayPlans } from "@/components/custom/dashboard/SavedDayPlans"
+import { ChevronRight, Calendar, Ticket, Settings, Users, Building2 } from "lucide-react"
 import Link from "next/link"
+
+const crewAvatarClasses = [
+  "bg-[#59FFA0]",
+  "bg-[#FF7A00]",
+  "bg-[#8B5CF6]",
+  "bg-[#38BDF8]",
+  "bg-[#FBBF24]",
+]
 
 export default async function DashboardPage() {
   const { user } = await getCurrentUser()
@@ -60,54 +69,60 @@ export default async function DashboardPage() {
       {/* Content */}
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         {/* Welcome Card */}
-        <div className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-8">
-          <h2 className="font-[family-name:var(--font-rokkitt)] text-2xl font-bold text-[#F9FDFF]">
-            Welcome back!
-          </h2>
-          <p className="mt-2 font-[family-name:var(--font-rubik)] text-[#A0A0A0]">
-            Logged in as: <span className="text-[#59FFA0]">{user.email}</span>
-          </p>
+        <div className="relative overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-6 sm:p-8">
+          <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[#59FFA0]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#1AC8ED]/10 blur-3xl" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#59FFA0] to-[#1AC8ED] text-lg font-bold text-[#121113]">
+              {user.email?.[0]?.toUpperCase() ?? '?'}
+            </div>
+            <div>
+              <h2 className="font-[family-name:var(--font-rokkitt)] text-2xl font-bold text-[#F9FDFF]">
+                Welcome back!
+              </h2>
+              <p className="mt-1 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
+                Logged in as <span className="text-[#59FFA0]">{user.email}</span>
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Browse Events */}
+        <div className="mt-8 grid grid-cols-3 gap-3">
           <Link
             href="/events"
-            className="group rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/5"
+            className="group flex flex-col items-center gap-2 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-center transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/5"
           >
-            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF] group-hover:text-[#59FFA0]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#59FFA0]/10 text-[#59FFA0]">
+              <Calendar size={18} />
+            </div>
+            <span className="font-[family-name:var(--font-rokkitt)] text-sm font-bold text-[#F9FDFF] group-hover:text-[#59FFA0]">
               Browse Events
-            </h3>
-            <p className="mt-2 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
-              Discover upcoming nightlife events in Rochester
-            </p>
+            </span>
           </Link>
 
-          {/* My Tickets */}
           <Link
             href="/dashboard/tickets"
-            className="group rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/5"
+            className="group flex flex-col items-center gap-2 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-center transition-all hover:border-[#1AC8ED] hover:bg-[#1AC8ED]/5"
           >
-            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF] group-hover:text-[#59FFA0]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1AC8ED]/10 text-[#1AC8ED]">
+              <Ticket size={18} />
+            </div>
+            <span className="font-[family-name:var(--font-rokkitt)] text-sm font-bold text-[#F9FDFF] group-hover:text-[#1AC8ED]">
               My Tickets
-            </h3>
-            <p className="mt-2 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
-              View your purchased tickets
-            </p>
+            </span>
           </Link>
 
-          {/* Profile Settings */}
           <Link
             href="/dashboard/settings"
-            className="group rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6 transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/5"
+            className="group flex flex-col items-center gap-2 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-center transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/5"
           >
-            <h3 className="font-[family-name:var(--font-rokkitt)] text-xl font-bold text-[#F9FDFF] group-hover:text-[#59FFA0]">
-              Profile Settings
-            </h3>
-            <p className="mt-2 font-[family-name:var(--font-rubik)] text-sm text-[#A0A0A0]">
-              Manage your account and preferences
-            </p>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#59FFA0]/10 text-[#59FFA0]">
+              <Settings size={18} />
+            </div>
+            <span className="font-[family-name:var(--font-rokkitt)] text-sm font-bold text-[#F9FDFF] group-hover:text-[#59FFA0]">
+              Settings
+            </span>
           </Link>
         </div>
 
@@ -118,8 +133,10 @@ export default async function DashboardPage() {
 
         {/* My Crews */}
         <div className="bg-card border border-white/5 rounded-2xl p-6 mt-6">
-          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
-            <span className="text-2xl">👥</span>
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#59FFA0]/10 text-[#59FFA0]">
+              <Users size={16} />
+            </div>
             <h2 className="text-xl font-bold text-foreground font-slab-serif">
               My Crews
             </h2>
@@ -137,23 +154,27 @@ export default async function DashboardPage() {
               </a>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {crews.map((crew: any) => (
-                <div
+            <div className="grid grid-cols-1 gap-2">
+              {crews.map((crew: any, i: number) => (
+                <a
                   key={crew.id}
-                  className="flex items-center justify-between p-4 rounded-2xl border border-white/5 hover:bg-white/5 transition"
+                  href="/crews"
+                  className="flex items-center gap-3 p-3 rounded-xl border border-white/5 hover:bg-white/5 transition"
                 >
-                  <div>
-                    <p className="font-medium text-foreground">{crew.name}</p>
-                    <p className="text-xs text-foreground/40 mt-0.5">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-[#121113] ${crewAvatarClasses[i % crewAvatarClasses.length]}`}
+                  >
+                    {crew.name?.[0]?.toUpperCase() ?? '?'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-[#F9FDFF] truncate">{crew.name}</p>
+                    <p className="text-xs text-white/40 mt-0.5">
                       {crew.member_count} member{crew.member_count !== 1 ? 's' : ''} · Code:{' '}
-                      <span className="text-accent font-mono">{crew.invite_code}</span>
+                      <span className="text-[#59FFA0] font-mono">{crew.invite_code}</span>
                     </p>
                   </div>
-                  <a href="/crews" className="text-xs text-foreground/40 hover:text-accent transition">
-                    View →
-                  </a>
-                </div>
+                  <ChevronRight size={16} className="text-white/30 shrink-0" />
+                </a>
               ))}
             </div>
           )}
@@ -162,8 +183,10 @@ export default async function DashboardPage() {
         {/* My Partner Profile */}
         {partnerProfile && (
           <div className="bg-card border border-white/5 rounded-2xl p-6 mt-6">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
-              <span className="text-2xl">🏢</span>
+            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1AC8ED]/10 text-[#1AC8ED]">
+                <Building2 size={16} />
+              </div>
               <h2 className="text-xl font-bold text-foreground font-slab-serif">
                 My Partner Profile
               </h2>
@@ -234,31 +257,29 @@ export default async function DashboardPage() {
         )}
 
         {/* User Info (Debug) */}
-        <div className="mt-8 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-6">
-          <h3 className="font-[family-name:var(--font-rokkitt)] text-lg font-bold text-[#F9FDFF]">
+        <details className="mt-8 rounded-2xl border border-[#2A2A2A]/60 bg-[#141414] p-4 text-sm">
+          <summary className="cursor-pointer font-[family-name:var(--font-rokkitt)] text-sm font-semibold text-white/50">
             Account Info
-          </h3>
-          <dl className="mt-4 space-y-2 font-[family-name:var(--font-rubik)] text-sm">
+          </summary>
+          <dl className="mt-3 space-y-2 font-[family-name:var(--font-rubik)] text-xs text-white/40">
             <div>
-              <dt className="text-[#A0A0A0]">User ID:</dt>
-              <dd className="text-[#F9FDFF]">{user.id}</dd>
+              <dt className="inline">User ID: </dt>
+              <dd className="inline text-white/60">{user.id}</dd>
             </div>
             <div>
-              <dt className="text-[#A0A0A0]">Email:</dt>
-              <dd className="text-[#F9FDFF]">{user.email}</dd>
+              <dt className="inline">Email: </dt>
+              <dd className="inline text-white/60">{user.email}</dd>
             </div>
             {user.profile && (
-              <>
-                <div>
-                  <dt className="text-[#A0A0A0]">Name:</dt>
-                  <dd className="text-[#F9FDFF]">
-                    {user.profile.first_name || 'Not set'} {user.profile.last_name || ''}
-                  </dd>
-                </div>
-              </>
+              <div>
+                <dt className="inline">Name: </dt>
+                <dd className="inline text-white/60">
+                  {user.profile.first_name || 'Not set'} {user.profile.last_name || ''}
+                </dd>
+              </div>
             )}
           </dl>
-        </div>
+        </details>
       </div>
     </main>
   )
