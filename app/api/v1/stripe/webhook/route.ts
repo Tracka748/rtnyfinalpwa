@@ -60,7 +60,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return
   }
 
-  const { userId, eventId, items } = session.metadata || {}
+  const { userId, eventId, items, crewId } = session.metadata || {}
 
     if (!userId || !eventId || !items) {
       console.error('❌ Missing metadata:', session.metadata)
@@ -110,6 +110,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         status: 'completed',
         completed_at: new Date().toISOString(),
         promo_code_id: null,
+        crew_id: crewId || null,
       })
       .select()
       .single()
@@ -120,6 +121,38 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     }
 
     console.log('✅ Order created:', order.id)
+
+    // Reset the crew's sticker attempts on a qualifying purchase — non-blocking,
+    // capped once a crew hits its lifetime sticker limit.
+    if (crewId) {
+      (async () => {
+        const { data: crewRow, error: crewFetchError } = await supabaseAdmin
+          .from('crews')
+          .select('lifetime_sticker_count')
+          .eq('id', crewId)
+          .single()
+
+        if (crewFetchError || !crewRow) {
+          console.error('⚠️ Sticker attempts reset — failed to fetch crew', crewId, crewFetchError)
+          return
+        }
+
+        if (crewRow.lifetime_sticker_count < 16) {
+          const { error: resetError } = await supabaseAdmin
+            .from('crews')
+            .update({ sticker_attempts_remaining: 6 })
+            .eq('id', crewId)
+
+          if (resetError) {
+            console.error('⚠️ Sticker attempts reset failed for crew', crewId, resetError)
+          } else {
+            console.log('✅ Sticker attempts reset to 6 for crew', crewId)
+          }
+        }
+      })().catch((err) => {
+        console.error('⚠️ Sticker attempts reset error for crew', crewId, err)
+      })
+    }
 
     // Build ticket stubs (no QR yet)
     const ticketStubs: {

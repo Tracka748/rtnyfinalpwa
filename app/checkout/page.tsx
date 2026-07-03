@@ -39,6 +39,13 @@ interface CheckoutData {
   subtotal: number
 }
 
+interface MyCrew {
+  id: string
+  name: string
+  member_count: number
+  user_role: string | null
+}
+
 // Sample boosters - Replace with real data from perks table
 const availableBoosters = [
   { id: '1', name: 'VIP Entry', description: 'Skip the line', price: 10, icon: '🎟️' },
@@ -60,6 +67,8 @@ export default function CheckoutPage() {
   const [appliedPromo, setAppliedPromo] = useState<PromoDiscount | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [myCrews, setMyCrews] = useState<MyCrew[]>([])
+  const [selectedCrewId, setSelectedCrewId] = useState<string>('')
 
   // Check if payment was canceled
   const canceled = searchParams.get('canceled')
@@ -73,6 +82,20 @@ export default function CheckoutPage() {
       // No cart data, redirect back to events
       router.push('/events')
     }
+  }, [])
+
+  // Load the buyer's crews so they can optionally attribute this purchase to one
+  useEffect(() => {
+    fetch('/api/v1/crews/mine')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setMyCrews(data.data.crews)
+        }
+      })
+      .catch(() => {
+        // Non-critical — crew attribution is optional, checkout still works
+      })
   }, [])
 
   // Show cancel message if user returned from Stripe
@@ -150,6 +173,7 @@ export default function CheckoutPage() {
           eventId: checkoutData.eventId,
           items: stripeItems,
           promoCode: appliedPromo?.code || '',
+          crewId: selectedCrewId || null,
           boosters: Array.from(selectedBoosters).map(id => {
             const booster = availableBoosters.find(b => b.id === id)
             return {
@@ -306,6 +330,34 @@ export default function CheckoutPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Crew Attribution */}
+            {myCrews.length > 0 && (
+              <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
+                <CardHeader>
+                  <CardTitle className="font-header text-xl text-[#F9FDFF]">
+                    Buying with my crew?
+                  </CardTitle>
+                  <CardDescription className="font-sans text-[#F9FDFF]/60">
+                    Optionally credit this purchase to one of your crews
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <select
+                    value={selectedCrewId}
+                    onChange={(e) => setSelectedCrewId(e.target.value)}
+                    className="w-full bg-[#121113] border border-[#2A2A2A] rounded-lg px-3 py-2 font-sans text-[#F9FDFF]"
+                  >
+                    <option value="">None</option>
+                    {myCrews.map((crew) => (
+                      <option key={crew.id} value={crew.id}>
+                        {crew.name}
+                      </option>
+                    ))}
+                  </select>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Promo Code */}
             <PromoCodeSection

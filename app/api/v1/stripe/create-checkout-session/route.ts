@@ -18,11 +18,29 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { eventId, items, promoCode, boosters } = body
+    const { eventId, items, promoCode, boosters, crewId } = body
 
     // Validate required fields
     if (!eventId || !items || items.length === 0) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // If a crew was selected, re-verify server-side that the buyer is actually
+    // an active member — never trust the crewId value sent by the client.
+    let verifiedCrewId: string | null = null
+    if (crewId) {
+      const { data: membership } = await supabase
+        .from('crew_members')
+        .select('crew_id')
+        .eq('crew_id', crewId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (membership) {
+        verifiedCrewId = crewId
+      } else {
+        console.warn(`Ignoring crewId ${crewId} — user ${user.id} is not an active member`)
+      }
     }
 
     // Fetch event details
@@ -112,6 +130,7 @@ export async function POST(req: NextRequest) {
         items: JSON.stringify(enrichedItems),
         promoCode: promoCode || '',
         boosters: boosters ? JSON.stringify(boosters) : '',
+        crewId: verifiedCrewId || '',
       },
     })
 

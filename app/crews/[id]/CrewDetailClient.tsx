@@ -22,6 +22,13 @@ interface Member {
   has_purchased: boolean
 }
 
+interface CrewSticker {
+  id: string
+  image_url: string
+  generated_by: string | null
+  created_at: string
+}
+
 interface CrewDetail {
   id: string
   name: string
@@ -29,11 +36,18 @@ interface CrewDetail {
   is_public: boolean
   created_by: string
   created_at: string
+  avatar_url: string | null
+  sticker_attempts_remaining: number
+  lifetime_sticker_count: number
+  stickers: CrewSticker[]
   members: Member[]
   total_spend: number
   locked_in_count: number
   total_members: number
 }
+
+const STICKER_LIFETIME_CAP = 16
+const STICKER_ATTEMPTS_MAX = 6
 
 interface CrewDetailClientProps {
   crew: CrewDetail | null
@@ -178,6 +192,45 @@ export default function CrewDetailClient({
     showToast("Copied!")
   }
 
+  function handleGenerateSticker() {
+    console.log("Sticker generation coming soon — no OpenAI key configured yet")
+  }
+
+  async function handleDownloadSticker(sticker: CrewSticker) {
+    try {
+      const res = await fetch(sticker.image_url)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${crew!.name}-sticker-${sticker.id}.png`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      showToast("Download failed")
+    }
+  }
+
+  async function handleSetAvatar(sticker: CrewSticker) {
+    try {
+      const res = await fetch(`/api/v1/crews/${crew!.id}/avatar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stickerId: sticker.id }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update avatar")
+      }
+      showToast("Crew avatar updated!")
+      window.location.reload()
+    } catch (err: any) {
+      showToast(err.message || "Failed to update avatar")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#121113]">
       <div className="max-w-2xl mx-auto px-4 py-10">
@@ -317,6 +370,87 @@ export default function CrewDetailClient({
             )}
           </div>
         </div>
+
+        {/* ── Sticker Creator ───────────────────────────────────────────── */}
+        {isMember && (
+          <div className="mb-4">
+            <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-3">
+              Sticker Creator
+            </p>
+            <div className="bg-[#1A1A1F] rounded-2xl p-4">
+              <div className="grid grid-cols-2 divide-x divide-white/5 mb-4">
+                <div className="pr-4">
+                  <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-1">
+                    Attempts Remaining
+                  </p>
+                  <p className="font-slab-serif text-xl text-white leading-tight">
+                    {crew.sticker_attempts_remaining} / {STICKER_ATTEMPTS_MAX}
+                  </p>
+                </div>
+                <div className="pl-4">
+                  <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-1">
+                    Lifetime Stickers
+                  </p>
+                  <p className="font-slab-serif text-xl text-white leading-tight">
+                    {crew.lifetime_sticker_count} / {STICKER_LIFETIME_CAP}
+                  </p>
+                </div>
+              </div>
+
+              {isCreator && (
+                <div className="mb-4">
+                  {crew.lifetime_sticker_count >= STICKER_LIFETIME_CAP ? (
+                    <p className="text-center text-accent font-sans text-sm bg-accent/10 rounded-xl py-3">
+                      Sticker Collection Complete! 🎉
+                    </p>
+                  ) : (
+                    <button
+                      onClick={handleGenerateSticker}
+                      disabled
+                      className="w-full bg-white/5 text-foreground/40 rounded-xl py-3 font-sans font-medium cursor-not-allowed"
+                    >
+                      Coming Soon
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {crew.stickers.length === 0 ? (
+                <p className="text-foreground/40 text-sm font-sans text-center py-4">
+                  No stickers yet
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {crew.stickers.map((sticker) => (
+                    <div key={sticker.id} className="bg-[#121113] rounded-xl p-2">
+                      <img
+                        src={sticker.image_url}
+                        alt="Crew sticker"
+                        className="w-full aspect-square object-cover rounded-lg mb-2"
+                      />
+                      <div className="flex flex-col gap-1.5">
+                        <button
+                          onClick={() => handleDownloadSticker(sticker)}
+                          className="text-xs font-sans text-foreground/70 hover:text-white transition-colors border border-white/10 rounded-lg py-1.5"
+                        >
+                          Download
+                        </button>
+                        {isCreator && (
+                          <button
+                            onClick={() => handleSetAvatar(sticker)}
+                            className="text-xs font-sans text-accent hover:text-accent/80 transition-colors border border-accent/20 rounded-lg py-1.5"
+                          >
+                            Set as Crew Avatar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Non-member CTA ────────────────────────────────────────────── */}
         {!isMember && (

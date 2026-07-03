@@ -16,7 +16,7 @@ export async function GET(
 
     const { data: crew, error: crewError } = await supabase
       .from('crews')
-      .select('id, name, invite_code, is_public, created_by, created_at')
+      .select('id, name, invite_code, is_public, created_by, created_at, avatar_url, sticker_attempts_remaining, lifetime_sticker_count')
       .eq('id', crewId)
       .single()
 
@@ -72,6 +72,12 @@ export async function GET(
           .gte('created_at', crew.created_at)
       : { data: [] as any[] }
 
+    const { data: stickerRows } = await supabase
+      .from('crew_stickers')
+      .select('id, image_url, generated_by, created_at')
+      .eq('crew_id', crewId)
+      .order('created_at', { ascending: false })
+
     const profileMap = new Map((profileRows ?? []).map((p: any) => [p.id, p]))
     const ordersData = orders ?? []
     const lockedInIds = new Set(ordersData.map((o: any) => o.user_id as string))
@@ -99,6 +105,10 @@ export async function GET(
         is_public: crew.is_public ?? false,
         created_by: crew.created_by,
         created_at: crew.created_at,
+        avatar_url: crew.avatar_url ?? null,
+        sticker_attempts_remaining: crew.sticker_attempts_remaining ?? 0,
+        lifetime_sticker_count: crew.lifetime_sticker_count ?? 0,
+        stickers: stickerRows ?? [],
         members,
         total_spend,
         locked_in_count: lockedInIds.size,
