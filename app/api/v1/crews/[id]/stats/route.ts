@@ -69,15 +69,12 @@ export async function GET(
       })
     }
 
-    const memberIds = members.map((m: any) => m.user_id)
-
-    // Sum completed orders placed after the crew was created (scoped to this crew's lifetime)
+    // Sum completed orders attributed to THIS crew specifically
     const { data: orders } = await supabase
       .from('orders')
       .select('user_id, total_amount')
-      .in('user_id', memberIds)
+      .eq('crew_id', crewId)
       .eq('status', 'completed')
-      .gte('created_at', crew.created_at)
 
     const total_spend = (orders ?? []).reduce(
       (sum: number, o: any) => sum + (o.total_amount || 0),
