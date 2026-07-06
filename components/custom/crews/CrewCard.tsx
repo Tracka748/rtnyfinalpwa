@@ -29,10 +29,14 @@ interface Stats {
 interface CrewCardProps {
   crew: Crew
   userId: string
+  index: number
   onToast: (message: string) => void
 }
 
-export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
+const GLOW_COLORS = { mint: "#59FFA0", cyan: "#1AC8ED" } as const
+
+export function CrewCard({ crew, userId, index, onToast }: CrewCardProps) {
+  const glowColor = index % 2 === 0 ? GLOW_COLORS.mint : GLOW_COLORS.cyan
   const [stats, setStats] = useState<Stats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [isPublic, setIsPublic] = useState(crew.is_public ?? false)
@@ -150,7 +154,14 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
   const lockedIn = stats?.locked_in_count ?? 0
 
   return (
-    <div className="bg-[#1A1A1F] rounded-2xl p-5 border border-white/5 space-y-4">
+    <div
+      className="bg-[#1A1A1F] rounded-2xl p-5 border border-white/5 space-y-4"
+      style={{
+        borderTopWidth: "3px",
+        borderTopColor: glowColor,
+        boxShadow: `0 -10px 24px ${glowColor}33, 0 -24px 50px ${glowColor}14`,
+      }}
+    >
       {/* Top row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
@@ -179,11 +190,19 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
         </button>
       </div>
 
-      {/* Avatar stack */}
-      <MemberAvatarStack
-        count={crew.member_count}
-        lockedInCount={lockedIn}
-      />
+      {/* Avatar stack + View Crew */}
+      <div className="flex items-center justify-between gap-2">
+        <MemberAvatarStack
+          count={crew.member_count}
+          lockedInCount={lockedIn}
+        />
+        <Link
+          href={`/crews/${crew.id}`}
+          className="text-accent text-sm font-sans hover:text-accent/80 transition-colors shrink-0"
+        >
+          View Crew →
+        </Link>
+      </div>
 
       {/* Invite More Friends */}
       {effectiveMembers < 7 && (
@@ -233,13 +252,6 @@ export function CrewCard({ crew, userId, onToast }: CrewCardProps) {
         >
           Share
         </button>
-
-        <Link
-          href={`/crews/${crew.id}`}
-          className="text-accent text-sm font-sans hover:text-accent/80 transition-colors"
-        >
-          View Crew →
-        </Link>
       </div>
     </div>
   )

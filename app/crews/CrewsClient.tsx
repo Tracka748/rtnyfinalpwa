@@ -123,11 +123,12 @@ export default function CrewsClient({ userId }: CrewsClientProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {crews.map((crew) => (
+            {crews.map((crew, index) => (
               <CrewCard
                 key={crew.id}
                 crew={crew}
                 userId={userId}
+                index={index}
                 onToast={showToast}
               />
             ))}
