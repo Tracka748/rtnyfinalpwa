@@ -112,6 +112,63 @@ export type Database = {
           },
         ]
       }
+      bundles: {
+        Row: {
+          business_id: string
+          created_at: string
+          description: string | null
+          discount_percent: number | null
+          event_id: string
+          id: string
+          min_tickets: number
+          name: string
+          perks: Json
+          tags: Json
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          description?: string | null
+          discount_percent?: number | null
+          event_id: string
+          id?: string
+          min_tickets?: number
+          name: string
+          perks?: Json
+          tags?: Json
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          description?: string | null
+          discount_percent?: number | null
+          event_id?: string
+          id?: string
+          min_tickets?: number
+          name?: string
+          perks?: Json
+          tags?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundles_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_hours: {
         Row: {
           business_id: string
@@ -305,39 +362,239 @@ export type Database = {
           },
         ]
       }
+      crew_plan_events: {
+        Row: {
+          bundle_id: string | null
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          plan_night_id: string
+          sequence_order: number
+        }
+        Insert: {
+          bundle_id?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          plan_night_id: string
+          sequence_order?: number
+        }
+        Update: {
+          bundle_id?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          plan_night_id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_plan_events_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_plan_events_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_plan_events_plan_night_id_fkey"
+            columns: ["plan_night_id"]
+            isOneToOne: false
+            referencedRelation: "crew_plan_nights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crew_plan_nights: {
+        Row: {
+          captain_id: string
+          created_at: string
+          crew_id: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          captain_id: string
+          created_at?: string
+          crew_id: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          captain_id?: string
+          created_at?: string
+          crew_id?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_plan_nights_captain_id_fkey"
+            columns: ["captain_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_plan_nights_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crew_rsvps: {
+        Row: {
+          created_at: string
+          crew_id: string
+          event_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          crew_id: string
+          event_id: string
+          id?: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          crew_id?: string
+          event_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_rsvps_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_rsvps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crew_stickers: {
+        Row: {
+          created_at: string
+          crew_id: string
+          generated_by: string | null
+          id: string
+          image_url: string
+        }
+        Insert: {
+          created_at?: string
+          crew_id: string
+          generated_by?: string | null
+          id?: string
+          image_url: string
+        }
+        Update: {
+          created_at?: string
+          crew_id?: string
+          generated_by?: string | null
+          id?: string
+          image_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_stickers_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_stickers_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crews: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           created_by: string
+          crew_status: string | null
           description: string | null
           id: string
           invite_code: string | null
           is_private: boolean | null
           is_public: boolean | null
+          lifetime_sticker_count: number
           max_members: number | null
           name: string
+          sticker_attempts_remaining: number
+          total_events: number | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           created_by: string
+          crew_status?: string | null
           description?: string | null
           id?: string
           invite_code?: string | null
           is_private?: boolean | null
           is_public?: boolean | null
+          lifetime_sticker_count?: number
           max_members?: number | null
           name: string
+          sticker_attempts_remaining?: number
+          total_events?: number | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           created_by?: string
+          crew_status?: string | null
           description?: string | null
           id?: string
           invite_code?: string | null
           is_private?: boolean | null
           is_public?: boolean | null
+          lifetime_sticker_count?: number
           max_members?: number | null
           name?: string
+          sticker_attempts_remaining?: number
+          total_events?: number | null
         }
         Relationships: [
           {
@@ -738,6 +995,42 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_partners: {
+        Row: {
+          business_id: string
+          created_at: string
+          event_id: string
+          is_primary: boolean
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          event_id: string
+          is_primary?: boolean
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          event_id?: string
+          is_primary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_partners_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_partners_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -1569,6 +1862,7 @@ export type Database = {
           cancelled_at: string | null
           completed_at: string | null
           created_at: string | null
+          crew_id: string | null
           customer_email: string
           customer_name: string | null
           customer_phone: string | null
@@ -1599,6 +1893,7 @@ export type Database = {
           cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string | null
+          crew_id?: string | null
           customer_email: string
           customer_name?: string | null
           customer_phone?: string | null
@@ -1629,6 +1924,7 @@ export type Database = {
           cancelled_at?: string | null
           completed_at?: string | null
           created_at?: string | null
+          crew_id?: string | null
           customer_email?: string
           customer_name?: string | null
           customer_phone?: string | null
@@ -1657,6 +1953,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orders_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
@@ -1668,6 +1971,157 @@ export type Database = {
             columns: ["promo_code_id"]
             isOneToOne: false
             referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_media: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          media_type: string
+          partner_id: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_type: string
+          partner_id: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_type?: string
+          partner_id?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_media_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_supporters: {
+        Row: {
+          created_at: string
+          id: string
+          partner_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          partner_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          partner_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_supporters_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          active: boolean
+          bio: string | null
+          category: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          cover_image_url: string | null
+          created_at: string
+          display_name: string
+          id: string
+          logo_url: string | null
+          owner_id: string
+          partner_type: string
+          supporter_count: number
+          tagline: string | null
+          updated_at: string
+          vendor_id: string | null
+          venue_id: string | null
+          verified: boolean
+          visible_modules: Json
+          website_url: string | null
+        }
+        Insert: {
+          active?: boolean
+          bio?: string | null
+          category?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          logo_url?: string | null
+          owner_id: string
+          partner_type: string
+          supporter_count?: number
+          tagline?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+          venue_id?: string | null
+          verified?: boolean
+          visible_modules?: Json
+          website_url?: string | null
+        }
+        Update: {
+          active?: boolean
+          bio?: string | null
+          category?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          logo_url?: string | null
+          owner_id?: string
+          partner_type?: string
+          supporter_count?: number
+          tagline?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+          venue_id?: string | null
+          verified?: boolean
+          visible_modules?: Json
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partners_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -1745,6 +2199,7 @@ export type Database = {
           created_at: string | null
           estimated_total: number | null
           event_date: string | null
+          event_subtype: string | null
           event_type: string
           guest_count: string | null
           has_venue: boolean | null
@@ -1757,6 +2212,7 @@ export type Database = {
           time_end: string | null
           time_start: string | null
           user_id: string | null
+          vendor_snapshot: Json | null
         }
         Insert: {
           budget_range?: string | null
@@ -1764,6 +2220,7 @@ export type Database = {
           created_at?: string | null
           estimated_total?: number | null
           event_date?: string | null
+          event_subtype?: string | null
           event_type: string
           guest_count?: string | null
           has_venue?: boolean | null
@@ -1776,6 +2233,7 @@ export type Database = {
           time_end?: string | null
           time_start?: string | null
           user_id?: string | null
+          vendor_snapshot?: Json | null
         }
         Update: {
           budget_range?: string | null
@@ -1783,6 +2241,7 @@ export type Database = {
           created_at?: string | null
           estimated_total?: number | null
           event_date?: string | null
+          event_subtype?: string | null
           event_type?: string
           guest_count?: string | null
           has_venue?: boolean | null
@@ -1795,6 +2254,7 @@ export type Database = {
           time_end?: string | null
           time_start?: string | null
           user_id?: string | null
+          vendor_snapshot?: Json | null
         }
         Relationships: [
           {
@@ -2245,6 +2705,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reviews: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          crew_id: string | null
+          event_id: string | null
+          id: string
+          rating: number | null
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          crew_id?: string | null
+          event_id?: string | null
+          id?: string
+          rating?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          crew_id?: string | null
+          event_id?: string | null
+          id?: string
+          rating?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_day_plans: {
         Row: {

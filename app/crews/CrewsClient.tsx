@@ -19,6 +19,7 @@ export interface Crew {
   description?: string | null
   is_private?: boolean | null
   max_members?: number | null
+  crew_status?: string | null
 }
 
 interface CrewsClientProps {

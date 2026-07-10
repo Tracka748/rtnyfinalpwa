@@ -5,6 +5,10 @@ import Link from "next/link"
 import { UnlockTimeline } from "@/components/custom/crews/UnlockTimeline"
 import { PerkTracker } from "@/components/custom/crews/PerkTracker"
 import { JoinCrewDialog } from "@/components/custom/crews/JoinCrewDialog"
+import { CrewRecommendationsCarousel } from "@/components/custom/crews/CrewRecommendationsCarousel"
+import { getCrewStatusLabel } from "@/components/custom/crews/crew-status"
+import { PlanCrewNightDialog } from "@/components/custom/crews/PlanCrewNightDialog"
+import { CrewPlanNightsList } from "@/components/custom/crews/CrewPlanNightsList"
 
 const AVATAR_COLOR_CLASSES = [
   "bg-[#59FFA0]",
@@ -37,6 +41,7 @@ interface CrewDetail {
   created_by: string
   created_at: string
   avatar_url: string | null
+  crew_status: string | null
   sticker_attempts_remaining: number
   lifetime_sticker_count: number
   stickers: CrewSticker[]
@@ -127,6 +132,8 @@ export default function CrewDetailClient({
   isPrivateLocked,
 }: CrewDetailClientProps) {
   const [joinOpen, setJoinOpen] = useState(false)
+  const [planNightOpen, setPlanNightOpen] = useState(false)
+  const [plansRefreshSignal, setPlansRefreshSignal] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
 
   function showToast(msg: string) {
@@ -253,6 +260,11 @@ export default function CrewDetailClient({
                     Captain
                   </span>
                 )}
+                {getCrewStatusLabel(crew.crew_status) && (
+                  <span className="bg-white/5 text-foreground/40 text-xs font-label rounded-full px-2 py-0.5">
+                    {getCrewStatusLabel(crew.crew_status)}
+                  </span>
+                )}
                 {crew.is_public ? (
                   <span className="bg-accent/10 text-accent text-xs font-label rounded-full px-2 py-0.5">
                     🌐 Public
@@ -285,6 +297,17 @@ export default function CrewDetailClient({
             )}
           </div>
         </div>
+
+        {/* ── Plan Our Crew Night (captain-only) ───────────────────────── */}
+        {isCreator && (
+          <button
+            onClick={() => setPlanNightOpen(true)}
+            className="w-full mb-4 rounded-2xl py-3 px-4 font-sans font-semibold text-black text-sm transition-opacity hover:opacity-90"
+            style={{ background: "linear-gradient(90deg, #59FFA0, #1AC8ED)" }}
+          >
+            🗓️ Plan Our Crew Night
+          </button>
+        )}
 
         {/* ── Stats row ─────────────────────────────────────────────────── */}
         <div className="bg-[#1A1A1F] rounded-2xl p-4 mb-4 grid grid-cols-3 divide-x divide-white/5">
@@ -326,6 +349,14 @@ export default function CrewDetailClient({
             totalMembers={crew.total_members}
           />
         </div>
+
+        {/* ── Recommended For This Crew ─────────────────────────────────── */}
+        {isMember && <CrewRecommendationsCarousel crewId={crew.id} />}
+
+        {/* ── Your Plans ───────────────────────────────────────────────── */}
+        {isMember && (
+          <CrewPlanNightsList crewId={crew.id} refreshSignal={plansRefreshSignal} />
+        )}
 
         {/* ── Members section ───────────────────────────────────────────── */}
         <div className="mb-4">
@@ -487,6 +518,15 @@ export default function CrewDetailClient({
         onSuccess={handleJoinSuccess}
         onToast={showToast}
       />
+      {isCreator && (
+        <PlanCrewNightDialog
+          open={planNightOpen}
+          onOpenChange={setPlanNightOpen}
+          crewId={crew.id}
+          onSuccess={() => setPlansRefreshSignal((n) => n + 1)}
+          onToast={showToast}
+        />
+      )}
       {toast && <Toast message={toast} />}
     </div>
   )

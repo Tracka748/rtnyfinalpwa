@@ -76,6 +76,24 @@ const TRAVEL_MINUTES: Record<string, number> = {
   rideshare: 12,
 }
 
+// ─── Crew status → business tag filter ────────────────────────────────────────
+// college_friends conceptually maps to 'college'/'student', but those tags only
+// exist on events.tags — this route filters businesses only (no events query
+// exists here), so mapping them here would match zero businesses. Left as a
+// no-op until this route incorporates an events-tag path.
+const CREW_STATUS_TAG_MAP: Record<string, string[]> = {
+  family:               ['family_friendly'],
+  couples:              ['date'],
+  friends:              ['social'],
+  coworkers:            ['social', 'casual'],
+  college_friends:      [],
+  sports_team:          [],
+  gaming_group:         [],
+  birthday_group:       [],
+  community_volunteer:  [],
+  club_organization:    [],
+}
+
 // ─── Segment boundaries (minutes since midnight) ──────────────────────────────
 
 const SEGMENT_BOUNDS = {
@@ -100,6 +118,7 @@ export async function GET(request: NextRequest) {
     const energyType      = searchParams.get('energy_type')  // 'relaxed' | 'active' | 'family_fun'
     const tagsParam       = searchParams.get('tags')          // comma-separated mood tags
     const groupType       = searchParams.get('group_type')    // comma-separated: 'solo','couple','friends','family','pet'
+    const crewStatusParam = searchParams.get('crew_status')   // optional: one of the crews.crew_status enum values
     const transportation  = searchParams.get('transportation') ?? 'car'
     const excludeParam    = searchParams.get('exclude')        // comma-separated business_id values to omit
 
@@ -128,6 +147,16 @@ export async function GET(request: NextRequest) {
     }
     if (groupTypes.includes('pet')) {
       groupTagFilters.push('pet_friendly')
+    }
+
+    // crew_status is optional — absent or unrecognized values behave exactly
+    // as if the param weren't passed at all (no auth/validation layer on this
+    // route today, so we stay lenient here too rather than erroring).
+    const crewStatus = crewStatusParam ? crewStatusParam.trim().toLowerCase() : null
+    if (crewStatus && crewStatus in CREW_STATUS_TAG_MAP) {
+      for (const tag of CREW_STATUS_TAG_MAP[crewStatus]) {
+        if (!groupTagFilters.includes(tag)) groupTagFilters.push(tag)
+      }
     }
 
     if (userStart >= userEnd) {
@@ -203,8 +232,9 @@ export async function GET(request: NextRequest) {
         if (!hasMatch) return false
       }
 
-      // 4. Group-type tag filters — OR logic across family_friendly / pet_friendly.
-      //    Only applied when 'family' or 'pet' group types (or family_fun vibe) are active.
+      // 4. Group-type / crew_status tag filters — OR logic across all collected tags
+      //    (family_friendly, pet_friendly, and any crew_status-derived tag).
+      //    Only applied when at least one such filter is active.
       if (groupTagFilters.length > 0) {
         const bizTags = (biz.tags ?? []).map(t => t.toLowerCase())
         const hasMatch = groupTagFilters.some(t => bizTags.includes(t))

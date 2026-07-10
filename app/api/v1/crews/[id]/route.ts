@@ -16,7 +16,7 @@ export async function GET(
 
     const { data: crew, error: crewError } = await supabase
       .from('crews')
-      .select('id, name, invite_code, is_public, created_by, created_at, avatar_url, sticker_attempts_remaining, lifetime_sticker_count')
+      .select('id, name, invite_code, is_public, created_by, created_at, avatar_url, sticker_attempts_remaining, lifetime_sticker_count, crew_status')
       .eq('id', crewId)
       .single()
 
@@ -106,6 +106,7 @@ export async function GET(
         created_by: crew.created_by,
         created_at: crew.created_at,
         avatar_url: crew.avatar_url ?? null,
+        crew_status: (crew as any).crew_status ?? null,
         sticker_attempts_remaining: crew.sticker_attempts_remaining ?? 0,
         lifetime_sticker_count: crew.lifetime_sticker_count ?? 0,
         stickers: stickerRows ?? [],
@@ -123,6 +124,9 @@ export async function GET(
 
 // ─── PATCH /api/v1/crews/[id] ─────────────────────────────────────────────────
 // Required migration: ALTER TABLE crews ADD COLUMN IF NOT EXISTS is_public boolean DEFAULT false;
+// Only is_public is accepted here — crew_status is set once at creation and is
+// permanently locked, so it's deliberately never read from the request body or
+// passed to the update call, even if a client sends it.
 
 export async function PATCH(
   request: Request,

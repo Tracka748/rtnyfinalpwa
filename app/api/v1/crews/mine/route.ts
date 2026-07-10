@@ -32,6 +32,7 @@ export async function GET() {
           invite_code,
           created_by,
           created_at,
+          crew_status,
           crew_members ( count )
         )
       `)

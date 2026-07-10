@@ -10,6 +10,20 @@ function generateInviteCode(): string {
   return randomBytes(3).toString('hex').toUpperCase()
 }
 
+// Must match the DB CHECK constraint on crews.crew_status
+const VALID_CREW_STATUSES = [
+  'family',
+  'couples',
+  'friends',
+  'coworkers',
+  'college_friends',
+  'sports_team',
+  'gaming_group',
+  'birthday_group',
+  'community_volunteer',
+  'club_organization',
+] as const
+
 // ─── POST /api/v1/crews ───────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -30,16 +44,27 @@ export async function POST(request: Request) {
       )
     }
 
-    const { name, description, is_private, max_members } = body as {
+    const { name, description, is_private, max_members, crew_status } = body as {
       name: unknown
       description: unknown
       is_private: unknown
       max_members: unknown
+      crew_status: unknown
     }
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json(
         { success: false, error: 'name is required' },
+        { status: 400 }
+      )
+    }
+
+    if (
+      typeof crew_status !== 'string' ||
+      !(VALID_CREW_STATUSES as readonly string[]).includes(crew_status)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'crew_status is required and must be a valid crew type' },
         { status: 400 }
       )
     }
@@ -56,7 +81,8 @@ export async function POST(request: Request) {
         max_members: typeof max_members === 'number'  ? max_members : null,
         created_by:  user.id,
         invite_code: generateInviteCode(),
-      })
+        crew_status,
+      } as any)
       .select()
       .single()
 

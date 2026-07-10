@@ -7,6 +7,7 @@ import { MemberAvatarStack } from "@/components/custom/crews/MemberAvatarStack"
 import { GroupTabWidget } from "@/components/custom/crews/GroupTabWidget"
 import { PerkTracker } from "@/components/custom/crews/PerkTracker"
 import { UnlockTimeline } from "@/components/custom/crews/UnlockTimeline"
+import { getCrewStatusLabel } from "@/components/custom/crews/crew-status"
 
 interface Crew {
   id: string
@@ -17,6 +18,7 @@ interface Crew {
   user_role: string | null
   is_public?: boolean
   total_events?: number
+  crew_status?: string | null
 }
 
 interface Stats {
@@ -171,6 +173,11 @@ export function CrewCard({ crew, userId, index, onToast }: CrewCardProps) {
           {isCreator && (
             <span className="bg-accent/10 text-accent text-xs font-label rounded-full px-2 py-0.5 shrink-0">
               Captain
+            </span>
+          )}
+          {getCrewStatusLabel(crew.crew_status) && (
+            <span className="bg-white/5 text-foreground/40 text-xs font-label rounded-full px-2 py-0.5 shrink-0">
+              {getCrewStatusLabel(crew.crew_status)}
             </span>
           )}
         </div>

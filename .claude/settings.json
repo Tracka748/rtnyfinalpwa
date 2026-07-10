@@ -4,7 +4,8 @@
       "Bash(node -e ' *)",
       "Bash(npx tsc *)",
       "Bash(grep -E \"CrewCard|CrewsClient\" /tmp_tsc_out.txt)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git stash *)"
     ]
   }
 }
