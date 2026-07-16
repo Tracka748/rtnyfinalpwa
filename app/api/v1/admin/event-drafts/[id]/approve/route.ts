@@ -41,36 +41,30 @@ export async function POST(
       )
     }
 
-    // 1. Update draft status to approved
-    const { error: updateError } = await supabase
-      .from('event_drafts')
-      .update({
-        status: 'approved',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
+    const ticketPriceEntries = Object.entries(draft.ticket_prices || {}) as [
+      string,
+      { name: string; price: number; quantity: number }
+    ][]
+    const totalTickets = ticketPriceEntries.reduce(
+      (sum, [, tt]) => sum + (Number(tt.quantity) || 0),
+      0
+    )
 
-    if (updateError) {
-      console.error('Failed to update draft:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to update draft status' },
-        { status: 500 }
-      )
-    }
-
-    // 2. Publish to events table
+    // 1. Publish to events table (draft status stays 'pending_review' until this
+    // and the ticket_types insert below both succeed)
     const { data: publishedEvent, error: publishError } = await supabase
       .from('events')
       .insert({
         name: draft.name,
-        description: draft.description,
+        description: draft.description || '',
         category: draft.category || 'nightlife',
         event_date: draft.event_date,
         venue_id: draft.venue_id,
+        custom_address: draft.venue_name || null,
         flyer_image_url: draft.flyer_image_url,
         ticket_prices: draft.ticket_prices,
         tier_discounts: draft.tier_discounts,
-        total_tickets: draft.total_tickets || 100,
+        total_tickets: totalTickets,
         tickets_sold: 0,
         status: 'active',
         featured: false,
@@ -89,6 +83,56 @@ export async function POST(
         { error: 'Failed to publish event', details: publishError.message },
         { status: 500 }
       )
+    }
+
+    // 2. Insert one ticket_types row per entry in draft.ticket_prices
+    const ticketTypeRows = ticketPriceEntries.map(([, tt]) => ({
+      event_id: publishedEvent.id,
+      name: tt.name,
+      price: tt.price,
+      quantity: tt.quantity,
+      remaining: tt.quantity,
+      description: null,
+    }))
+
+    const { error: ticketTypesError } = await supabase
+      .from('ticket_types')
+      .insert(ticketTypeRows)
+
+    if (ticketTypesError) {
+      console.error('Failed to create ticket types, rolling back published event:', ticketTypesError)
+      const { error: rollbackError } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', publishedEvent.id)
+
+      if (rollbackError) {
+        console.error('Failed to roll back published event after ticket_types failure:', rollbackError)
+      }
+
+      return NextResponse.json(
+        { error: 'Failed to create ticket types', details: ticketTypesError.message },
+        { status: 500 }
+      )
+    }
+
+    // 3. Only now mark the draft approved — both inserts succeeded
+    const { error: updateError } = await supabase
+      .from('event_drafts')
+      .update({
+        status: 'approved',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+
+    if (updateError) {
+      // Event is live and has ticket types; only the draft's status is stale.
+      console.error('Event published successfully but failed to update draft status:', updateError)
+      return NextResponse.json({
+        success: true,
+        data: publishedEvent,
+        message: 'Event approved and published, but the draft status failed to update — it may still show as pending review.'
+      })
     }
 
     // TODO: Send approval email
