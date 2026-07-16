@@ -44,6 +44,11 @@ const CATEGORY_CONFIG: Record<EventCategory, { icon: string; label: string }> = 
 interface TicketType {
   name: string;
   price: number;
+  quantity: number;
+}
+
+function slugifyTicketName(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '_');
 }
 
 function CreateEventForm() {
@@ -59,6 +64,7 @@ function CreateEventForm() {
   const [loadingDraft, setLoadingDraft] = useState(!!draftId);
   const [venues, setVenues] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [ticketNameError, setTicketNameError] = useState<string | null>(null);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -75,9 +81,8 @@ function CreateEventForm() {
     custom_venue_address: '',
     
     // Tickets
-    total_tickets: 100,
     ticket_types: [
-      { name: 'General Admission', price: 25 },
+      { name: 'General Admission', price: 25, quantity: 100 },
     ] as TicketType[],
     sale_start_date: '',
     sale_end_date: '',
@@ -114,11 +119,12 @@ function CreateEventForm() {
 
           // Convert ticket_prices object back to ticket_types array
           const ticketTypes: TicketType[] = draft.ticket_prices
-            ? Object.entries(draft.ticket_prices).map(([name, price]) => ({
-                name: name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-                price: price as number,
+            ? Object.entries(draft.ticket_prices).map(([slug, tt]: [string, any]) => ({
+                name: tt.name ?? slug.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                price: tt.price,
+                quantity: tt.quantity,
               }))
-            : [{ name: 'General Admission', price: 25 }];
+            : [{ name: 'General Admission', price: 25, quantity: 100 }];
 
           setFormData(prev => ({
             ...prev,
@@ -130,7 +136,6 @@ function CreateEventForm() {
             venue_id: draft.venue_id || '',
             custom_venue_name: draft.venue_name || '',
             custom_venue_address: '',
-            total_tickets: draft.total_tickets || 100,
             ticket_types: ticketTypes,
             sale_start_date: draft.sale_start_date || '',
             sale_end_date: draft.sale_end_date || '',
@@ -191,7 +196,7 @@ function CreateEventForm() {
       ...formData,
       ticket_types: [
         ...formData.ticket_types,
-        { name: '', price: 0 },
+        { name: '', price: 0, quantity: 0 },
       ],
     });
   };
@@ -205,7 +210,7 @@ function CreateEventForm() {
   };
 
   // Update ticket type
-  const updateTicketType = (index: number, field: 'name' | 'price', value: string | number) => {
+  const updateTicketType = (index: number, field: 'name' | 'price' | 'quantity', value: string | number) => {
     const updated = [...formData.ticket_types];
     updated[index] = { ...updated[index], [field]: value };
     setFormData({ ...formData, ticket_types: updated });
@@ -213,6 +218,18 @@ function CreateEventForm() {
 
   // Submit form
   const handleSubmit = async () => {
+    // Block submission if two ticket type names normalize to the same slug
+    const slugMap = new Map<string, string>();
+    for (const tt of formData.ticket_types) {
+      const slug = slugifyTicketName(tt.name);
+      if (slugMap.has(slug)) {
+        setTicketNameError(`"${slugMap.get(slug)}" and "${tt.name}" both resolve to the same ticket type identifier ("${slug}"). Please use unique names.`);
+        return;
+      }
+      slugMap.set(slug, tt.name);
+    }
+    setTicketNameError(null);
+
     setLoading(true);
 
     try {
@@ -263,11 +280,11 @@ function CreateEventForm() {
         venue_id: formData.venue_id || null,
         venue_name: formData.custom_venue_name || null,
         venue_address: formData.custom_venue_address || null,
-        total_tickets: formData.total_tickets,
+        total_tickets: formData.ticket_types.reduce((sum, tt) => sum + (Number(tt.quantity) || 0), 0),
         ticket_prices: formData.ticket_types.reduce((acc, tt) => {
-          acc[tt.name.toLowerCase().replace(/\s+/g, '_')] = tt.price;
+          acc[slugifyTicketName(tt.name)] = { name: tt.name, price: tt.price, quantity: tt.quantity };
           return acc;
-        }, {} as Record<string, number>),
+        }, {} as Record<string, { name: string; price: number; quantity: number }>),
         sale_start_date: formData.sale_start_date,
         sale_end_date: formData.sale_end_date,
         flyer_image_url,
@@ -276,6 +293,7 @@ function CreateEventForm() {
           basic: 10,
           promoter: 15,
         },
+        submit_for_review: true,
       };
 
       let res;
@@ -568,19 +586,14 @@ function CreateEventForm() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold mb-6">Tickets & Pricing</h2>
 
-              {/* Total Capacity */}
+              {/* Total Capacity (computed from ticket type quantities) */}
               <div>
                 <label className="block text-sm font-semibold mb-2">
-                  Total Tickets Available *
+                  Total Tickets Available
                 </label>
-                <input
-                  type="number"
-                  required
-                  min={1}
-                  value={formData.total_tickets}
-                  onChange={(e) => setFormData({ ...formData, total_tickets: parseInt(e.target.value) })}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
-                />
+                <div className="w-full px-4 py-3 bg-background border border-border rounded-xl text-[#7DD8E8]">
+                  {formData.ticket_types.reduce((sum, tt) => sum + (Number(tt.quantity) || 0), 0)} tickets (sum of ticket type quantities below)
+                </div>
               </div>
 
               {/* Ticket Types */}
@@ -622,6 +635,16 @@ function CreateEventForm() {
                           className="w-20 bg-transparent focus:outline-none"
                         />
                       </div>
+                      <input
+                        type="number"
+                        required
+                        min={0}
+                        step={1}
+                        placeholder="Qty"
+                        value={ticket.quantity || ''}
+                        onChange={(e) => updateTicketType(index, 'quantity', parseInt(e.target.value) || 0)}
+                        className="w-24 px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
+                      />
                       {formData.ticket_types.length > 1 && (
                         <button
                           type="button"
@@ -751,16 +774,22 @@ function CreateEventForm() {
                 <div className="p-4 bg-background rounded-xl">
                   <div className="text-sm font-semibold text-[#7DD8E8] mb-2">TICKETS</div>
                   <div className="space-y-1">
-                    <div><strong>Total Capacity:</strong> {formData.total_tickets} tickets</div>
+                    <div><strong>Total Capacity:</strong> {formData.ticket_types.reduce((sum, tt) => sum + (Number(tt.quantity) || 0), 0)} tickets</div>
                     <div><strong>Ticket Types:</strong></div>
                     <ul className="list-disc list-inside ml-4">
                       {formData.ticket_types.map((tt, i) => (
-                        <li key={i}>{tt.name}: ${tt.price.toFixed(2)}</li>
+                        <li key={i}>{tt.name}: ${tt.price.toFixed(2)} ({tt.quantity} available)</li>
                       ))}
                     </ul>
                     <div className="mt-2"><strong>Sale Period:</strong> {formData.sale_start_date} to {formData.sale_end_date}</div>
                   </div>
                 </div>
+
+                {ticketNameError && (
+                  <div className="p-4 bg-red-500/10 border border-red-500/40 rounded-xl text-sm text-red-400">
+                    {ticketNameError}
+                  </div>
+                )}
 
                 {/* Image */}
                 {formData.flyer_preview && (
