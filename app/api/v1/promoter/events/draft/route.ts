@@ -120,7 +120,9 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      for (const [type, price] of priceEntries) {
+      for (const [type, value] of priceEntries) {
+        const { price, quantity } = value as { price: number; quantity: number }
+
         if (typeof price !== 'number' || price <= 0) {
           console.error(`❌ Invalid price for ${type}:`, price)
           return NextResponse.json(
@@ -128,6 +130,18 @@ export async function POST(request: NextRequest) {
               error: `Invalid price for ticket type "${type}". Must be a positive number.`,
               code: 'VALIDATION_ERROR',
               received: price
+            },
+            { status: 400 }
+          )
+        }
+
+        if (typeof quantity !== 'number' || quantity < 0) {
+          console.error(`❌ Invalid quantity for ${type}:`, quantity)
+          return NextResponse.json(
+            {
+              error: `Invalid quantity for ticket type "${type}". Must be a non-negative number.`,
+              code: 'VALIDATION_ERROR',
+              received: quantity
             },
             { status: 400 }
           )
@@ -172,7 +186,9 @@ export async function POST(request: NextRequest) {
 
       // Validate ticket_prices types only if provided
       if (body.ticket_prices && typeof body.ticket_prices === 'object') {
-        for (const [type, price] of Object.entries(body.ticket_prices)) {
+        for (const [type, value] of Object.entries(body.ticket_prices)) {
+          const { price, quantity } = value as { price: number; quantity: number }
+
           if (typeof price !== 'number' || price <= 0) {
             console.error(`❌ Invalid price for ${type}:`, price)
             return NextResponse.json(
@@ -180,6 +196,18 @@ export async function POST(request: NextRequest) {
                 error: `Invalid price for ticket type "${type}". Must be a positive number.`,
                 code: 'VALIDATION_ERROR',
                 received: price
+              },
+              { status: 400 }
+            )
+          }
+
+          if (typeof quantity !== 'number' || quantity < 0) {
+            console.error(`❌ Invalid quantity for ${type}:`, quantity)
+            return NextResponse.json(
+              {
+                error: `Invalid quantity for ticket type "${type}". Must be a non-negative number.`,
+                code: 'VALIDATION_ERROR',
+                received: quantity
               },
               { status: 400 }
             )
