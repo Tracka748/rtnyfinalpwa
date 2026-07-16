@@ -87,6 +87,8 @@ export async function PATCH(
 
     const body = await request.json();
 
+    const allowedFields = ['name', 'description', 'category', 'event_date', 'venue_id', 'venue_name', 'ticket_prices', 'flyer_image_url', 'tier_discounts'];
+
     // Handle submit for review
     if (body.submit_for_review) {
       if (existingDraft.status !== 'draft') {
@@ -96,13 +98,23 @@ export async function PATCH(
         );
       }
 
-      // Validate required fields on the existing draft
+      // Merge incoming body fields onto the existing draft before validating
+      const merged: Record<string, any> = { ...existingDraft };
+      const changedFields: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (body[field] !== undefined) {
+          merged[field] = body[field];
+          changedFields[field] = body[field];
+        }
+      }
+
+      // Validate required fields on the merged (body + existing) draft
       const missing: string[] = [];
-      if (!existingDraft.name) missing.push('name');
-      if (!existingDraft.category) missing.push('category');
-      if (!existingDraft.event_date) missing.push('event_date');
-      if (!existingDraft.venue_id && !existingDraft.venue_name) missing.push('venue');
-      if (!existingDraft.ticket_prices || Object.keys(existingDraft.ticket_prices).length === 0) missing.push('ticket_prices');
+      if (!merged.name) missing.push('name');
+      if (!merged.category) missing.push('category');
+      if (!merged.event_date) missing.push('event_date');
+      if (!merged.venue_id && !merged.venue_name) missing.push('venue');
+      if (!merged.ticket_prices || Object.keys(merged.ticket_prices).length === 0) missing.push('ticket_prices');
 
       if (missing.length > 0) {
         return NextResponse.json(
@@ -113,7 +125,7 @@ export async function PATCH(
 
       const { data, error } = await supabase
         .from('event_drafts')
-        .update({ status: 'pending_review', updated_at: new Date().toISOString() })
+        .update({ ...changedFields, status: 'pending_review', updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();
@@ -131,7 +143,6 @@ export async function PATCH(
     }
 
     // Generic field updates (for future use)
-    const allowedFields = ['name', 'description', 'category', 'event_date', 'venue_id', 'venue_name', 'ticket_prices', 'flyer_image_url', 'tier_discounts'];
     const updates: Record<string, any> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
