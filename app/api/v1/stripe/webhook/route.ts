@@ -227,6 +227,53 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
     console.log(`✅ Created ${createdTickets.length} tickets for order ${order.id}`)
 
+    // Decrement ticket_types.remaining now that payment is confirmed and tickets exist.
+    // Non-blocking: an oversell or inventory-update failure must never undo tickets
+    // that have already been paid for and issued — it's a signal to handle manually.
+    try {
+      for (const item of parsedItems) {
+        if (!item.ticketTypeId) continue
+
+        // Fetch fresh — don't trust the price-verification lookup above, which only
+        // selected `price` and ran before payment was confirmed.
+        const { data: ticketType, error: ticketTypeError } = await supabaseAdmin
+          .from('ticket_types')
+          .select('id, remaining, name')
+          .eq('id', item.ticketTypeId)
+          .single()
+
+        if (ticketTypeError || !ticketType) {
+          console.error(`⚠️ Failed to fetch ticket_type ${item.ticketTypeId} for inventory decrement:`, ticketTypeError)
+          continue
+        }
+
+        const currentRemaining = Number(ticketType.remaining)
+        const quantityPurchased = Number(item.quantity)
+
+        if (currentRemaining < quantityPurchased) {
+          console.error(`Oversold: ticket_type ${ticketType.id} had ${currentRemaining} remaining, order requested ${quantityPurchased}`)
+        }
+
+        const newRemaining = currentRemaining - quantityPurchased
+
+        const { error: updateError } = await supabaseAdmin
+          .from('ticket_types')
+          .update({
+            remaining: newRemaining,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ticketType.id)
+
+        if (updateError) {
+          console.error(`❌ Failed to decrement remaining for ticket_type ${ticketType.id}:`, updateError)
+        } else {
+          console.log(`📊 Decremented ${ticketType.name}: ${currentRemaining} → ${newRemaining}`)
+        }
+      }
+    } catch (inventoryError) {
+      console.error('⚠️ Ticket inventory decrement failed:', inventoryError)
+    }
+
     // Fetch event and venue for email
     const { data: eventData } = await supabaseAdmin
       .from('events')
