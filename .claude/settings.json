@@ -27,7 +27,11 @@
       "Bash(node \"C:\\\\Users\\\\Stock\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Stock-rtnyfinalpwa\\\\1f4b9898-9ae5-4f47-86f1-67eafbdd0a52\\\\scratchpad\\\\flyer-coverage2.mjs\")",
       "Bash(node \"C:\\\\Users\\\\Stock\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Stock-rtnyfinalpwa\\\\1f4b9898-9ae5-4f47-86f1-67eafbdd0a52\\\\scratchpad\\\\flyer-coverage3.mjs\")",
       "Bash(echo \"grep_exit=$?\")",
-      "Bash(curl -s -o /dev/null -w \"http_code=%{http_code}\\\\n\" --max-time 15 \"http://localhost:3000/partners/a273cc3b-6b2c-45ad-975e-f5cf34070839\")"
+      "Bash(curl -s -o /dev/null -w \"http_code=%{http_code}\\\\n\" --max-time 15 \"http://localhost:3000/partners/a273cc3b-6b2c-45ad-975e-f5cf34070839\")",
+      "Bash(grep -iE \"\\\\.sql$\")",
+      "Bash(supabase db *)",
+      "Bash(cat /tmp/swagger.json)",
+      "Read(//tmp/**)"
     ]
   }
 }
