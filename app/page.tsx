@@ -186,7 +186,7 @@ export default function HomePage() {
       <FeaturedAdBanner />
 
       {/* Rochester Sports */}
-      <RochesterSportsSection />
+      <RochesterSportsSection events={homepageEvents.sports ?? []} />
 
       {/* Get Active */}
       <GetActiveSection />

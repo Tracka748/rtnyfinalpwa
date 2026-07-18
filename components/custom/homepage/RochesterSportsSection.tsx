@@ -1,56 +1,22 @@
 "use client"
 
 import SectionTitleStrip from '@/components/custom/homepage/SectionTitleStrip'
+import type { Event } from '@/lib/homepage/types'
+import { DEFAULT_EVENT_IMAGE, getEventImage } from '@/lib/image-utils'
 
-const SPORTS_EVENTS = [
-  {
-    id: "s1",
-    emoji: "⚾",
-    name: "Rochester Red Wings vs. Syracuse Mets",
-    venue: "Frontier Field",
-    date: "Jun 14",
-    category: "Baseball",
-    gradient: "from-[#003087] to-[#CC0000]",
-  },
-  {
-    id: "s2",
-    emoji: "🥍",
-    name: "Rochester Knighthawks vs. Albany FireWolves",
-    venue: "Blue Cross Arena",
-    date: "Jun 21",
-    category: "Lacrosse",
-    gradient: "from-[#1E3A5F] to-[#FF6B00]",
-  },
-  {
-    id: "s3",
-    emoji: "⚽",
-    name: "Rochester FC vs. Hartford",
-    venue: "Sahlen's Stadium",
-    date: "Jun 28",
-    category: "Soccer",
-    gradient: "from-[#006400] to-[#1A472A]",
-  },
-  {
-    id: "s4",
-    emoji: "🛼",
-    name: "ROC City Roller Derby Bout",
-    venue: "Main Street Armory",
-    date: "Jul 5",
-    category: "Roller Derby",
-    gradient: "from-[#4A0072] to-[#8B0000]",
-  },
-  {
-    id: "s5",
-    emoji: "🏒",
-    name: "Buffalo Sabres Watch Party",
-    venue: "Dinosaur Bar-B-Que",
-    date: "Jun 18",
-    category: "NHL Watch",
-    gradient: "from-[#003087] to-[#FFB800]",
-  },
+interface RochesterSportsSectionProps {
+  events: Event[]
+}
+
+const CARD_ACCENTS = [
+  { emoji: "⚾", gradient: "from-[#003087] to-[#CC0000]" },
+  { emoji: "🥍", gradient: "from-[#1E3A5F] to-[#FF6B00]" },
+  { emoji: "⚽", gradient: "from-[#006400] to-[#1A472A]" },
+  { emoji: "🛼", gradient: "from-[#4A0072] to-[#8B0000]" },
+  { emoji: "🏒", gradient: "from-[#003087] to-[#FFB800]" },
 ]
 
-export default function RochesterSportsSection() {
+export default function RochesterSportsSection({ events }: RochesterSportsSectionProps) {
   return (
     <section className="w-full bg-[#121113]">
       <SectionTitleStrip
@@ -68,17 +34,34 @@ export default function RochesterSportsSection() {
       >
         <style>{`.sports-row::-webkit-scrollbar { display: none; }`}</style>
 
-        {SPORTS_EVENTS.map((event) => (
+        {events.map((event, index) => {
+          const accent = CARD_ACCENTS[index % CARD_ACCENTS.length]
+          return (
           <div
             key={event.id}
-            className={`relative w-[220px] h-[280px] shrink-0 snap-start rounded-xl overflow-hidden bg-gradient-to-br ${event.gradient} cursor-pointer group`}
+            className="relative w-[220px] h-[280px] shrink-0 snap-start rounded-xl overflow-hidden cursor-pointer group"
           >
+            {/* Flyer image background */}
+            <img
+              src={getEventImage(event.image, event.category)}
+              alt={event.title}
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = DEFAULT_EVENT_IMAGE
+              }}
+            />
+
+            {/* Color accent overlay — reduced opacity so the photo shows through */}
+            <div
+              className={`absolute inset-0 z-[1] bg-gradient-to-br ${accent.gradient} opacity-40`}
+            />
+
             {/* Sport emoji badge — top left */}
             <div
               className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full flex items-center justify-center text-lg"
               style={{ background: "rgba(0,0,0,0.45)", border: "1.5px solid #59FFA0" }}
             >
-              {event.emoji}
+              {accent.emoji}
             </div>
 
             {/* Bottom gradient overlay */}
@@ -110,7 +93,7 @@ export default function RochesterSportsSection() {
                 className="text-[15px] font-bold text-[#F9FDFF] leading-snug line-clamp-2 mb-2"
                 style={{ fontFamily: "Rokkitt, serif" }}
               >
-                {event.name}
+                {event.title}
               </h3>
 
               {/* Venue + date */}
@@ -130,12 +113,13 @@ export default function RochesterSportsSection() {
                     fontWeight: 600,
                   }}
                 >
-                  {event.date}
+                  {event.time}
                 </span>
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
       </div>
     </section>
