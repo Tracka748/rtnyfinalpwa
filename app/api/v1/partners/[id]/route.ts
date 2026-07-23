@@ -48,7 +48,7 @@ export async function GET(
     if (modules?.upcoming_events && partner.venue_id) {
       const { data: events, error: eventsError } = await supabase
         .from('events')
-        .select('*')
+        .select('*, ticket_types (price)')
         .eq('venue_id', partner.venue_id)
         .gte('event_date', new Date().toISOString())
         .order('event_date', { ascending: true })

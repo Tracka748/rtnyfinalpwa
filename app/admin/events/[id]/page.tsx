@@ -45,7 +45,7 @@ interface EventDetail {
   status: string;
   total_tickets?: number;
   tickets_sold?: number;
-  ticket_prices?: { general?: number };
+  ticket_types?: { price: number }[];
   flyer_image_url?: string;
   venue?: Venue | null;
   custom_address?: string | null;
@@ -113,6 +113,14 @@ function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit',
   });
+}
+
+function getLowestPrice(ticketTypes: { price: number }[] | null | undefined): number | undefined {
+  if (!ticketTypes || !Array.isArray(ticketTypes) || ticketTypes.length === 0) return undefined;
+  const prices = ticketTypes
+    .map((t) => (typeof t?.price === 'number' ? t.price : null))
+    .filter((p): p is number => p !== null);
+  return prices.length > 0 ? Math.min(...prices) : undefined;
 }
 
 function formatRunDate(dateStr: string) {
@@ -626,7 +634,7 @@ export default function AdminEventDetailPage({
 
   const statusCls = STATUS_COLORS[event.status] ?? 'bg-white/5 text-white border-white/10';
   const venueName = event.venue?.name ?? 'TBA';
-  const ticketPrice = event.ticket_prices?.general;
+  const ticketPrice = getLowestPrice(event.ticket_types);
   const isEarlyBird = newTicket.preset === 'early_bird';
   const reachDisplay = reach != null ? `~${reach.toLocaleString()}` : '…';
 

@@ -31,11 +31,11 @@ function formatEventDateTime(dateStr: string) {
   return `${date} • ${time}`
 }
 
-function getLowestPrice(ticketPrices: unknown): string | undefined {
-  if (!ticketPrices || typeof ticketPrices !== 'object') return undefined
-  const prices = Object.values(ticketPrices as Record<string, unknown>).filter(
-    (p): p is number => typeof p === 'number'
-  )
+function getLowestPrice(ticketTypes: { price: number }[] | null | undefined): string | undefined {
+  if (!ticketTypes || !Array.isArray(ticketTypes) || ticketTypes.length === 0) return undefined
+  const prices = ticketTypes
+    .map((t) => (typeof t?.price === 'number' ? t.price : null))
+    .filter((p): p is number => p !== null)
   if (prices.length === 0) return undefined
   const lowest = Math.min(...prices)
   return lowest === 0 ? 'Free' : `From $${lowest % 1 === 0 ? lowest : lowest.toFixed(2)}`
@@ -318,7 +318,7 @@ export default async function PartnerProfilePage({ params }: PageProps) {
                     name: event.name,
                     venue: venue?.name ?? partner.display_name ?? partner.name,
                     time: formatEventDateTime(event.event_date),
-                    price: getLowestPrice(event.ticket_prices),
+                    price: getLowestPrice(event.ticket_types),
                     category: (event.category as EventCategory) ?? 'nightlife',
                     imageUrl: event.flyer_image_url ?? null,
                     description: event.description,

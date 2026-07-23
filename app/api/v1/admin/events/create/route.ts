@@ -105,6 +105,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // Mirror the ticket_types insert done in event-drafts/[id]/approve so
+    // admin-created events also get purchasable inventory, not just the
+    // deprecated ticket_prices JSON.
+    const ticketTypeQuantity = total_tickets ? Number(total_tickets) : 0;
+    const { error: ticketTypesError } = await supabase
+      .from('ticket_types')
+      .insert({
+        event_id: data.id,
+        name: 'General',
+        price: ticketPricesJson.general,
+        quantity: ticketTypeQuantity,
+        remaining: ticketTypeQuantity,
+        description: null,
+      });
+
+    if (ticketTypesError) {
+      console.error('Failed to create ticket types, rolling back created event:', ticketTypesError);
+      const { error: rollbackError } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', data.id);
+
+      if (rollbackError) {
+        console.error('Failed to roll back created event after ticket_types failure:', rollbackError);
+      }
+
+      return NextResponse.json(
+        { error: 'Failed to create ticket types', details: ticketTypesError.message, success: false },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: { event_id: data.id },

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
 import { format } from 'date-fns'
-import type { Json } from '@/types/database'
 
 type HomepageEvent = {
   id: string
@@ -16,12 +15,12 @@ type HomepageEvent = {
   description: string
 }
 
-function getLowestPrice(ticketPrices: Json): string {
-  if (!ticketPrices || !Array.isArray(ticketPrices) || ticketPrices.length === 0) {
+function getLowestPrice(ticketTypes: { price: number }[] | null | undefined): string {
+  if (!ticketTypes || !Array.isArray(ticketTypes) || ticketTypes.length === 0) {
     return 'TBA'
   }
-  const prices = ticketPrices
-    .map((t: any) => (typeof t?.price === 'number' ? t.price : null))
+  const prices = ticketTypes
+    .map((t) => (typeof t?.price === 'number' ? t.price : null))
     .filter((p): p is number => p !== null)
   if (prices.length === 0) return 'TBA'
   const min = Math.min(...prices)
@@ -39,7 +38,7 @@ function mapRow(row: any): HomepageEvent {
     time: row.event_date
       ? format(new Date(row.event_date), 'EEE • h:mm a')
       : '',
-    price: getLowestPrice(row.ticket_prices),
+    price: getLowestPrice(row.ticket_types),
     points: 100,
     date: row.event_date,
     description: row.description ?? '',
@@ -67,7 +66,7 @@ export async function GET() {
         const limit = CATEGORY_LIMITS[category]
         const { data, error } = await supabase
           .from('events')
-          .select('id, name, category, event_date, flyer_image_url, description, ticket_prices, venues(name)')
+          .select('id, name, category, event_date, flyer_image_url, description, ticket_prices, ticket_types(price), venues(name)')
           .eq('status', 'active')
           .eq('category', category)
           .order('event_date', { ascending: true })

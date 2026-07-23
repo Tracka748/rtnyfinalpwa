@@ -61,6 +61,14 @@ function formatEventTime(dateStr: string): string {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+function getLowestPrice(ticketTypes: { price: number }[] | null | undefined): number | null {
+  if (!ticketTypes || !Array.isArray(ticketTypes) || ticketTypes.length === 0) return null;
+  const prices = ticketTypes
+    .map((t) => (typeof t?.price === 'number' ? t.price : null))
+    .filter((p): p is number => p !== null);
+  return prices.length > 0 ? Math.min(...prices) : null;
+}
+
 function buildInviteHtml(params: {
   eventId: string;
   eventName: string;
@@ -243,7 +251,7 @@ export async function POST(request: Request) {
     // Query 3: event + venue details
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('*')
+      .select('*, ticket_types (price)')
       .eq('id', event_id)
       .single();
 
@@ -342,7 +350,7 @@ export async function POST(request: Request) {
     // Build email content
     const venueName = venue?.name ?? 'TBA';
     const venueAddress = venue?.address ?? '';
-    const ticketPrice = event.ticket_prices?.general ?? null;
+    const ticketPrice = getLowestPrice(event.ticket_types);
     const emailSubject =
       subject ?? `You're Invited: ${event.name} at ${venueName}`;
 

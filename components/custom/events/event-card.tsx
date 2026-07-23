@@ -55,6 +55,7 @@ interface EventCardProps {
     event_date: string;
     flyer_image_url: string | null;
     ticket_prices: any;
+    ticket_types?: { price: number }[];
     total_tickets: number;
     tickets_sold: number;
     featured: boolean;
@@ -74,9 +75,11 @@ export function EventCard({ event, isSaved = false, onToggleSave }: EventCardPro
 
   // Calculate lowest price
   const getLowestPrice = () => {
-    if (!event.ticket_prices) return null;
-    const prices = Object.values(event.ticket_prices).filter(p => typeof p === 'number');
-    return prices.length > 0 ? Math.min(...prices as number[]) : null;
+    if (!event.ticket_types || event.ticket_types.length === 0) return null;
+    const prices = event.ticket_types
+      .map(t => t.price)
+      .filter(p => typeof p === 'number');
+    return prices.length > 0 ? Math.min(...prices) : null;
   };
 
   const lowestPrice = getLowestPrice();
