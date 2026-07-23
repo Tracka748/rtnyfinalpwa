@@ -1,6 +1,6 @@
 // app/dashboard/page.tsx
 import { getCurrentUser } from "@/lib/auth/get-user"
-import { createSupabaseServer } from "@/lib/supabase"
+import { createSupabaseServer, createSupabaseAdmin } from "@/lib/supabase"
 import { redirect } from "next/navigation"
 import { LogoutButton } from "@/components/custom/auth/logout-button"
 import { SavedDayPlans } from "@/components/custom/dashboard/SavedDayPlans"
@@ -31,7 +31,8 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(5)
 
-  const { data: crewMemberships } = await supabase
+  const supabaseAdmin = createSupabaseAdmin()
+  const { data: crewMemberships } = await supabaseAdmin
     .from('crew_members')
     .select('crew:crews(id, name, invite_code, crew_members(count))')
     .eq('user_id', user!.id)
