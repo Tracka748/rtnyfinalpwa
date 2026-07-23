@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkIsAdmin } from '@/lib/admin-auth';
 
 export async function POST(req: Request) {
   try {
@@ -25,10 +26,13 @@ export async function POST(req: Request) {
       .single();
 
     if (!userData?.is_promoter) {
-      return NextResponse.json(
-        { error: 'Only approved promoters can upload flyers' },
-        { status: 403 }
-      );
+      const adminCheck = await checkIsAdmin();
+      if (adminCheck.error) {
+        return NextResponse.json(
+          { error: 'Only approved promoters can upload flyers' },
+          { status: 403 }
+        );
+      }
     }
 
     // Parse multipart form data

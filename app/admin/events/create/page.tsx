@@ -117,7 +117,8 @@ export default function AdminCreateEventPage() {
   const [category, setCategory] = useState('');
   const [totalTickets, setTotalTickets] = useState('');
   const [ticketPrice, setTicketPrice] = useState('');
-  const [flyerImageUrl, setFlyerImageUrl] = useState('');
+  const [flyerImage, setFlyerImage] = useState<File | null>(null);
+  const [flyerPreview, setFlyerPreview] = useState('');
   const [status, setStatus] = useState('active');
 
   // Audience
@@ -203,6 +204,26 @@ export default function AdminCreateEventPage() {
     setter(list.includes(value) ? list.filter((x) => x !== value) : [...list, value]);
   }
 
+  // ── Flyer image ───────────────────────────────────────────────────────────
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image must be less than 5MB');
+        return;
+      }
+
+      setFlyerImage(file);
+      setFlyerPreview(URL.createObjectURL(file));
+    }
+  }
+
   // ── Submit ────────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
@@ -211,6 +232,43 @@ export default function AdminCreateEventPage() {
     setToast(null);
 
     try {
+      // Upload flyer image if one was selected
+      let flyerImageUrl = '';
+      if (flyerImage) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', flyerImage);
+
+        try {
+          const uploadRes = await fetch('/api/v1/upload/flyer', {
+            method: 'POST',
+            body: uploadFormData,
+          });
+
+          if (!uploadRes.ok) {
+            const errorData = await uploadRes.json().catch(() => ({}));
+            throw new Error(errorData.error || `Upload failed (${uploadRes.status})`);
+          }
+
+          const uploadData = await uploadRes.json();
+          if (!uploadData.success) {
+            throw new Error(uploadData.error || 'Image upload failed');
+          }
+          flyerImageUrl = uploadData.data?.url || uploadData.url || '';
+        } catch (uploadError) {
+          console.error('Image upload error:', uploadError);
+          if (uploadError instanceof TypeError && uploadError.message.includes('fetch')) {
+            // Network error - endpoint unreachable
+            const skipImage = confirm('Image upload service unavailable. Continue without image?');
+            if (!skipImage) {
+              setSubmitting(false);
+              return;
+            }
+          } else {
+            throw uploadError;
+          }
+        }
+      }
+
       // Combine date + time into a single ISO datetime string
       const combinedEventDate = startTime
         ? `${eventDate}T${startTime}:00`
@@ -471,18 +529,45 @@ export default function AdminCreateEventPage() {
               </div>
             </div>
 
-            {/* Flyer Image URL */}
+            {/* Flyer Image */}
             <div className="space-y-1.5">
               <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
-                Flyer Image URL
+                Flyer Image
               </label>
-              <input
-                type="url"
-                value={flyerImageUrl}
-                onChange={(e) => setFlyerImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              />
+              <p className="text-xs text-white/40">
+                JPG or PNG, max 5MB. Recommended: 1080x1350px (4:5 ratio)
+              </p>
+
+              {flyerPreview ? (
+                <div className="relative aspect-[4/5] max-w-xs rounded-xl overflow-hidden">
+                  <img
+                    src={flyerPreview}
+                    alt="Flyer preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setFlyerImage(null); setFlyerPreview(''); }}
+                    className="absolute top-3 right-3 px-3 py-1.5 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="block aspect-[4/5] max-w-xs border-2 border-dashed border-white/10 rounded-xl hover:border-[#59FFA0]/50 transition-colors cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                    <div className="text-4xl mb-3">📸</div>
+                    <div className="text-sm font-medium text-white mb-1">Click to upload flyer</div>
+                    <div className="text-xs text-[#7DD8E8]">or drag and drop</div>
+                  </div>
+                </label>
+              )}
             </div>
 
             {/* Status */}
