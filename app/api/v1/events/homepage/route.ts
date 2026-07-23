@@ -69,6 +69,7 @@ export async function GET() {
           .select('id, name, category, event_date, flyer_image_url, description, ticket_prices, ticket_types(price), venues(name)')
           .eq('status', 'active')
           .eq('category', category)
+          .gte('event_date', new Date().toISOString())
           .order('event_date', { ascending: true })
           .limit(limit)
 

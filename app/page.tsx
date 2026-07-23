@@ -96,7 +96,7 @@ export default function HomePage() {
   const modules: Module[] = [
     {
       id: "family",
-      title: "Family Weekend",
+      title: "Family Life",
       icon: "👨‍👩‍👧",
       priority: 0,
       events: homepageEvents.family ?? [],
@@ -191,7 +191,7 @@ export default function HomePage() {
       {/* Get Active */}
       <GetActiveSection />
 
-      {/* Family Weekend */}
+      {/* Family Life */}
       {familyModule && <ModuleSection module={familyModule} />}
 
       {/* RTNY Picks */}

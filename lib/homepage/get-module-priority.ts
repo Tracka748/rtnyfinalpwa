@@ -31,7 +31,7 @@ export function getModulePriority(
     },
     {
       id: "family",
-      title: "Family Weekend",
+      title: "Family Life",
       priority: 3,
       badge: "family",
       dayBoost: isWeekend ? 8 : 0,

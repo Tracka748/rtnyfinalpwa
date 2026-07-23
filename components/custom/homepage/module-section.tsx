@@ -19,7 +19,7 @@ export function ModuleSection({ module }: ModuleSectionProps) {
           {module.icon} {module.title.toUpperCase()}
         </h2>
         <a
-          href={`/category/${module.id}`}
+          href={`/events?category=${module.id}`}
           className="flex items-center gap-1 text-sm text-accent-secondary hover:text-accent-primary transition-colors"
         >
           See All
