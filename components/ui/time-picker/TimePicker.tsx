@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { FieldLabel } from '@/components/custom/plan/EventDetailsForm'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -159,11 +160,7 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
 
   return (
     <div className="flex flex-col gap-3 w-full max-w-[280px]">
-      {label && (
-        <span className="font-label text-xs uppercase tracking-wider text-[#1AC8ED] mb-2">
-          {label}
-        </span>
-      )}
+      {label && <FieldLabel>{label}</FieldLabel>}
 
       {/* ── Hour box, minute box, and stacked AM/PM toggle in one row (always visible unless in native mode) ── */}
       {!showNative && (

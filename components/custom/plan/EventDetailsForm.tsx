@@ -61,9 +61,9 @@ function memberCountToBucket(count: number): string {
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+export function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block font-label text-[10px] tracking-widest text-[#7DD8E8] mb-2">
+    <label className="block font-label text-xs tracking-widest text-[#7DD8E8] mb-2">
       {children}
     </label>
   )
@@ -71,7 +71,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function inputClass(active?: boolean) {
   return cn(
-    'w-full bg-[#1a1819] border rounded-xl px-4 py-3 text-[#f9fdff] font-sans text-sm',
+    'w-full bg-[#1a1819] border rounded-xl px-5 py-4 text-[#f9fdff] font-sans text-base',
     'placeholder:text-[#7DD8E8]/40 outline-none transition-all duration-200',
     active
       ? 'border-[#59ffa0] ring-2 ring-[#59ffa0]/20'
@@ -317,7 +317,7 @@ export function EventDetailsForm({ eventDetails, onUpdate, canProceed, onNext }:
             value={eventDetails.eventDate}
             onChange={e => onUpdate('eventDate', e.target.value)}
             min={new Date().toISOString().split('T')[0]}
-            className={inputClass()}
+            className={cn(inputClass(), 'date-input-dark')}
             style={{ colorScheme: 'dark' }}
           />
         </div>

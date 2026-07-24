@@ -181,6 +181,27 @@
   text-transform: uppercase;
 }
 
+/* Native date input on a dark surface: the mm/dd/yyyy segments and calendar
+   icon live in shadow DOM and ignore text-color/placeholder utility classes. */
+.date-input-dark::-webkit-datetime-edit,
+.date-input-dark::-webkit-datetime-edit-fields-wrapper,
+.date-input-dark::-webkit-datetime-edit-text,
+.date-input-dark::-webkit-datetime-edit-month-field,
+.date-input-dark::-webkit-datetime-edit-day-field,
+.date-input-dark::-webkit-datetime-edit-year-field {
+  color: #f9fdff;
+}
+
+.date-input-dark::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.date-input-dark::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 .font-serif {
   font-family: var(--font-roboto-slab);
 }

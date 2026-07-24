@@ -26,7 +26,10 @@
       "Bash(Get-ChildItem -Path . -Name)",
       "Bash(grep -i \"\\\\[id\\\\]/route.ts$\")",
       "Bash(git diff *)",
-      "Read(//dev/**)"
+      "Read(//dev/**)",
+      "Bash(npx next *)",
+      "Bash(grep -E '^[0-9]{9,}')",
+      "Bash(git mv *)"
     ],
     "deny": [],
     "ask": []
