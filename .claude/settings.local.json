@@ -24,7 +24,9 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Stock\\\\rtnyfinalpwa\" -Recurse -Filter \"*hero*\" -ErrorAction SilentlyContinue)",
       "Bash(Find /c/Users/Stock/rtnyfinalpwa/hooks -type f -name \"*.ts\" -o -name \"*.tsx\")",
       "Bash(Get-ChildItem -Path . -Name)",
-      "Bash(grep -i \"\\\\[id\\\\]/route.ts$\")"
+      "Bash(grep -i \"\\\\[id\\\\]/route.ts$\")",
+      "Bash(git diff *)",
+      "Read(//dev/**)"
     ],
     "deny": [],
     "ask": []

@@ -17,6 +17,7 @@ const EVENT_TYPES = [
   { value: 'Private Celebration',  icon: '🥂' },
   { value: 'Brand Activation',     icon: '🚀' },
   { value: 'Fundraiser',           icon: '🤝' },
+  { value: 'Other',                icon: '✨' },
 ]
 
 const GUEST_COUNTS = [
@@ -383,7 +384,7 @@ export function EventDetailsForm({ eventDetails, onUpdate, canProceed, onNext }:
         <div className="flex gap-3">
           {[
             { label: 'Yes, I have a venue', value: true  },
-            { label: 'No, I need one',       value: false },
+            { label: 'No, I need help finding one.', value: false },
           ].map(({ label, value }) => {
             const selected = eventDetails.hasVenue === value
             return (

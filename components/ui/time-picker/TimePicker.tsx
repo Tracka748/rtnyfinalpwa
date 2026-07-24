@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -11,40 +12,25 @@ export interface TimePickerProps {
   label?: string
 }
 
-type Band = 'Morning' | 'Afternoon' | 'Evening' | 'Late Night'
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BANDS: Band[] = ['Morning', 'Afternoon', 'Evening', 'Late Night']
-
-const SLOTS: Record<Band, string[]> = {
-  'Morning': [
-    '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
-    '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-  ],
-  'Afternoon': [
-    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
-    '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM',
-    '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM',
-  ],
-  'Evening': [
-    '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM',
-    '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM',
-    '10:00 PM', '10:30 PM',
-  ],
-  'Late Night': [
-    '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM',
-    '1:00 AM', '1:30 AM', '2:00 AM',
-  ],
-}
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 1) // 1–12
+const MINUTES = ['00', '30']
+const PERIODS = ['AM', 'PM']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function bandForSlot(slot: string): Band | null {
-  for (const band of BANDS) {
-    if (SLOTS[band].includes(slot)) return band
-  }
-  return null
+/** "H:MM AM/PM" → picker indices, or null if it doesn't land on the 30-min grid this picker supports */
+function parseTimeIndices(display: string): { hourIndex: number; minuteIndex: number; periodIndex: number } | null {
+  const match = display.match(/^(\d{1,2}):(00|30)\s*(AM|PM)$/i)
+  if (!match) return null
+  const hour = parseInt(match[1], 10)
+  if (hour < 1 || hour > 12) return null
+  const hourIndex = HOURS.indexOf(hour)
+  const minuteIndex = MINUTES.indexOf(match[2])
+  const periodIndex = PERIODS.indexOf(match[3].toUpperCase())
+  if (hourIndex === -1 || minuteIndex === -1 || periodIndex === -1) return null
+  return { hourIndex, minuteIndex, periodIndex }
 }
 
 /** "HH:MM" → "H:MM AM/PM" */
@@ -69,47 +55,89 @@ function displayToNative(display: string): string {
   return `${h.toString().padStart(2, '0')}:${m}`
 }
 
+// ─── Pill + popover ───────────────────────────────────────────────────────────
+
+interface TimePillPopoverProps {
+  items: string[]
+  selectedIndex: number
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSelect: (index: number) => void
+}
+
+/** A closed pill showing the current value; tapping it opens a scrollable list of options. */
+function TimePillPopover({ items, selectedIndex, open, onOpenChange, onSelect }: TimePillPopoverProps) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex-1 h-14 rounded-xl border border-white/10 bg-[#1a1a1a] text-[#59FFA0] text-xl font-label font-bold flex items-center justify-center transition-colors duration-150 hover:border-[#59FFA0]/40"
+        >
+          {items[selectedIndex]}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="center" className="w-20 max-h-48 overflow-y-auto p-1">
+        {items.map((item, i) => {
+          const selected = i === selectedIndex
+          return (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onSelect(i)}
+              className={cn(
+                'w-full rounded-lg px-3 py-2 text-center text-sm font-label transition-colors duration-150',
+                selected
+                  ? 'bg-[#59FFA0]/10 text-[#59FFA0] font-semibold'
+                  : 'text-white/70 hover:bg-white/5 hover:text-white/90'
+              )}
+            >
+              {item}
+            </button>
+          )
+        })}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TimePicker({ value, onChange, label }: TimePickerProps) {
-  const [selectedBand,  setSelectedBand]  = useState<Band | null>(null)
-  const [selectedSlot,  setSelectedSlot]  = useState<string | null>(null)
-  const [showNative,    setShowNative]    = useState(false)
-  const [nativeValue,   setNativeValue]   = useState('')
-  const [customDisplay, setCustomDisplay] = useState<string | null>(null)
+  const [showNative,    setShowNative]    = useState(() => !!value && !parseTimeIndices(value))
+  const [nativeValue,   setNativeValue]   = useState(() => (value && !parseTimeIndices(value)) ? displayToNative(value) : '')
+  const [customDisplay, setCustomDisplay] = useState<string | null>(() => (value && !parseTimeIndices(value)) ? value : null)
 
-  // Hydrate from value prop on mount only
-  useEffect(() => {
-    if (!value) return
-    const band = bandForSlot(value)
-    if (band) {
-      setSelectedBand(band)
-      setSelectedSlot(value)
-    } else {
-      // Value exists but doesn't match a slot — show in native fallback
-      setShowNative(true)
-      setNativeValue(displayToNative(value))
-      setCustomDisplay(value)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const [hourIndex,   setHourIndex]   = useState(() => parseTimeIndices(value ?? '')?.hourIndex ?? 0)
+  const [minuteIndex, setMinuteIndex] = useState(() => parseTimeIndices(value ?? '')?.minuteIndex ?? 0)
+  const [periodIndex, setPeriodIndex] = useState(() => parseTimeIndices(value ?? '')?.periodIndex ?? 0)
 
-  function handleBandSelect(band: Band) {
-    setSelectedBand(band)
-    setSelectedSlot(null)
-    setShowNative(false)
-    setNativeValue('')
-    setCustomDisplay(null)
+  const [hourOpen, setHourOpen]     = useState(false)
+  const [minuteOpen, setMinuteOpen] = useState(false)
+
+  function emitChange(h: number, m: number, p: number) {
+    onChange(`${HOURS[h]}:${MINUTES[m]} ${PERIODS[p]}`)
   }
 
-  function handleSlotSelect(slot: string) {
-    setSelectedSlot(slot)
-    onChange(slot)
+  function handleHourSelect(idx: number) {
+    setHourIndex(idx)
+    emitChange(idx, minuteIndex, periodIndex)
+    setHourOpen(false)
+  }
+
+  function handleMinuteSelect(idx: number) {
+    setMinuteIndex(idx)
+    emitChange(hourIndex, idx, periodIndex)
+    setMinuteOpen(false)
+  }
+
+  function handlePeriodSelect(idx: number) {
+    setPeriodIndex(idx)
+    emitChange(hourIndex, minuteIndex, idx)
   }
 
   function handleOtherTime() {
     setShowNative(true)
-    setSelectedBand(null)
-    setSelectedSlot(null)
   }
 
   function handleBackToChips() {
@@ -124,73 +152,58 @@ export function TimePicker({ value, onChange, label }: TimePickerProps) {
     if (!native) { setCustomDisplay(null); return }
     const display = nativeToDisplay(native)
     setCustomDisplay(display)
-    setSelectedBand(null)
-    setSelectedSlot(null)
     onChange(display)
   }
-
-  // ─── Styles ───────────────────────────────────────────────────────────────
-
-  const bandBase     = 'px-4 py-2 rounded-full text-sm font-label border transition-all duration-150 cursor-pointer'
-  const bandOn       = 'border-[#1AC8ED] text-[#1AC8ED] bg-[#1AC8ED]/10'
-  const bandOff      = 'bg-[#1a1a1a] border-white/10 text-white/70 hover:border-white/25 hover:text-white/90'
-
-  const slotBase     = 'py-2 rounded-xl text-sm font-label border transition-all duration-150 cursor-pointer text-center'
-  const slotOn       = 'border-[#59FFA0] text-[#59FFA0] bg-[#59FFA0]/10'
-  const slotOff      = 'bg-[#1a1a1a] border-white/10 text-white/70 hover:border-white/25 hover:text-white/90'
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col gap-3 w-full max-w-[280px]">
-      <style>{`
-        @keyframes tp-fade-in {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        .tp-fade-in {
-          animation: tp-fade-in 150ms ease-out both;
-        }
-      `}</style>
-
       {label && (
         <span className="font-label text-xs uppercase tracking-wider text-[#1AC8ED] mb-2">
           {label}
         </span>
       )}
 
-      {/* ── Band chips (always visible unless in native mode) ────────────── */}
+      {/* ── Hour box, minute box, and stacked AM/PM toggle in one row (always visible unless in native mode) ── */}
       {!showNative && (
-        <div className="flex flex-col gap-2">
-          {BANDS.map(band => (
-            <button
-              key={band}
-              type="button"
-              onClick={() => handleBandSelect(band)}
-              className={cn(bandBase, selectedBand === band ? bandOn : bandOff)}
-            >
-              {band}
-            </button>
-          ))}
-        </div>
-      )}
+        <div className="flex items-stretch justify-center gap-2">
+          <TimePillPopover
+            items={HOURS.map(String)}
+            selectedIndex={hourIndex}
+            open={hourOpen}
+            onOpenChange={setHourOpen}
+            onSelect={handleHourSelect}
+          />
+          <span className="flex items-center text-white/30 text-xl font-label font-semibold">:</span>
+          <TimePillPopover
+            items={MINUTES}
+            selectedIndex={minuteIndex}
+            open={minuteOpen}
+            onOpenChange={setMinuteOpen}
+            onSelect={handleMinuteSelect}
+          />
 
-      {/* ── Slot grid (fades in when a band is selected) ─────────────────── */}
-      {!showNative && selectedBand && (
-        <div
-          key={selectedBand}
-          className="grid grid-cols-4 gap-1.5 tp-fade-in"
-        >
-          {SLOTS[selectedBand].map(slot => (
-            <button
-              key={slot}
-              type="button"
-              onClick={() => handleSlotSelect(slot)}
-              className={cn(slotBase, selectedSlot === slot ? slotOn : slotOff)}
-            >
-              {slot}
-            </button>
-          ))}
+          <div className="flex flex-col gap-1 w-14">
+            {PERIODS.map((period, i) => {
+              const selected = periodIndex === i
+              return (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => handlePeriodSelect(i)}
+                  className={cn(
+                    'flex-1 rounded-lg border text-xs font-sans font-semibold transition-all duration-200 flex items-center justify-center',
+                    selected
+                      ? 'border-[#59FFA0] bg-[#59FFA0]/10 text-[#59FFA0]'
+                      : 'border-[#2a2829] bg-[#1a1819] text-[#f9fdff]/70 hover:border-[#59FFA0]/40'
+                  )}
+                >
+                  {period}
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
 
