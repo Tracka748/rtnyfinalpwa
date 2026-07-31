@@ -1166,6 +1166,7 @@ export type Database = {
           marketing_package: string | null
           max_tickets_per_user: number | null
           name: string
+          parking_info: string | null
           promoter_id: string | null
           refund_policy: string | null
           sale_end_date: string | null
@@ -1200,6 +1201,7 @@ export type Database = {
           marketing_package?: string | null
           max_tickets_per_user?: number | null
           name: string
+          parking_info?: string | null
           promoter_id?: string | null
           refund_policy?: string | null
           sale_end_date?: string | null
@@ -1234,6 +1236,7 @@ export type Database = {
           marketing_package?: string | null
           max_tickets_per_user?: number | null
           name?: string
+          parking_info?: string | null
           promoter_id?: string | null
           refund_policy?: string | null
           sale_end_date?: string | null
@@ -1264,6 +1267,64 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      filters: {
+        Row: {
+          asset_url: string
+          created_at: string
+          created_by: string | null
+          event_id: string
+          id: string
+          is_active: boolean
+          name: string
+          partner_id: string
+          points_cost: number
+        }
+        Insert: {
+          asset_url: string
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          partner_id: string
+          points_cost: number
+        }
+        Update: {
+          asset_url?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          partner_id?: string
+          points_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "filters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "filters_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "filters_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
         ]
@@ -1971,6 +2032,49 @@ export type Database = {
             columns: ["promo_code_id"]
             isOneToOne: false
             referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_event_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: string
+          partner_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          partner_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          partner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_event_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_event_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_event_links_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
         ]
@@ -3093,6 +3197,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_filter_unlocks: {
+        Row: {
+          filter_id: string
+          id: string
+          points_spent: number
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          filter_id: string
+          id?: string
+          points_spent: number
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          filter_id?: string
+          id?: string
+          points_spent?: number
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_filter_unlocks_filter_id_fkey"
+            columns: ["filter_id"]
+            isOneToOne: false
+            referencedRelation: "filters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_filter_unlocks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_rewards: {
         Row: {
           balance: number
@@ -3660,6 +3803,22 @@ export type Database = {
         }
         Returns: string
       }
+      spend_points_for_filter: {
+        Args: { p_filter_id: string; p_user_id: string }
+        Returns: {
+          filter_id: string
+          id: string
+          points_spent: number
+          unlocked_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_filter_unlocks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       validate_promo_code: {
         Args: {
           p_code: string
@@ -3723,6 +3882,7 @@ export type Database = {
         | "referral_converted"
         | "admin_adjustment"
         | "bonus_campaign"
+        | "filter_purchase"
       reward_tier:
         | "explorer"
         | "insider"
@@ -3906,6 +4066,7 @@ export const Constants = {
         "referral_converted",
         "admin_adjustment",
         "bonus_campaign",
+        "filter_purchase",
       ],
       reward_tier: ["explorer", "insider", "connector", "ambassador", "legend"],
       ticket_status: ["available", "reserved", "sold", "used", "refunded"],
