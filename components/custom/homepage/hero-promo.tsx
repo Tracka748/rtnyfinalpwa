@@ -5,6 +5,18 @@ import type { PromoCard } from "@/lib/homepage/types"
 import { Button } from "@/components/ui/button"
 import { ChevronRight } from "lucide-react"
 
+function trackAdEvent(adId: string, eventType: "impression" | "click") {
+  try {
+    fetch("/api/v1/ads/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ad_id: adId, event_type: eventType }),
+    }).catch(() => {})
+  } catch {
+    // swallow — tracking must never affect the user experience
+  }
+}
+
 interface HeroPromoProps {
   promos: PromoCard[]
 }
@@ -14,6 +26,7 @@ export function HeroPromo({ promos }: HeroPromoProps) {
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastTrackedAdId = useRef<string | null>(null)
 
   const startInterval = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
@@ -28,6 +41,14 @@ export function HeroPromo({ promos }: HeroPromoProps) {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [startInterval])
+
+  useEffect(() => {
+    const activePromo = promos[activeIndex]
+    if (activePromo?.isAd && activePromo.adId && lastTrackedAdId.current !== activePromo.adId) {
+      lastTrackedAdId.current = activePromo.adId
+      trackAdEvent(activePromo.adId, "impression")
+    }
+  }, [activeIndex, promos])
 
   const goToIndex = (index: number) => {
     setActiveIndex(index)
@@ -70,17 +91,40 @@ export function HeroPromo({ promos }: HeroPromoProps) {
           {/* Content */}
           <div className="relative flex h-full flex-col justify-end p-6 md:p-8">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-full bg-accent-primary/20 px-3 py-1 text-xs font-bold text-accent-primary backdrop-blur">
-                👑 Earn {promos[activeIndex].points} pts
-              </span>
+              {promos[activeIndex].isAd ? (
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-text-secondary backdrop-blur">
+                  Sponsored
+                </span>
+              ) : (
+                <span className="rounded-full bg-accent-primary/20 px-3 py-1 text-xs font-bold text-accent-primary backdrop-blur">
+                  👑 Earn {promos[activeIndex].points} pts
+                </span>
+              )}
             </div>
             <h2 className="mb-2 text-2xl font-bold text-text-primary md:text-3xl">{promos[activeIndex].title}</h2>
             <p className="mb-4 text-sm text-[#7DD8E8] md:text-base">{promos[activeIndex].subtitle}</p>
             <div className="flex gap-3">
-              <Button className="bg-accent-primary text-background hover:bg-accent-primary/90">
-                {promos[activeIndex].cta}
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
+              {promos[activeIndex].isAd ? (
+                <a
+                  href={promos[activeIndex].link}
+                  target={promos[activeIndex].link.startsWith("/") ? undefined : "_blank"}
+                  rel={promos[activeIndex].link.startsWith("/") ? undefined : "noopener noreferrer"}
+                  onClick={() => {
+                    const adId = promos[activeIndex].adId
+                    if (adId) trackAdEvent(adId, "click")
+                  }}
+                >
+                  <Button className="bg-accent-primary text-background hover:bg-accent-primary/90">
+                    {promos[activeIndex].cta}
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </a>
+              ) : (
+                <Button className="bg-accent-primary text-background hover:bg-accent-primary/90">
+                  {promos[activeIndex].cta}
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
 

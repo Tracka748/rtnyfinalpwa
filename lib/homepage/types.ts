@@ -20,6 +20,8 @@ export interface PromoCard {
   points: number
   cta: string
   link: string
+  isAd?: boolean
+  adId?: string
 }
 
 export interface UserBadge {

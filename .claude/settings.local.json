@@ -29,7 +29,7 @@
       "Read(//dev/**)",
       "Bash(npx next *)",
       "Bash(grep -E '^[0-9]{9,}')",
-      "Bash(git mv *)",
+       "Bash(git mv *)",
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/api/v1/events/[id]/filters\")",
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/api/v1/partners/[id]/filters\")",
       "Bash(curl.exe -X GET http://localhost:3000/api/v1/events/6d4f0a7f-9c2a-4ea3-824f-c85493a262c3/filters -b \"@C:\\\\Users\\\\Stock\\\\cookie.txt\")",

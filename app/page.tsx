@@ -87,6 +87,40 @@ export default function HomePage() {
     },
   ]
 
+  const [heroAd, setHeroAd] = useState<PromoCard | null>(null)
+  const [heroAdPosition, setHeroAdPosition] = useState<number | null>(null)
+
+  useEffect(() => {
+    async function fetchHeroAd() {
+      try {
+        const response = await fetch('/api/v1/ads?placement=hero_carousel')
+        const result = await response.json()
+        if (result.ad) {
+          setHeroAd({
+            id: result.ad.id,
+            title: result.ad.title,
+            subtitle: '',
+            image: result.ad.image_url,
+            points: 0,
+            cta: 'Learn More',
+            link: result.ad.link_url || '#',
+            isAd: true,
+            adId: result.ad.id,
+          })
+          setHeroAdPosition(Math.floor(Math.random() * (promos.length + 1)))
+        }
+      } catch (error) {
+        console.error('Failed to fetch hero carousel ad:', error)
+      }
+    }
+    fetchHeroAd()
+  }, [])
+
+  const heroPromos =
+    heroAd && heroAdPosition !== null
+      ? [...promos.slice(0, heroAdPosition), heroAd, ...promos.slice(heroAdPosition)]
+      : promos
+
   const currentHour = new Date().getHours()
   const isWeekend = [0, 6].includes(new Date().getDay())
   const moduleOrder = getModulePriority(userData.badges, currentHour, isWeekend, userData.points, userData.isLoggedIn)
@@ -143,7 +177,7 @@ export default function HomePage() {
       <HomepageSearchBar />
 
       {/* Section 1: Hero Promo */}
-      <HeroPromo promos={promos} />
+      <HeroPromo promos={heroPromos} />
 
       {/* Section 2: Date Tabs */}
       <DateTabs onDateChange={setSelectedDate} />
