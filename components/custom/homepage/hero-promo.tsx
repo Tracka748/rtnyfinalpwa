@@ -76,15 +76,31 @@ export function HeroPromo({ promos }: HeroPromoProps) {
         <div
           className="relative h-[280px] overflow-hidden rounded-2xl border border-accent-primary/30 md:h-[360px]"
           style={{
-            backgroundImage: `url('${promos[activeIndex].image}')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+            ...(promos[activeIndex].videoUrl
+              ? {}
+              : {
+                  backgroundImage: `url('${promos[activeIndex].image}')`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }),
             boxShadow: 'inset 0 0 0 4px #121113',
             position: 'relative',
           }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
+          {promos[activeIndex].videoUrl && (
+            <video
+              key={promos[activeIndex].videoUrl}
+              src={promos[activeIndex].videoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ zIndex: 0 }}
+            />
+          )}
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-background/20" />
 

@@ -16,12 +16,13 @@ export interface PromoCard {
   id: string
   title: string
   subtitle: string
-  image: string
+  image?: string
   points: number
   cta: string
   link: string
   isAd?: boolean
   adId?: string
+  videoUrl?: string
 }
 
 export interface UserBadge {

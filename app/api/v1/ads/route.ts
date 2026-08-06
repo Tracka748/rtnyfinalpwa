@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const { data: ads, error } = await supabase
       .from('ads')
-      .select('id, image_url, link_url, title, weight')
+      .select('id, image_url, video_url, ad_type, link_url, title, weight')
       .eq('placement_key', placementKey)
       .eq('is_active', true)
       .or(`start_date.is.null,start_date.lte.${now}`)
@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
       ad: {
         id: chosen.id,
         image_url: chosen.image_url,
+        video_url: chosen.video_url,
+        ad_type: chosen.ad_type,
         link_url: chosen.link_url,
         title: chosen.title,
       },

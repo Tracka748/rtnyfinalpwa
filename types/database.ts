@@ -58,6 +58,7 @@ export type Database = {
       }
       ad_placement_options: {
         Row: {
+          allowed_ad_types: string[]
           billing_period: string
           created_at: string
           is_active: boolean
@@ -67,6 +68,7 @@ export type Database = {
           stripe_price_id: string | null
         }
         Insert: {
+          allowed_ad_types?: string[]
           billing_period?: string
           created_at?: string
           is_active?: boolean
@@ -76,6 +78,7 @@ export type Database = {
           stripe_price_id?: string | null
         }
         Update: {
+          allowed_ad_types?: string[]
           billing_period?: string
           created_at?: string
           is_active?: boolean
@@ -86,8 +89,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ad_reel_duration_options: {
+        Row: {
+          billing_period: string
+          created_at: string
+          is_active: boolean
+          key: string
+          label: string
+          price_cents: number
+        }
+        Insert: {
+          billing_period?: string
+          created_at?: string
+          is_active?: boolean
+          key: string
+          label: string
+          price_cents?: number
+        }
+        Update: {
+          billing_period?: string
+          created_at?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          price_cents?: number
+        }
+        Relationships: []
+      }
       ads: {
         Row: {
+          ad_type: string
           created_at: string
           end_date: string | null
           id: string
@@ -96,12 +127,15 @@ export type Database = {
           link_url: string | null
           owner_id: string | null
           placement_key: string
+          reel_duration_key: string | null
           start_date: string | null
           title: string
           updated_at: string
+          video_url: string | null
           weight: number
         }
         Insert: {
+          ad_type?: string
           created_at?: string
           end_date?: string | null
           id?: string
@@ -110,12 +144,15 @@ export type Database = {
           link_url?: string | null
           owner_id?: string | null
           placement_key: string
+          reel_duration_key?: string | null
           start_date?: string | null
           title: string
           updated_at?: string
+          video_url?: string | null
           weight?: number
         }
         Update: {
+          ad_type?: string
           created_at?: string
           end_date?: string | null
           id?: string
@@ -124,9 +161,11 @@ export type Database = {
           link_url?: string | null
           owner_id?: string | null
           placement_key?: string
+          reel_duration_key?: string | null
           start_date?: string | null
           title?: string
           updated_at?: string
+          video_url?: string | null
           weight?: number
         }
         Relationships: [
@@ -142,6 +181,13 @@ export type Database = {
             columns: ["placement_key"]
             isOneToOne: false
             referencedRelation: "ad_placement_options"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "ads_reel_duration_key_fkey"
+            columns: ["reel_duration_key"]
+            isOneToOne: false
+            referencedRelation: "ad_reel_duration_options"
             referencedColumns: ["key"]
           },
         ]
