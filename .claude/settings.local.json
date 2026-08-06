@@ -29,9 +29,26 @@
       "Read(//dev/**)",
       "Bash(npx next *)",
       "Bash(grep -E '^[0-9]{9,}')",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/api/v1/events/[id]/filters\")",
+      "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/api/v1/partners/[id]/filters\")",
+      "Bash(curl.exe -X GET http://localhost:3000/api/v1/events/6d4f0a7f-9c2a-4ea3-824f-c85493a262c3/filters -b \"@C:\\\\Users\\\\Stock\\\\cookie.txt\")",
+      "Bash(curl.exe -X POST http://localhost:3000/api/v1/filters/purchase -H \"Content-Type: application/json\" -b \"@C:\\\\Users\\\\Stock\\\\cookie.txt\" -d '{\"filter_id\":\"9d9e8990-ffe6-42ec-bbfc-6f9417fed8c4\"}')",
+      "Bash(cat -A \"C:\\\\Users\\\\Stock\\\\cookie.txt\" 2>/dev/null | head -20 || type \"C:\\\\Users\\\\Stock\\\\cookie.txt\")",
+      "Read(//c/Users/Stock/**)",
+      "Bash(curl.exe -v -X POST http://localhost:3000/api/v1/filters/purchase -H \"Content-Type: application/json\" -b \"@C:\\\\Users\\\\Stock\\\\cookie.txt\" -d '{\"filter_id\":\"9d9e8990-ffe6-42ec-bbfc-6f9417fed8c4\"}')",
+      "Bash(curl.exe -X POST http://localhost:3000/api/v1/filters/purchase -H \"Content-Type: application/json\" -b \"@C:/Users/Stock/cookie.txt\" -d '{\"filter_id\":\"9d9e8990-ffe6-42ec-bbfc-6f9417fed8c4\"}')",
+      "Bash(curl.exe -v -X POST http://localhost:3000/api/v1/filters/purchase -H \"Content-Type: application/json\" -b \"@C:/Users/Stock/cookie.txt\" -d '{\"filter_id\":\"9d9e8990-ffe6-42ec-bbfc-6f9417fed8c4\"}')",
+      "Bash(curl.exe -v -X POST http://localhost:3000/api/v1/filters/purchase -H \"Content-Type: application/json\" -b \"@/c/Users/Stock/cookie.txt\" -d '{\"filter_id\":\"9d9e8990-ffe6-42ec-bbfc-6f9417fed8c4\"}')",
+      "Bash(curl.exe --version)",
+      "Bash(where curl.exe)",
+      "Bash(curl.exe -v -b \"@/tmp/testcookie.txt\" http://localhost:3000/)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "c:\\Users\\Stock\\rtnyfinalpwa\\app\\api\\v1\\events\\[id]",
+      "c:\\Users\\Stock\\rtnyfinalpwa\\app\\api\\v1\\partners\\[id]"
+    ]
   }
 }

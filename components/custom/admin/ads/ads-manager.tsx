@@ -13,6 +13,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -37,6 +44,13 @@ interface Ad {
   created_at: string
   impressions: number
   clicks: number
+}
+
+interface AdPlacementOption {
+  key: string
+  label: string
+  price_cents: number
+  billing_period: string
 }
 
 interface AdFormState {
@@ -71,10 +85,17 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
 }
 
+function formatPlacementOption(option: AdPlacementOption): string {
+  const period = option.billing_period === "monthly" ? "mo" : option.billing_period
+  return `${option.label} — $${(option.price_cents / 100).toFixed(2)}/${period}`
+}
+
 export function AdsManager() {
   const [ads, setAds] = useState<Ad[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [placementOptions, setPlacementOptions] = useState<AdPlacementOption[]>([])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAd, setEditingAd] = useState<Ad | null>(null)
@@ -88,6 +109,7 @@ export function AdsManager() {
 
   useEffect(() => {
     fetchAds()
+    fetchPlacementOptions()
   }, [])
 
   async function fetchAds() {
@@ -102,6 +124,17 @@ export function AdsManager() {
       setError(err instanceof Error ? err.message : "Failed to load ads")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchPlacementOptions() {
+    try {
+      const res = await fetch("/api/v1/admin/ad-placements")
+      if (!res.ok) throw new Error("Failed to load ad placements")
+      const data = await res.json()
+      setPlacementOptions(data)
+    } catch (err) {
+      console.error("Fetch ad placements error:", err)
     }
   }
 
@@ -375,13 +408,22 @@ export function AdsManager() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="ad-placement">Placement Key</Label>
-              <Input
-                id="ad-placement"
-                placeholder="e.g. premium_spotlight"
-                value={form.placement_key}
-                onChange={(e) => setForm((p) => ({ ...p, placement_key: e.target.value }))}
-              />
+              <Label htmlFor="ad-placement">Ad Placement</Label>
+              <Select
+                value={form.placement_key || undefined}
+                onValueChange={(value) => setForm((p) => ({ ...p, placement_key: value }))}
+              >
+                <SelectTrigger id="ad-placement" className="w-full">
+                  <SelectValue placeholder="Select a placement…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {placementOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {formatPlacementOption(option)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {formErrors.placement_key && (
                 <p className="text-xs text-red-400">{formErrors.placement_key}</p>
               )}

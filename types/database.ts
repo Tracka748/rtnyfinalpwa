@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_events: {
+        Row: {
+          ad_id: string
+          created_at: string
+          event_type: string
+          id: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ad_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ad_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_events_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ads: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          owner_id: string | null
+          placement_key: string
+          start_date: string | null
+          title: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          owner_id?: string | null
+          placement_key: string
+          start_date?: string | null
+          title: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          owner_id?: string | null
+          placement_key?: string
+          start_date?: string | null
+          title?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           active: boolean
@@ -77,6 +172,33 @@ export type Database = {
           name?: string
           photo_url?: string | null
           slug?: string | null
+        }
+        Relationships: []
+      }
+      badge_definitions: {
+        Row: {
+          badge_type: string
+          decay_enabled: boolean
+          id: string
+          label: string
+          rarity_tier: string
+          requires_systems: Json
+        }
+        Insert: {
+          badge_type: string
+          decay_enabled?: boolean
+          id?: string
+          label: string
+          rarity_tier: string
+          requires_systems?: Json
+        }
+        Update: {
+          badge_type?: string
+          decay_enabled?: boolean
+          id?: string
+          label?: string
+          rarity_tier?: string
+          requires_systems?: Json
         }
         Relationships: []
       }
@@ -320,6 +442,68 @@ export type Database = {
           name?: string
           neighborhood?: string | null
           tags?: string[] | null
+        }
+        Relationships: []
+      }
+      campaign_budget_spends: {
+        Row: {
+          amount_spent: number
+          campaign_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount_spent: number
+          campaign_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount_spent?: number
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_budget_spends_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_budgets: {
+        Row: {
+          campaign_name: string
+          created_at: string
+          expires_at: string
+          id: string
+          per_user_cap: number
+          spent_amount: number
+          total_budget: number
+        }
+        Insert: {
+          campaign_name: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          per_user_cap: number
+          spent_amount?: number
+          total_budget: number
+        }
+        Update: {
+          campaign_name?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          per_user_cap?: number
+          spent_amount?: number
+          total_budget?: number
         }
         Relationships: []
       }
@@ -2036,6 +2220,50 @@ export type Database = {
           },
         ]
       }
+      partner_cards: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          partner_id: string
+          status: string
+          throttled: boolean
+          user_id: string
+          value: number
+          value_ceiling: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          partner_id: string
+          status?: string
+          throttled?: boolean
+          user_id: string
+          value: number
+          value_ceiling: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          partner_id?: string
+          status?: string
+          throttled?: boolean
+          user_id?: string
+          value?: number
+          value_ceiling?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_cards_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_event_links: {
         Row: {
           created_at: string
@@ -2370,9 +2598,42 @@ export type Database = {
           },
         ]
       }
+      point_earning_limits: {
+        Row: {
+          count_in_window: number
+          id: string
+          last_earned_at: string
+          reason: Database["public"]["Enums"]["point_reason"]
+          user_id: string
+          venue_id: string | null
+          window_start: string
+        }
+        Insert: {
+          count_in_window?: number
+          id?: string
+          last_earned_at?: string
+          reason: Database["public"]["Enums"]["point_reason"]
+          user_id: string
+          venue_id?: string | null
+          window_start?: string
+        }
+        Update: {
+          count_in_window?: number
+          id?: string
+          last_earned_at?: string
+          reason?: Database["public"]["Enums"]["point_reason"]
+          user_id?: string
+          venue_id?: string | null
+          window_start?: string
+        }
+        Relationships: []
+      }
       point_rules: {
         Row: {
           active: boolean
+          cooldown_seconds: number
+          daily_cap: number
+          diminishing_return_factor: number
           id: string
           points: number
           reason: Database["public"]["Enums"]["point_reason"]
@@ -2380,6 +2641,9 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          cooldown_seconds?: number
+          daily_cap?: number
+          diminishing_return_factor?: number
           id?: string
           points: number
           reason: Database["public"]["Enums"]["point_reason"]
@@ -2387,6 +2651,9 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          cooldown_seconds?: number
+          daily_cap?: number
+          diminishing_return_factor?: number
           id?: string
           points?: number
           reason?: Database["public"]["Enums"]["point_reason"]
@@ -2925,6 +3192,36 @@ export type Database = {
           },
         ]
       }
+      stub_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          event_id: string | null
+          id: string
+          profit_verified_by: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          profit_verified_by?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          profit_verified_by?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sweepstakes: {
         Row: {
           created_at: string | null
@@ -3160,6 +3457,35 @@ export type Database = {
           sort_order?: number | null
         }
         Relationships: []
+      }
+      user_badges: {
+        Row: {
+          badge_type: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_type: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_type?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_type_fkey"
+            columns: ["badge_type"]
+            isOneToOne: false
+            referencedRelation: "badge_definitions"
+            referencedColumns: ["badge_type"]
+          },
+        ]
       }
       user_behavior_snapshot: {
         Row: {
@@ -3714,12 +4040,91 @@ export type Database = {
         }
         Relationships: []
       }
+      voucher_steps: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          description: string
+          id: string
+          step_order: number
+          voucher_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          description: string
+          id?: string
+          step_order: number
+          voucher_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          description?: string
+          id?: string
+          step_order?: number
+          voucher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voucher_steps_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vouchers: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          min_dwell_seconds: number | null
+          requirements: Json
+          status: string
+          updated_at: string
+          user_id: string
+          voucher_type: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          min_dwell_seconds?: number | null
+          requirements?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+          voucher_type: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          min_dwell_seconds?: number | null
+          requirements?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+          voucher_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       award_points: {
+        Args: {
+          p_metadata?: Json
+          p_reason: Database["public"]["Enums"]["point_reason"]
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      award_points_safe: {
         Args: {
           p_metadata?: Json
           p_reason: Database["public"]["Enums"]["point_reason"]
@@ -3803,6 +4208,15 @@ export type Database = {
         }
         Returns: string
       }
+      spend_points: {
+        Args: {
+          p_amount: number
+          p_metadata?: Json
+          p_reason: Database["public"]["Enums"]["point_reason"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       spend_points_for_filter: {
         Args: { p_filter_id: string; p_user_id: string }
         Returns: {
@@ -3883,6 +4297,11 @@ export type Database = {
         | "admin_adjustment"
         | "bonus_campaign"
         | "filter_purchase"
+        | "spend_voucher"
+        | "spend_card"
+        | "pitch_interaction"
+        | "stub_earned"
+        | "badge_earned"
       reward_tier:
         | "explorer"
         | "insider"
@@ -4067,6 +4486,11 @@ export const Constants = {
         "admin_adjustment",
         "bonus_campaign",
         "filter_purchase",
+        "spend_voucher",
+        "spend_card",
+        "pitch_interaction",
+        "stub_earned",
+        "badge_earned",
       ],
       reward_tier: ["explorer", "insider", "connector", "ambassador", "legend"],
       ticket_status: ["available", "reserved", "sold", "used", "refunded"],
