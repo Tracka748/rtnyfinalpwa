@@ -10,19 +10,19 @@ export async function GET() {
     const supabase = createSupabaseAdmin()
 
     const { data, error } = await supabase
-      .from('ad_placement_options')
-      .select('key, label, price_cents, billing_period, allowed_ad_types')
+      .from('ad_reel_duration_options')
+      .select('key, label, price_cents, billing_period')
       .eq('is_active', true)
-      .order('label', { ascending: true })
+      .order('price_cents', { ascending: true })
 
     if (error) {
-      console.error('admin/ad-placements GET query error:', error)
-      return NextResponse.json({ error: 'Failed to fetch ad placements' }, { status: 500 })
+      console.error('admin/ad-reel-durations GET query error:', error)
+      return NextResponse.json({ error: 'Failed to fetch reel durations' }, { status: 500 })
     }
 
     return NextResponse.json(data ?? [])
   } catch (err) {
-    console.error('admin/ad-placements GET error:', err)
-    return NextResponse.json({ error: 'Failed to fetch ad placements' }, { status: 500 })
+    console.error('admin/ad-reel-durations GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch reel durations' }, { status: 500 })
   }
 }

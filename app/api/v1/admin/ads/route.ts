@@ -51,7 +51,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { placement_key, title, image_url, link_url, weight, start_date, end_date, is_active } = body
+    const {
+      placement_key, title, image_url, link_url, weight, start_date, end_date, is_active,
+      ad_type, video_url, reel_duration_key,
+    } = body
+
+    const resolvedAdType = ad_type === undefined ? 'image' : ad_type
+    if (resolvedAdType !== 'image' && resolvedAdType !== 'reel') {
+      return NextResponse.json({ error: 'ad_type must be "image" or "reel"' }, { status: 400 })
+    }
 
     if (typeof placement_key !== 'string' || !placement_key.trim()) {
       return NextResponse.json({ error: 'placement_key is required' }, { status: 400 })
@@ -59,14 +67,29 @@ export async function POST(request: NextRequest) {
     if (typeof title !== 'string' || !title.trim()) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 })
     }
-    if (typeof image_url !== 'string' || !image_url.trim()) {
-      return NextResponse.json({ error: 'image_url is required' }, { status: 400 })
+    if (resolvedAdType === 'image') {
+      if (typeof image_url !== 'string' || !image_url.trim()) {
+        return NextResponse.json({ error: 'image_url is required' }, { status: 400 })
+      }
+    } else {
+      if (typeof video_url !== 'string' || !video_url.trim()) {
+        return NextResponse.json({ error: 'video_url is required' }, { status: 400 })
+      }
     }
     if (weight !== undefined && (!Number.isInteger(weight) || weight < 0)) {
       return NextResponse.json({ error: 'weight must be a non-negative integer' }, { status: 400 })
     }
 
-    const insert: Record<string, unknown> = { placement_key, title, image_url }
+    const insert: Record<string, unknown> = { placement_key, title, ad_type: resolvedAdType }
+    if (resolvedAdType === 'image') {
+      insert.image_url = image_url
+      insert.video_url = null
+      insert.reel_duration_key = null
+    } else {
+      insert.video_url = video_url
+      insert.image_url = null
+      insert.reel_duration_key = reel_duration_key ?? null
+    }
     if (link_url !== undefined) insert.link_url = link_url
     if (weight !== undefined) insert.weight = weight
     if (start_date !== undefined) insert.start_date = start_date

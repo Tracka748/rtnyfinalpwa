@@ -33,12 +33,39 @@ export async function PATCH(
       }
       updates.title = body.title
     }
-    if (body.image_url !== undefined) {
-      if (typeof body.image_url !== 'string' || !body.image_url.trim()) {
-        return NextResponse.json({ error: 'image_url must be a non-empty string' }, { status: 400 })
+    if (body.ad_type !== undefined) {
+      if (body.ad_type !== 'image' && body.ad_type !== 'reel') {
+        return NextResponse.json({ error: 'ad_type must be "image" or "reel"' }, { status: 400 })
       }
-      updates.image_url = body.image_url
+      updates.ad_type = body.ad_type
     }
+    if (body.image_url !== undefined) {
+      if (body.image_url === null) {
+        updates.image_url = null
+      } else if (typeof body.image_url !== 'string' || !body.image_url.trim()) {
+        return NextResponse.json({ error: 'image_url must be a non-empty string' }, { status: 400 })
+      } else {
+        updates.image_url = body.image_url
+      }
+    }
+    if (body.video_url !== undefined) {
+      if (body.video_url === null) {
+        updates.video_url = null
+      } else if (typeof body.video_url !== 'string' || !body.video_url.trim()) {
+        return NextResponse.json({ error: 'video_url must be a non-empty string' }, { status: 400 })
+      } else {
+        updates.video_url = body.video_url
+      }
+    }
+    if (body.reel_duration_key !== undefined) updates.reel_duration_key = body.reel_duration_key
+
+    if (body.ad_type === 'reel' && !updates.video_url) {
+      return NextResponse.json({ error: 'video_url is required for reel ads' }, { status: 400 })
+    }
+    if (body.ad_type === 'image' && !updates.image_url) {
+      return NextResponse.json({ error: 'image_url is required for image ads' }, { status: 400 })
+    }
+
     if (body.link_url !== undefined) updates.link_url = body.link_url
     if (body.weight !== undefined) {
       if (!Number.isInteger(body.weight) || body.weight < 0) {

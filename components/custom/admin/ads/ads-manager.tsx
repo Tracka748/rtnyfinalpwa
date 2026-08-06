@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type ChangeEvent } from "react"
-import { Pencil, Trash2, Plus, Loader2, ImageOff } from "lucide-react"
+import { Pencil, Trash2, Plus, Loader2, ImageOff, Film } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,11 +31,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+type AdType = "image" | "reel"
+
+const AD_TYPE_LABELS: Record<AdType, string> = { image: "Image", reel: "Reel" }
+
 interface Ad {
   id: string
   placement_key: string
   title: string
-  image_url: string
+  ad_type: AdType
+  image_url: string | null
+  video_url: string | null
+  reel_duration_key: string | null
   link_url: string | null
   weight: number
   start_date: string | null
@@ -46,17 +53,26 @@ interface Ad {
   clicks: number
 }
 
-interface AdPlacementOption {
+interface PriceOption {
   key: string
   label: string
   price_cents: number
   billing_period: string
 }
 
+interface AdPlacementOption extends PriceOption {
+  allowed_ad_types: AdType[]
+}
+
+type AdReelDurationOption = PriceOption
+
 interface AdFormState {
   title: string
   placement_key: string
+  ad_type: AdType
   image_url: string
+  video_url: string
+  reel_duration_key: string
   link_url: string
   weight: string
   start_date: string
@@ -67,7 +83,10 @@ interface AdFormState {
 const EMPTY_FORM: AdFormState = {
   title: "",
   placement_key: "",
+  ad_type: "image",
   image_url: "",
+  video_url: "",
+  reel_duration_key: "",
   link_url: "",
   weight: "1",
   start_date: "",
@@ -85,7 +104,7 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
 }
 
-function formatPlacementOption(option: AdPlacementOption): string {
+function formatPriceOption(option: PriceOption): string {
   const period = option.billing_period === "monthly" ? "mo" : option.billing_period
   return `${option.label} — $${(option.price_cents / 100).toFixed(2)}/${period}`
 }
@@ -96,6 +115,7 @@ export function AdsManager() {
   const [error, setError] = useState<string | null>(null)
 
   const [placementOptions, setPlacementOptions] = useState<AdPlacementOption[]>([])
+  const [reelDurationOptions, setReelDurationOptions] = useState<AdReelDurationOption[]>([])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAd, setEditingAd] = useState<Ad | null>(null)
@@ -110,6 +130,7 @@ export function AdsManager() {
   useEffect(() => {
     fetchAds()
     fetchPlacementOptions()
+    fetchReelDurationOptions()
   }, [])
 
   async function fetchAds() {
@@ -138,6 +159,19 @@ export function AdsManager() {
     }
   }
 
+  async function fetchReelDurationOptions() {
+    try {
+      const res = await fetch("/api/v1/admin/ad-reel-durations")
+      if (!res.ok) throw new Error("Failed to load reel durations")
+      const data = await res.json()
+      setReelDurationOptions(data)
+    } catch (err) {
+      console.error("Fetch ad reel durations error:", err)
+    }
+  }
+
+  const selectedPlacement = placementOptions.find((p) => p.key === form.placement_key)
+
   function openCreateDialog() {
     setEditingAd(null)
     setForm(EMPTY_FORM)
@@ -150,7 +184,10 @@ export function AdsManager() {
     setForm({
       title: ad.title,
       placement_key: ad.placement_key,
-      image_url: ad.image_url,
+      ad_type: ad.ad_type,
+      image_url: ad.image_url ?? "",
+      video_url: ad.video_url ?? "",
+      reel_duration_key: ad.reel_duration_key ?? "",
       link_url: ad.link_url ?? "",
       weight: String(ad.weight),
       start_date: toDateInputValue(ad.start_date),
@@ -161,7 +198,7 @@ export function AdsManager() {
     setDialogOpen(true)
   }
 
-  async function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
+  async function handleImageFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -185,11 +222,40 @@ export function AdsManager() {
     }
   }
 
+  async function handleVideoFileSelect(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setUploading(true)
+      const body = new FormData()
+      body.append("file", file)
+      const res = await fetch("/api/v1/admin/ads/upload-reel", { method: "POST", body })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Upload failed")
+      setForm((prev) => ({ ...prev, video_url: data.video_url }))
+      setFormErrors((prev) => ({ ...prev, video_url: "" }))
+    } catch (err) {
+      setFormErrors((prev) => ({
+        ...prev,
+        video_url: err instanceof Error ? err.message : "Upload failed",
+      }))
+    } finally {
+      setUploading(false)
+      e.target.value = ""
+    }
+  }
+
   function validateForm(): boolean {
     const errors: Record<string, string> = {}
     if (!form.title.trim()) errors.title = "Title is required"
     if (!form.placement_key.trim()) errors.placement_key = "Placement key is required"
-    if (!form.image_url.trim()) errors.image_url = "An image is required"
+    if (form.ad_type === "reel") {
+      if (!form.video_url.trim()) errors.video_url = "A video is required"
+      if (!form.reel_duration_key.trim()) errors.reel_duration_key = "Duration is required"
+    } else {
+      if (!form.image_url.trim()) errors.image_url = "An image is required"
+    }
     const weightNum = Number(form.weight)
     if (form.weight.trim() === "" || !Number.isInteger(weightNum) || weightNum < 0) {
       errors.weight = "Weight must be a non-negative integer"
@@ -201,15 +267,25 @@ export function AdsManager() {
   async function handleSubmit() {
     if (!validateForm()) return
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       title: form.title.trim(),
       placement_key: form.placement_key.trim(),
-      image_url: form.image_url,
+      ad_type: form.ad_type,
       link_url: form.link_url.trim() || null,
       weight: Number(form.weight),
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       is_active: form.is_active,
+    }
+
+    if (form.ad_type === "reel") {
+      payload.video_url = form.video_url
+      payload.reel_duration_key = form.reel_duration_key
+      payload.image_url = null
+    } else {
+      payload.image_url = form.image_url
+      payload.video_url = null
+      payload.reel_duration_key = null
     }
 
     try {
@@ -319,7 +395,11 @@ export function AdsManager() {
                 <tr key={ad.id} className="border-t border-white/5">
                   <td className="p-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      {ad.image_url ? (
+                      {ad.ad_type === "reel" ? (
+                        <div className="w-12 h-12 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                          <Film className="size-4 text-purple-300" />
+                        </div>
+                      ) : ad.image_url ? (
                         <img
                           src={ad.image_url}
                           alt={ad.title}
@@ -330,7 +410,18 @@ export function AdsManager() {
                           <ImageOff className="size-4 text-[#7A7978]" />
                         </div>
                       )}
-                      <span className="text-white font-medium truncate max-w-[220px]">{ad.title}</span>
+                      <div className="min-w-0 flex items-center gap-1.5">
+                        <span className="text-white font-medium truncate max-w-[180px]">{ad.title}</span>
+                        <span
+                          className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${
+                            ad.ad_type === "reel"
+                              ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                              : "bg-white/10 text-[#7DD8E8] border-white/20"
+                          }`}
+                        >
+                          {ad.ad_type === "reel" ? "Reel" : "Image"}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="p-3 text-[#7DD8E8]">{ad.placement_key}</td>
@@ -411,7 +502,15 @@ export function AdsManager() {
               <Label htmlFor="ad-placement">Ad Placement</Label>
               <Select
                 value={form.placement_key || undefined}
-                onValueChange={(value) => setForm((p) => ({ ...p, placement_key: value }))}
+                onValueChange={(value) => {
+                  const newPlacement = placementOptions.find((p) => p.key === value)
+                  const allowed = newPlacement?.allowed_ad_types ?? ["image"]
+                  setForm((p) => ({
+                    ...p,
+                    placement_key: value,
+                    ad_type: allowed.includes(p.ad_type) ? p.ad_type : "image",
+                  }))
+                }}
               >
                 <SelectTrigger id="ad-placement" className="w-full">
                   <SelectValue placeholder="Select a placement…" />
@@ -419,7 +518,7 @@ export function AdsManager() {
                 <SelectContent>
                   {placementOptions.map((option) => (
                     <SelectItem key={option.key} value={option.key}>
-                      {formatPlacementOption(option)}
+                      {formatPriceOption(option)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -429,23 +528,94 @@ export function AdsManager() {
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="ad-image">Image</Label>
-              <Input id="ad-image" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} />
-              {uploading && (
-                <p className="text-xs text-[#7DD8E8] flex items-center gap-1.5">
-                  <Loader2 className="size-3 animate-spin" /> Uploading…
-                </p>
-              )}
-              {!uploading && form.image_url && (
-                <img
-                  src={form.image_url}
-                  alt="Preview"
-                  className="w-full h-32 object-cover rounded-lg border border-white/10 mt-2"
+            {selectedPlacement && (
+              <div className="space-y-1.5">
+                <Label htmlFor="ad-type">Ad Type</Label>
+                <Select
+                  value={form.ad_type}
+                  onValueChange={(value) => setForm((p) => ({ ...p, ad_type: value as AdType }))}
+                >
+                  <SelectTrigger id="ad-type" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(selectedPlacement.allowed_ad_types ?? ["image"]).map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {AD_TYPE_LABELS[type] ?? type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {form.ad_type === "reel" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="ad-reel-duration">Duration</Label>
+                <Select
+                  value={form.reel_duration_key || undefined}
+                  onValueChange={(value) => setForm((p) => ({ ...p, reel_duration_key: value }))}
+                >
+                  <SelectTrigger id="ad-reel-duration" className="w-full">
+                    <SelectValue placeholder="Select a duration…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reelDurationOptions.map((option) => (
+                      <SelectItem key={option.key} value={option.key}>
+                        {formatPriceOption(option)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.reel_duration_key && (
+                  <p className="text-xs text-red-400">{formErrors.reel_duration_key}</p>
+                )}
+              </div>
+            )}
+
+            {form.ad_type === "reel" ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="ad-video">Video</Label>
+                <Input
+                  id="ad-video"
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  onChange={handleVideoFileSelect}
                 />
-              )}
-              {formErrors.image_url && <p className="text-xs text-red-400">{formErrors.image_url}</p>}
-            </div>
+                {uploading && (
+                  <p className="text-xs text-[#7DD8E8] flex items-center gap-1.5">
+                    <Loader2 className="size-3 animate-spin" /> Uploading…
+                  </p>
+                )}
+                {!uploading && form.video_url && (
+                  <video
+                    src={form.video_url}
+                    muted
+                    controls
+                    className="w-full h-32 rounded-lg border border-white/10 mt-2 object-cover"
+                  />
+                )}
+                {formErrors.video_url && <p className="text-xs text-red-400">{formErrors.video_url}</p>}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="ad-image">Image</Label>
+                <Input id="ad-image" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageFileSelect} />
+                {uploading && (
+                  <p className="text-xs text-[#7DD8E8] flex items-center gap-1.5">
+                    <Loader2 className="size-3 animate-spin" /> Uploading…
+                  </p>
+                )}
+                {!uploading && form.image_url && (
+                  <img
+                    src={form.image_url}
+                    alt="Preview"
+                    className="w-full h-32 object-cover rounded-lg border border-white/10 mt-2"
+                  />
+                )}
+                {formErrors.image_url && <p className="text-xs text-red-400">{formErrors.image_url}</p>}
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="ad-link">Link URL (optional)</Label>
@@ -504,7 +674,7 @@ export function AdsManager() {
 
             <Button
               className="w-full"
-              disabled={!form.image_url || uploading || submitting}
+              disabled={(form.ad_type === "reel" ? !form.video_url : !form.image_url) || uploading || submitting}
               onClick={handleSubmit}
             >
               {submitting ? "Saving…" : editingAd ? "Save Changes" : "Create Ad"}
