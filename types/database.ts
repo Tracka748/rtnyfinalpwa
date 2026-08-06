@@ -56,6 +56,36 @@ export type Database = {
           },
         ]
       }
+      ad_placement_options: {
+        Row: {
+          billing_period: string
+          created_at: string
+          is_active: boolean
+          key: string
+          label: string
+          price_cents: number
+          stripe_price_id: string | null
+        }
+        Insert: {
+          billing_period?: string
+          created_at?: string
+          is_active?: boolean
+          key: string
+          label: string
+          price_cents?: number
+          stripe_price_id?: string | null
+        }
+        Update: {
+          billing_period?: string
+          created_at?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          price_cents?: number
+          stripe_price_id?: string | null
+        }
+        Relationships: []
+      }
       ads: {
         Row: {
           created_at: string
@@ -106,6 +136,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ads_placement_key_fkey"
+            columns: ["placement_key"]
+            isOneToOne: false
+            referencedRelation: "ad_placement_options"
+            referencedColumns: ["key"]
           },
         ]
       }

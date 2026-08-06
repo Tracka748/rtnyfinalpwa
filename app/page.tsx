@@ -28,9 +28,17 @@ import PartnerAdsSection from "@/components/custom/homepage/PartnerAdsSection"
 import RochesterSportsSection from "@/components/custom/homepage/RochesterSportsSection"
 import GetActiveSection from "@/components/custom/homepage/GetActiveSection"
 
+interface PlacementAd {
+  id: string
+  title: string
+  image_url: string
+  link_url: string | null
+}
+
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [homepageEvents, setHomepageEvents] = useState<Record<string, Event[]>>({})
+  const [liveNowBannerAd, setLiveNowBannerAd] = useState<PlacementAd | null>(null)
 
   useEffect(() => {
     async function fetchHomepageEvents() {
@@ -45,6 +53,21 @@ export default function HomePage() {
       }
     }
     fetchHomepageEvents()
+  }, [])
+
+  useEffect(() => {
+    async function fetchLiveNowBannerAd() {
+      try {
+        const response = await fetch('/api/v1/ads?placement=live_now_banner')
+        const result = await response.json()
+        if (result.ad) {
+          setLiveNowBannerAd(result.ad)
+        }
+      } catch (error) {
+        console.error('Failed to fetch live_now_banner ad:', error)
+      }
+    }
+    fetchLiveNowBannerAd()
   }, [])
 
   const featuredEvents: Event[] = homepageEvents.nightlife ?? []
@@ -208,6 +231,7 @@ export default function HomePage() {
         highlight="Earn 500 bonus points"
         ctaText="View All Events"
         ctaLink="/nye"
+        ad={liveNowBannerAd ?? undefined}
       />
 
       {/* Discovery Module */}

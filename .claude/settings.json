@@ -41,7 +41,8 @@
       "Bash(mkdir -p \"c:/Users/Stock/rtnyfinalpwa/app/api/admin/ads/[id]\" \"c:/Users/Stock/rtnyfinalpwa/app/api/admin/ads/upload\")",
       "Bash(mkdir -p \"app/api/v1/admin/ads/[id]\" \"app/api/v1/admin/ads/upload\")",
       "Bash(git mv *)",
-      "Bash(node -e \"const r = require\\('radix-ui'\\); console.log\\(Object.keys\\(r\\).filter\\(k => /AlertDialog|Label|Checkbox/i.test\\(k\\)\\)\\)\")"
+      "Bash(node -e \"const r = require\\('radix-ui'\\); console.log\\(Object.keys\\(r\\).filter\\(k => /AlertDialog|Label|Checkbox/i.test\\(k\\)\\)\\)\")",
+      "Bash(echo \"exit: $?\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Stock\\rtnyfinalpwa\\app\\api\\v1\\ads",
