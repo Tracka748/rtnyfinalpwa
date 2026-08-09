@@ -122,7 +122,7 @@ export type Database = {
           created_at: string
           end_date: string | null
           id: string
-          image_url: string
+          image_url: string | null
           is_active: boolean
           link_url: string | null
           owner_id: string | null
@@ -139,7 +139,7 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
-          image_url: string
+          image_url?: string | null
           is_active?: boolean
           link_url?: string | null
           owner_id?: string | null
@@ -156,7 +156,7 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
-          image_url?: string
+          image_url?: string | null
           is_active?: boolean
           link_url?: string | null
           owner_id?: string | null
