@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Megaphone, Award, Tag, Copy, Check, ExternalLink } from 'lucide-react'
 import {
@@ -14,15 +14,42 @@ import {
 type CardType = 'announcement' | 'curated' | 'deal' | 'featured'
 
 interface FeedCard {
-  id: number
+  id: string
   type: CardType
   headline: string
   sub: string
   action: string
-  imageId?: number
+  image_url?: string
   cta_url?: string
   event_id?: string
   promo_code?: string
+}
+
+// Shape returned by GET /api/v1/feed-cards
+interface ApiFeedCard {
+  id: string
+  type: CardType
+  headline: string
+  sub: string | null
+  action_label: string | null
+  cta_url: string | null
+  event_id: string | null
+  promo_code: string | null
+  image_url: string | null
+}
+
+function mapApiCard(api: ApiFeedCard): FeedCard {
+  return {
+    id: api.id,
+    type: api.type,
+    headline: api.headline,
+    sub: api.sub ?? '',
+    action: api.action_label ?? '',
+    image_url: api.image_url ?? undefined,
+    cta_url: api.cta_url ?? undefined,
+    event_id: api.event_id ?? undefined,
+    promo_code: api.promo_code ?? undefined,
+  }
 }
 
 const TYPE_COLOR: Record<CardType, string> = {
@@ -38,17 +65,6 @@ const TYPE_LABEL: Record<CardType, string> = {
   deal: 'Deal',
   featured: 'Featured',
 }
-
-const CARDS: FeedCard[] = [
-  { id: 1, type: 'announcement', headline: 'Crews Are Live 🎉', sub: 'Plan your night with your squad. Invite friends, unlock perks.', action: 'Explore Crews →', cta_url: '/crews' },
-  { id: 2, type: 'curated', headline: 'Staff Pick: Jazz Night', sub: 'Old Toad is the spot this Friday. Smooth vibes guaranteed.', action: 'Get Tickets →', event_id: 'evt-jazz-001' },
-  { id: 3, type: 'deal', headline: 'Free Before 10PM', sub: 'Skip the cover at Club Bliss tonight. First 50 through the door.', action: 'Claim Deal →', promo_code: 'FREE10PM' },
-  { id: 4, type: 'featured', headline: 'Featured: DJ Xtreme', sub: "Rochester's top DJ returns to Anthology this Saturday.", action: 'View Profile →', imageId: 10, event_id: 'evt-dj-xtreme' },
-  { id: 5, type: 'announcement', headline: 'RTNY Rewards Launched', sub: 'Earn points every time you buy, share or check in.', action: 'Learn More →', cta_url: '/rewards' },
-  { id: 6, type: 'deal', headline: '2-for-1 Tickets', sub: 'This weekend only at Montage Music Hall. Limited pairs left.', action: 'Get Tickets →', promo_code: '2FOR1MH', event_id: 'evt-montage-001' },
-  { id: 7, type: 'curated', headline: 'Hidden Gem: The Bop Shop', sub: "Park Ave's best kept secret. Open mic every Thursday.", action: 'Explore →', event_id: 'evt-bop-shop' },
-  { id: 8, type: 'featured', headline: 'Venue Spotlight: Anthology', sub: "Rochester's premier live music venue. 4 shows this week.", action: 'View Venue →', imageId: 42, event_id: 'evt-anthology' },
-]
 
 function TypeIcon({ type }: { type: CardType }) {
   const color = TYPE_COLOR[type]
@@ -231,9 +247,9 @@ function FeedCardItem({ card }: { card: FeedCard }) {
             background: iconBg,
           }}
         >
-          {card.type === 'featured' ? (
+          {card.image_url ? (
             <img
-              src={`https://picsum.photos/60/60?random=${card.imageId}`}
+              src={card.image_url}
               alt={card.headline}
               width={60}
               height={60}
@@ -307,7 +323,50 @@ function FeedCardItem({ card }: { card: FeedCard }) {
   )
 }
 
+function FeedCardSkeleton() {
+  return (
+    <div
+      className="animate-pulse"
+      style={{
+        width: '280px',
+        height: '84px',
+        flexShrink: 0,
+        background: '#2a2929',
+        borderRadius: '12px',
+      }}
+    />
+  )
+}
+
 export function AnnouncementFeed() {
+  const [cards, setCards] = useState<FeedCard[]>([])
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch('/api/v1/feed-cards')
+        if (!res.ok) throw new Error('Failed to load feed cards')
+        const data: ApiFeedCard[] = await res.json()
+        if (!cancelled) setCards(data.map(mapApiCard))
+      } catch (err) {
+        if (!cancelled) setFailed(true)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!loading && (failed || cards.length === 0)) return null
+
   return (
     <section style={{ paddingTop: '16px', paddingBottom: '4px' }}>
       <p
@@ -327,9 +386,9 @@ export function AnnouncementFeed() {
         }}
         className="hide-scrollbar"
       >
-        {CARDS.map((card) => (
-          <FeedCardItem key={card.id} card={card} />
-        ))}
+        {loading
+          ? [...Array(3)].map((_, i) => <FeedCardSkeleton key={i} />)
+          : cards.map((card) => <FeedCardItem key={card.id} card={card} />)}
       </div>
     </section>
   )
