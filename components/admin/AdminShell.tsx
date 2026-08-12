@@ -27,7 +27,10 @@ const navItems: NavEntry[] = [
   {
     icon: '📣',
     label: 'Marketing',
-    children: [{ href: '/admin/ads', icon: '📢', label: 'Ad Manager' }],
+    children: [
+      { href: '/admin/ads', icon: '📢', label: 'Ad Manager' },
+      { href: '/admin/feed-cards', icon: '🗞️', label: 'Feed Cards' },
+    ],
   },
   { href: '/admin/settings', icon: '⚙️', label: 'Settings' },
 ];
@@ -46,6 +49,7 @@ const pageTitles: Record<string, string> = {
   '/admin/promo-codes': 'Promo Codes',
   '/admin/invites': 'Invites',
   '/admin/ads': 'Ad Manager',
+  '/admin/feed-cards': 'Feed Cards',
   '/admin/settings': 'Settings',
 };
 
