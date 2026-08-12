@@ -1538,6 +1538,78 @@ export type Database = {
           },
         ]
       }
+      feed_cards: {
+        Row: {
+          action_label: string | null
+          active: boolean
+          created_at: string
+          created_by: string | null
+          cta_url: string | null
+          display_order: number
+          ends_at: string | null
+          event_id: string | null
+          headline: string
+          id: string
+          image_url: string | null
+          promo_code: string | null
+          starts_at: string | null
+          sub: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          action_label?: string | null
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          cta_url?: string | null
+          display_order?: number
+          ends_at?: string | null
+          event_id?: string | null
+          headline: string
+          id?: string
+          image_url?: string | null
+          promo_code?: string | null
+          starts_at?: string | null
+          sub?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          action_label?: string | null
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          cta_url?: string | null
+          display_order?: number
+          ends_at?: string | null
+          event_id?: string | null
+          headline?: string
+          id?: string
+          image_url?: string | null
+          promo_code?: string | null
+          starts_at?: string | null
+          sub?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_cards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_cards_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       filters: {
         Row: {
           asset_url: string
