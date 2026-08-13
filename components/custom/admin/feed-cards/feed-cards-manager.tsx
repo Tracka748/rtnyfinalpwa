@@ -53,6 +53,14 @@ const TYPE_COLOR: Record<CardType, string> = {
 
 const MAX_HOMEPAGE_CARDS = 8
 
+const ACTION_LABEL_PRESETS = [
+  "Learn More →",
+  "Get Tickets →",
+  "View Details →",
+  "Claim Deal →",
+  "Explore →",
+]
+
 interface FeedCard {
   id: string
   type: CardType
@@ -81,7 +89,8 @@ interface FeedCardFormState {
   type: CardType
   headline: string
   sub: string
-  action_label: string
+  actionLabelPreset: string
+  actionLabelCustom: string
   cta_url: string
   event_id: string
   promo_code: string
@@ -97,7 +106,8 @@ function emptyForm(nextOrder: number): FeedCardFormState {
     type: "announcement",
     headline: "",
     sub: "",
-    action_label: "",
+    actionLabelPreset: "",
+    actionLabelCustom: "",
     cta_url: "",
     event_id: "",
     promo_code: "",
@@ -107,6 +117,15 @@ function emptyForm(nextOrder: number): FeedCardFormState {
     ends_at: "",
     display_order: String(nextOrder),
   }
+}
+
+// Splits a stored action_label into a preset selection + custom text, so
+// values that predate the dropdown round-trip correctly when a card is
+// reopened for editing.
+function deriveActionLabelState(actionLabel: string | null): { preset: string; custom: string } {
+  if (!actionLabel) return { preset: "", custom: "" }
+  if (ACTION_LABEL_PRESETS.includes(actionLabel)) return { preset: actionLabel, custom: "" }
+  return { preset: "", custom: actionLabel }
 }
 
 function toDateTimeInputValue(iso: string | null): string {
@@ -217,11 +236,13 @@ export function FeedCardsManager() {
 
   function openEditDialog(card: FeedCard) {
     setEditingCard(card)
+    const { preset, custom } = deriveActionLabelState(card.action_label)
     setForm({
       type: card.type,
       headline: card.headline,
       sub: card.sub ?? "",
-      action_label: card.action_label ?? "",
+      actionLabelPreset: preset,
+      actionLabelCustom: custom,
       cta_url: card.cta_url ?? "",
       event_id: card.event_id ?? "",
       promo_code: card.promo_code ?? "",
@@ -263,6 +284,9 @@ export function FeedCardsManager() {
   function validateForm(): boolean {
     const errors: Record<string, string> = {}
     if (!form.headline.trim()) errors.headline = "Headline is required"
+    if (!form.actionLabelPreset && !form.actionLabelCustom.trim()) {
+      errors.action_label = "Select or enter an action label"
+    }
     const orderNum = Number(form.display_order)
     if (form.display_order.trim() === "" || !Number.isInteger(orderNum)) {
       errors.display_order = "Display order must be an integer"
@@ -279,11 +303,13 @@ export function FeedCardsManager() {
   async function handleSubmit() {
     if (!validateForm()) return
 
+    const actionLabel = form.actionLabelCustom.trim() || form.actionLabelPreset
+
     const payload: Record<string, unknown> = {
       type: form.type,
       headline: form.headline.trim(),
       sub: form.sub.trim() || null,
-      action_label: form.action_label.trim() || null,
+      action_label: actionLabel || null,
       image_url: form.image_url || null,
       active: form.active,
       starts_at: fromDateTimeInputValue(form.starts_at),
@@ -545,12 +571,29 @@ export function FeedCardsManager() {
 
             <div className="space-y-1.5">
               <Label htmlFor="card-action-label">Action Label</Label>
+              <Select
+                value={form.actionLabelPreset || undefined}
+                onValueChange={(value) => setForm((p) => ({ ...p, actionLabelPreset: value }))}
+              >
+                <SelectTrigger id="card-action-label" className="w-full">
+                  <SelectValue placeholder="Select action" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTION_LABEL_PRESETS.map((label) => (
+                    <SelectItem key={label} value={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
-                id="card-action-label"
-                placeholder="Explore →"
-                value={form.action_label}
-                onChange={(e) => setForm((p) => ({ ...p, action_label: e.target.value }))}
+                placeholder="Custom label action"
+                value={form.actionLabelCustom}
+                onChange={(e) => setForm((p) => ({ ...p, actionLabelCustom: e.target.value }))}
               />
+              {formErrors.action_label && (
+                <p className="text-xs text-red-400">{formErrors.action_label}</p>
+              )}
             </div>
 
             {form.type === "announcement" && (
