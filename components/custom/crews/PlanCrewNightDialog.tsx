@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { format } from "date-fns"
 import {
   Dialog,
@@ -56,7 +56,7 @@ interface PlanCrewNightDialogProps {
 }
 
 type Step = "details" | "events"
-type SearchType = "events" | "venues"
+type SearchType = "events" | "venues" | "workshops"
 
 function formatEventDate(dateStr: string): string {
   try {
@@ -84,6 +84,8 @@ export function PlanCrewNightDialog({
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
 
   const [selected, setSelected] = useState<SelectedEvent[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -99,6 +101,7 @@ export function PlanCrewNightDialog({
     setSearchQuery("")
     setSearchResults([])
     setSearchLoading(false)
+    setSearchOpen(false)
     setSelected([])
     setSubmitting(false)
     setError("")
@@ -135,17 +138,19 @@ export function PlanCrewNightDialog({
     }
   }, [step, recommendations, crewId])
 
-  // ── Debounced search ───────────────────────────────────────────────────────
+  // ── Search (dropdown-on-focus) ─────────────────────────────────────────────
+  // Opening the dropdown fetches the default/top-sellers set immediately
+  // (empty q); typing swaps it to filtered results after the usual 300ms
+  // debounce. Both paths hit the same endpoint, so the API decides what
+  // "default" means per tab.
   useEffect(() => {
-    if (searchQuery.trim().length < 2) {
-      setSearchResults([])
-      setSearchLoading(false)
-      return
-    }
+    if (!searchOpen) return
+    const trimmed = searchQuery.trim()
+    const isDefaultSet = trimmed.length < 2
     setSearchLoading(true)
     const handle = setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ q: searchQuery.trim(), type: searchType })
+        const params = new URLSearchParams({ q: trimmed, type: searchType })
         const res = await fetch(`/api/v1/crews/${crewId}/plan-nights/search?${params}`)
         const json = await res.json()
         setSearchResults(json.success ? json.results ?? [] : [])
@@ -154,9 +159,28 @@ export function PlanCrewNightDialog({
       } finally {
         setSearchLoading(false)
       }
-    }, 300)
+    }, isDefaultSet ? 0 : 300)
     return () => clearTimeout(handle)
-  }, [searchQuery, searchType, crewId])
+  }, [searchQuery, searchType, crewId, searchOpen])
+
+  // ── Close dropdown on outside click / Escape ───────────────────────────────
+  useEffect(() => {
+    if (!searchOpen) return
+    function handlePointerDown(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchOpen(false)
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setSearchOpen(false)
+    }
+    document.addEventListener("mousedown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [searchOpen])
 
   function isSelected(eventId: string) {
     return selected.some((s) => s.event_id === eventId)
@@ -230,6 +254,9 @@ export function PlanCrewNightDialog({
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Plan Our Crew Night</DialogTitle>
+          <p className="font-label text-xs uppercase tracking-widest text-foreground/40">
+            {step === "details" ? "1. Name" : "2. Location"}
+          </p>
           <DialogDescription>
             {step === "details"
               ? "Give this plan a name your crew will recognize."
@@ -318,7 +345,7 @@ export function PlanCrewNightDialog({
             </div>
 
             {/* Search */}
-            <div>
+            <div ref={searchContainerRef} className="relative">
               <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-2">
                 Or search
               </p>
@@ -326,45 +353,57 @@ export function PlanCrewNightDialog({
                 <TabsList className="mb-2">
                   <TabsTrigger value="events">Events</TabsTrigger>
                   <TabsTrigger value="venues">Venues</TabsTrigger>
+                  <TabsTrigger value="workshops">Workshops</TabsTrigger>
                 </TabsList>
               </Tabs>
               <Input
-                placeholder={searchType === "events" ? "Search events by name…" : "Search venues by name…"}
+                placeholder={
+                  searchType === "events"
+                    ? "Search events by name…"
+                    : searchType === "venues"
+                    ? "Search venues by name…"
+                    : "Search workshops by name…"
+                }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
               />
-              {searchLoading && (
-                <p className="text-foreground/40 text-xs font-sans mt-2">Searching…</p>
-              )}
-              {!searchLoading && searchResults.length > 0 && (
-                <div className="flex flex-col gap-2 mt-2">
-                  {searchResults.map((res) => (
-                    <div
-                      key={res.event_id}
-                      className="flex items-center justify-between gap-2 bg-[#121113] border border-white/10 rounded-xl px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-white text-sm font-sans truncate">{res.event_name}</p>
-                        <p className="text-foreground/40 text-xs font-sans">{formatEventDate(res.event_date)}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addEvent(res)}
-                        disabled={isSelected(res.event_id)}
-                        className={`shrink-0 text-xs font-sans font-medium rounded-lg px-2.5 py-1.5 transition-colors ${
-                          isSelected(res.event_id)
-                            ? "bg-white/5 text-foreground/30 cursor-default"
-                            : "bg-accent/10 text-accent hover:bg-accent/20"
-                        }`}
+              {searchOpen && (
+                <div className="absolute left-0 right-0 top-full mt-2 z-20 max-h-64 overflow-y-auto bg-[#1A1A1F] border border-white/10 rounded-xl p-2 shadow-xl flex flex-col gap-2">
+                  {searchLoading && (
+                    <p className="text-foreground/40 text-xs font-sans px-1 py-1">Searching…</p>
+                  )}
+                  {!searchLoading &&
+                    searchResults.map((res) => (
+                      <div
+                        key={res.event_id}
+                        className="flex items-center justify-between gap-2 bg-[#121113] border border-white/10 rounded-xl px-3 py-2"
                       >
-                        {isSelected(res.event_id) ? "Added" : "+ Add"}
-                      </button>
-                    </div>
-                  ))}
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-sans truncate">{res.event_name}</p>
+                          <p className="text-foreground/40 text-xs font-sans">{formatEventDate(res.event_date)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addEvent(res)}
+                          disabled={isSelected(res.event_id)}
+                          className={`shrink-0 text-xs font-sans font-medium rounded-lg px-2.5 py-1.5 transition-colors ${
+                            isSelected(res.event_id)
+                              ? "bg-white/5 text-foreground/30 cursor-default"
+                              : "bg-accent/10 text-accent hover:bg-accent/20"
+                          }`}
+                        >
+                          {isSelected(res.event_id) ? "Added" : "+ Add"}
+                        </button>
+                      </div>
+                    ))}
+                  {!searchLoading && searchResults.length === 0 && searchQuery.trim().length >= 2 && (
+                    <p className="text-foreground/40 text-xs font-sans px-1 py-1">No matches.</p>
+                  )}
+                  {!searchLoading && searchResults.length === 0 && searchQuery.trim().length < 2 && (
+                    <p className="text-foreground/40 text-xs font-sans px-1 py-1">Nothing to show yet.</p>
+                  )}
                 </div>
-              )}
-              {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-                <p className="text-foreground/40 text-xs font-sans mt-2">No matches.</p>
               )}
             </div>
 
