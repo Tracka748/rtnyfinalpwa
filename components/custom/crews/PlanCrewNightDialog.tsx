@@ -251,7 +251,7 @@ export function PlanCrewNightDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Plan Our Crew Night</DialogTitle>
           <p className="font-label text-xs uppercase tracking-widest text-foreground/40">

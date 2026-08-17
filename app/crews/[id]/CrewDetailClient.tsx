@@ -301,7 +301,12 @@ export default function CrewDetailClient({
         {/* ── Plan Our Crew Night (captain-only) ───────────────────────── */}
         {isCreator && (
           <button
-            onClick={() => setPlanNightOpen(true)}
+            onClick={() => {
+              // Reset scroll before mount so Safari's toolbar isn't mid-collapse/expand
+              // when the dialog's dvh sizing takes effect.
+              if (window.scrollY > 0) window.scrollTo(0, 0)
+              setPlanNightOpen(true)
+            }}
             className="w-full mb-4 rounded-2xl py-3 px-4 font-sans font-semibold text-black text-sm transition-opacity hover:opacity-90"
             style={{ background: "linear-gradient(90deg, #59FFA0, #1AC8ED)" }}
           >
