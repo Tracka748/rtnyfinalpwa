@@ -2613,6 +2613,131 @@ export type Database = {
           },
         ]
       }
+      picks_card_options: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          label: string
+          link_url: string | null
+          option_order: number
+          vote_count: number
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          label: string
+          link_url?: string | null
+          option_order: number
+          vote_count?: number
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          link_url?: string | null
+          option_order?: number
+          vote_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "picks_card_options_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "picks_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      picks_card_votes: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          option_id: string
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          option_id: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          option_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "picks_card_votes_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "picks_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "picks_card_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "picks_card_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      picks_cards: {
+        Row: {
+          background_color: string | null
+          background_image_url: string | null
+          card_type: string
+          categories: string[]
+          created_at: string
+          display_order: number
+          end_date: string | null
+          id: string
+          is_active: boolean
+          mode: string
+          start_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          background_color?: string | null
+          background_image_url?: string | null
+          card_type: string
+          categories?: string[]
+          created_at?: string
+          display_order?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          mode: string
+          start_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          background_color?: string | null
+          background_image_url?: string | null
+          card_type?: string
+          categories?: string[]
+          created_at?: string
+          display_order?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          mode?: string
+          start_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pitch_feedback: {
         Row: {
           action_commitment: string | null
@@ -4343,6 +4468,10 @@ export type Database = {
           venue_name: string
         }[]
       }
+      increment_picks_card_option_vote: {
+        Args: { p_option_id: string }
+        Returns: number
+      }
       is_valid_email: { Args: { email: string }; Returns: boolean }
       purchase_tickets: {
         Args: {
@@ -4416,6 +4545,7 @@ export type Database = {
         | "sports"
         | "music"
         | "festivals"
+        | "workshop"
       event_status:
         | "draft"
         | "pending_approval"
@@ -4601,6 +4731,7 @@ export const Constants = {
         "sports",
         "music",
         "festivals",
+        "workshop",
       ],
       event_status: [
         "draft",
