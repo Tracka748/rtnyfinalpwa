@@ -91,6 +91,11 @@ export function PlanCrewNightDialog({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
 
+  // Original viewport meta content, captured the first time step 2 locks
+  // zoom. Non-null only while the override is active, so restore is
+  // idempotent across the several paths that can trigger it below.
+  const originalViewportRef = useRef<string | null>(null)
+
   function reset() {
     setStep("details")
     setName("")
@@ -181,6 +186,47 @@ export function PlanCrewNightDialog({
       document.removeEventListener("keydown", handleKeyDown)
     }
   }, [searchOpen])
+
+  // ── Step 2 zoom lock ────────────────────────────────────────────────────────
+  // Scoped strictly to step "events": temporarily forces the viewport meta tag
+  // to disallow zoom, then restores whatever it was before. Idempotent so the
+  // redundant restore paths below (open, unmount) don't double-fire.
+  function lockViewportZoom() {
+    const meta = document.querySelector('meta[name="viewport"]')
+    if (!meta) return
+    if (originalViewportRef.current === null) {
+      originalViewportRef.current = meta.getAttribute("content") ?? ""
+    }
+    meta.setAttribute(
+      "content",
+      "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    )
+  }
+
+  function restoreViewportZoom() {
+    const original = originalViewportRef.current
+    if (original === null) return
+    const meta = document.querySelector('meta[name="viewport"]')
+    if (meta) meta.setAttribute("content", original)
+    originalViewportRef.current = null
+  }
+
+  useEffect(() => {
+    if (step !== "events") return
+    lockViewportZoom()
+    return () => restoreViewportZoom()
+  }, [step])
+
+  // Redundant safety net: restore the instant the dialog reports closed,
+  // regardless of whether the step-effect's own cleanup already ran.
+  useEffect(() => {
+    if (!open) restoreViewportZoom()
+  }, [open])
+
+  // Final safety net: restore on true unmount.
+  useEffect(() => {
+    return () => restoreViewportZoom()
+  }, [])
 
   function isSelected(eventId: string) {
     return selected.some((s) => s.event_id === eventId)
