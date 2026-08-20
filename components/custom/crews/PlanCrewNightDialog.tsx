@@ -285,7 +285,7 @@ export function PlanCrewNightDialog({
             <Button
               onClick={handleNext}
               disabled={!name.trim()}
-              className="w-full bg-accent text-black hover:bg-accent/90"
+              className="w-full bg-accent text-black hover:bg-accent/90 touch-manipulation"
             >
               Next: Add Events
             </Button>
@@ -297,6 +297,9 @@ export function PlanCrewNightDialog({
               <p className="font-label text-xs uppercase tracking-widest text-foreground/40 mb-2">
                 Recommended for your crew
               </p>
+              {/* min-h reserves space for the tallest of skeleton / 1-2 cards / empty
+                  state so loading -> loaded doesn't reflow the rest of the dialog. */}
+              <div className="min-h-[116px]">
               {recsLoading ? (
                 <div className="flex flex-col gap-2">
                   {[0, 1].map((i) => (
@@ -342,6 +345,7 @@ export function PlanCrewNightDialog({
               ) : (
                 <p className="text-foreground/40 text-xs font-sans">Nothing recommended right now.</p>
               )}
+              </div>
             </div>
 
             {/* Search */}
