@@ -252,7 +252,7 @@ export function PlanCrewNightDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg max-h-[85dvh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className={step === "events" ? "gap-1 mb-2" : undefined}>
           <DialogTitle>Plan Our Crew Night</DialogTitle>
           <p className="font-label text-xs uppercase tracking-widest text-foreground/40">
             {step === "details" ? "1. Name" : "2. Location"}
