@@ -43,7 +43,15 @@ export async function POST(
 
     const ticketPriceEntries = Object.entries(draft.ticket_prices || {}) as [
       string,
-      { name: string; price: number; quantity: number }
+      {
+        name: string
+        price: number
+        quantity: number
+        ticket_format?: 'digital' | 'physical' | 'both'
+        fee_payer?: 'buyer' | 'promoter' | null
+        printing_quantity?: number | null
+        rtny_distribution?: boolean
+      }
     ][]
     const totalTickets = ticketPriceEntries.reduce(
       (sum, [, tt]) => sum + (Number(tt.quantity) || 0),
@@ -86,14 +94,64 @@ export async function POST(
     }
 
     // 2. Insert one ticket_types row per entry in draft.ticket_prices
-    const ticketTypeRows = ticketPriceEntries.map(([, tt]) => ({
-      event_id: publishedEvent.id,
-      name: tt.name,
-      price: tt.price,
-      quantity: tt.quantity,
-      remaining: tt.quantity,
-      description: null,
-    }))
+    const needsPrintingCost = ticketPriceEntries.some(
+      ([, tt]) =>
+        (tt.ticket_format === 'physical' || tt.ticket_format === 'both') &&
+        tt.printing_quantity != null
+    )
+
+    let printingRateCents: number | null = null
+    if (needsPrintingCost) {
+      const { data: rateSetting, error: rateError } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'printing_rate_cents_per_ticket')
+        .single()
+
+      if (rateError || !rateSetting) {
+        console.error('Failed to fetch printing rate, rolling back published event:', rateError)
+        const { error: rollbackError } = await supabase
+          .from('events')
+          .delete()
+          .eq('id', publishedEvent.id)
+
+        if (rollbackError) {
+          console.error('Failed to roll back published event after printing rate lookup failure:', rollbackError)
+        }
+
+        return NextResponse.json(
+          { error: 'Failed to fetch printing rate for cost estimation' },
+          { status: 500 }
+        )
+      }
+
+      printingRateCents = parseInt(rateSetting.value, 10)
+    }
+
+    const ticketTypeRows = ticketPriceEntries.map(([, tt]) => {
+      const ticketFormat = tt.ticket_format ?? 'digital'
+      const printingQuantity = tt.printing_quantity ?? null
+      const estimatedPrintingCostCents =
+        (ticketFormat === 'physical' || ticketFormat === 'both') &&
+        printingQuantity != null &&
+        printingRateCents != null
+          ? printingQuantity * printingRateCents
+          : null
+
+      return {
+        event_id: publishedEvent.id,
+        name: tt.name,
+        price: tt.price,
+        quantity: tt.quantity,
+        remaining: tt.quantity,
+        description: null,
+        ticket_format: ticketFormat,
+        fee_payer: tt.fee_payer ?? null,
+        printing_quantity: printingQuantity,
+        estimated_printing_cost_cents: estimatedPrintingCostCents,
+        rtny_distribution: tt.rtny_distribution ?? false,
+      }
+    })
 
     const { error: ticketTypesError } = await supabase
       .from('ticket_types')

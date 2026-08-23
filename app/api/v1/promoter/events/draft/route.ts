@@ -1,6 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 
+const VALID_TICKET_FORMATS = ['digital', 'physical', 'both']
+const VALID_FEE_PAYERS = ['buyer', 'promoter']
+
+// Validates the optional printing/distribution fields on a ticket_prices entry.
+// `strict` additionally requires fee_payer when ticket_format is physical/both —
+// only enforced on submit-for-review, not on incomplete draft saves.
+function validateOptionalTicketFields(type: string, value: any, strict: boolean): string | null {
+  if (value.ticket_format !== undefined && !VALID_TICKET_FORMATS.includes(value.ticket_format)) {
+    return `Invalid ticket_format for ticket type "${type}". Must be one of: ${VALID_TICKET_FORMATS.join(', ')}`
+  }
+
+  if (
+    value.fee_payer !== undefined &&
+    value.fee_payer !== null &&
+    !VALID_FEE_PAYERS.includes(value.fee_payer)
+  ) {
+    return `Invalid fee_payer for ticket type "${type}". Must be one of: ${VALID_FEE_PAYERS.join(', ')}, or null`
+  }
+
+  if (
+    value.printing_quantity !== undefined &&
+    value.printing_quantity !== null &&
+    typeof value.printing_quantity !== 'number'
+  ) {
+    return `Invalid printing_quantity for ticket type "${type}". Must be a number or null`
+  }
+
+  if (value.rtny_distribution !== undefined && typeof value.rtny_distribution !== 'boolean') {
+    return `Invalid rtny_distribution for ticket type "${type}". Must be a boolean`
+  }
+
+  if (
+    strict &&
+    (value.ticket_format === 'physical' || value.ticket_format === 'both') &&
+    !value.fee_payer
+  ) {
+    return `fee_payer is required for ticket type "${type}" when ticket_format is physical or both`
+  }
+
+  return null
+}
+
+// Removes server-computed fields a client should never be able to set directly.
+function stripServerComputedFields(ticketPrices: Record<string, any>): Record<string, any> {
+  const sanitized: Record<string, any> = {}
+  for (const [type, value] of Object.entries(ticketPrices)) {
+    const { estimated_printing_cost_cents, ...rest } = value as Record<string, any>
+    sanitized[type] = rest
+  }
+  return sanitized
+}
+
 // POST /api/v1/promoter/events/draft - Save event draft
 export async function POST(request: NextRequest) {
   try {
@@ -146,6 +198,15 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
+
+        const optionalFieldError = validateOptionalTicketFields(type, value, true)
+        if (optionalFieldError) {
+          console.error(`❌ ${optionalFieldError}`)
+          return NextResponse.json(
+            { error: optionalFieldError, code: 'VALIDATION_ERROR', received: value },
+            { status: 400 }
+          )
+        }
       }
 
       console.log('✅ Strict validation passed!')
@@ -212,6 +273,15 @@ export async function POST(request: NextRequest) {
               { status: 400 }
             )
           }
+
+          const optionalFieldError = validateOptionalTicketFields(type, value, false)
+          if (optionalFieldError) {
+            console.error(`❌ ${optionalFieldError}`)
+            return NextResponse.json(
+              { error: optionalFieldError, code: 'VALIDATION_ERROR', received: value },
+              { status: 400 }
+            )
+          }
         }
       }
 
@@ -229,7 +299,7 @@ export async function POST(request: NextRequest) {
       venue_name: body.venue_name || null,
       total_tickets: body.total_tickets || 0,
       flyer_image_url: body.flyer_image_url || null,
-      ticket_prices: body.ticket_prices || {},
+      ticket_prices: stripServerComputedFields(body.ticket_prices || {}),
       tier_discounts: body.tier_discounts || {},
       status: isSubmittingForReview ? 'pending_review' : 'draft'
     }
