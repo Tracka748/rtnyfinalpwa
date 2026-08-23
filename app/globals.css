@@ -25,6 +25,8 @@
   --badge-nightlife: #a855f7;
   --badge-vip: #f59e0b;
 
+  --step-label-accent: #ff8a3d;
+
   --foreground: var(--text-primary);
   --card: var(--surface);
   --card-foreground: var(--text-primary);
@@ -116,6 +118,7 @@
   --color-badge-family: var(--badge-family);
   --color-badge-nightlife: var(--badge-nightlife);
   --color-badge-vip: var(--badge-vip);
+  --color-step-label-accent: var(--step-label-accent);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
