@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { EventCategory } from '@/types/database';
 import { AIQuickBuildFlow } from '@/components/AIQuickBuildFlow';
 import { TimePicker } from '@/components/ui/time-picker/TimePicker';
+import { Calendar } from 'lucide-react';
 
 function to24Hour(time12: string): string {
   const match = time12.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -27,6 +28,31 @@ function to12Hour(time24: string): string {
   if (h === 0) h = 12;
   else if (h > 12) h -= 12;
   return `${h}:${m} ${period}`;
+}
+
+function splitTimestamp(timestamp: string | null | undefined): { date: string; time: string } {
+  if (!timestamp) return { date: '', time: '' };
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) return { date: '', time: '' };
+  return {
+    date: d.toISOString().split('T')[0],
+    time: d.toTimeString().slice(0, 5),
+  };
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+// Combine a date + end time-of-day into a full timestamp, rolling over to the
+// next calendar day if the end time-of-day is earlier than or equal to the
+// start time-of-day — mirrors the ordering rule the API enforces.
+function combineEndDateTime(dateStr: string, startTime: string, endTime: string): string {
+  const rollsToNextDay = endTime <= startTime;
+  const endDateOnly = rollsToNextDay ? addDays(dateStr, 1) : dateStr;
+  return `${endDateOnly}T${endTime}:00`;
 }
 
 // Multi-step wizard steps
@@ -86,6 +112,7 @@ function CreateEventForm() {
   const [ticketNameError, setTicketNameError] = useState<string | null>(null);
   const [ticketPhysicalErrors, setTicketPhysicalErrors] = useState<Record<number, boolean>>({});
   const [printingRateCents, setPrintingRateCents] = useState<number | null>(null);
+  const [basicsError, setBasicsError] = useState<string | null>(null);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -93,8 +120,10 @@ function CreateEventForm() {
     name: '',
     category: 'nightlife' as EventCategory,
     event_date: '',
-    event_time: '',
-    
+    event_time: '19:00',
+    event_end_date: '19:00',
+    until_tbd: false,
+
     // Details
     description: '',
     venue_id: '',
@@ -142,7 +171,8 @@ function CreateEventForm() {
       .then(data => {
         if (data.success && data.data) {
           const draft = data.data;
-          const eventDate = draft.event_date ? new Date(draft.event_date) : null;
+          const startSplit = splitTimestamp(draft.event_date);
+          const endSplit = splitTimestamp(draft.event_end_date);
 
           // Convert ticket_prices object back to ticket_types array
           const ticketTypes: TicketType[] = draft.ticket_prices
@@ -161,8 +191,10 @@ function CreateEventForm() {
             ...prev,
             name: draft.name || '',
             category: draft.category || 'nightlife',
-            event_date: eventDate ? eventDate.toISOString().split('T')[0] : '',
-            event_time: eventDate ? eventDate.toTimeString().slice(0, 5) : '',
+            event_date: startSplit.date,
+            event_time: startSplit.time,
+            event_end_date: endSplit.time,
+            until_tbd: !draft.event_end_date,
             description: draft.description || '',
             venue_id: draft.venue_id || '',
             custom_venue_name: draft.venue_name || '',
@@ -184,6 +216,19 @@ function CreateEventForm() {
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
   const nextStep = () => {
+    if (currentStep === 'basics') {
+      const missing: string[] = [];
+      if (!formData.name.trim()) missing.push('Event Name');
+      if (!formData.category) missing.push('Category');
+      if (!formData.event_date) missing.push('Event Date');
+      if (!formData.event_time) missing.push('Start Time');
+      if (missing.length > 0) {
+        setBasicsError(`Please fill in: ${missing.join(', ')}`);
+        return;
+      }
+    }
+    setBasicsError(null);
+
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
@@ -253,6 +298,19 @@ function CreateEventForm() {
 
   // Submit form
   const handleSubmit = async () => {
+    // Block submission if Basics fields are missing (defense in depth beyond step-gating)
+    const missingBasics: string[] = [];
+    if (!formData.name.trim()) missingBasics.push('Event Name');
+    if (!formData.category) missingBasics.push('Category');
+    if (!formData.event_date) missingBasics.push('Event Date');
+    if (!formData.event_time) missingBasics.push('Start Time');
+    if (missingBasics.length > 0) {
+      setBasicsError(`Please fill in: ${missingBasics.join(', ')}`);
+      setCurrentStep('basics');
+      return;
+    }
+    setBasicsError(null);
+
     // Block submission if any ticket type has an empty/whitespace-only name
     const emptyNameIndex = formData.ticket_types.findIndex((tt) => !tt.name.trim());
     if (emptyNameIndex !== -1) {
@@ -332,6 +390,10 @@ function CreateEventForm() {
         name: formData.name,
         category: formData.category,
         event_date: `${formData.event_date}T${formData.event_time}:00`,
+        event_end_date: formData.until_tbd
+          ? null
+          : combineEndDateTime(formData.event_date, formData.event_time, formData.event_end_date),
+        until_tbd: formData.until_tbd,
         description: formData.description,
         venue_id: formData.venue_id || null,
         venue_name: formData.custom_venue_name || null,
@@ -523,21 +585,36 @@ function CreateEventForm() {
                 </div>
               </div>
 
-              {/* Date & Time */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-2">
-                    Event Date *
-                  </label>
+              {/* Event Date */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Event Date *
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#7DD8E8] pointer-events-none" />
                   <input
                     type="date"
                     required
                     value={formData.event_date}
                     onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
+                    className="w-full pl-12 pr-4 py-4 bg-background border-2 border-border rounded-xl focus:outline-none focus:border-accent transition-colors text-base"
                   />
                 </div>
+                {formData.event_date && (
+                  <p className="text-sm text-[#7DD8E8] mt-2">
+                    {new Date(`${formData.event_date}T00:00:00`).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
+                )}
+              </div>
+
+              {/* Start / End Time */}
+              <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <TimePicker
                     label="START TIME"
@@ -545,7 +622,23 @@ function CreateEventForm() {
                     onChange={(val) => setFormData({ ...formData, event_time: to24Hour(val) })}
                   />
                 </div>
+                <div className={formData.until_tbd ? 'opacity-40 pointer-events-none' : ''}>
+                  <TimePicker
+                    label="END TIME"
+                    value={formData.event_end_date ? to12Hour(formData.event_end_date) : undefined}
+                    onChange={(val) => setFormData({ ...formData, event_end_date: to24Hour(val) })}
+                  />
+                </div>
               </div>
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.until_tbd}
+                  onChange={(e) => setFormData({ ...formData, until_tbd: e.target.checked })}
+                />
+                Until TBD
+              </label>
             </div>
           )}
 
@@ -1057,24 +1150,29 @@ function CreateEventForm() {
             ← Back
           </button>
 
-          {currentStep === 'review' ? (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="px-8 py-3 bg-accent text-background rounded-full font-bold hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Submitting...' : 'Submit Event for Review'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={nextStep}
-              className="px-8 py-3 bg-accent text-background rounded-full font-bold hover:bg-accent/90 transition-colors"
-            >
-              Next →
-            </button>
-          )}
+          <div className="flex flex-col items-end gap-2">
+            {basicsError && (
+              <p className="text-sm text-red-400">{basicsError}</p>
+            )}
+            {currentStep === 'review' ? (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="px-8 py-3 bg-accent text-background rounded-full font-bold hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Submitting...' : 'Submit Event for Review'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="px-8 py-3 bg-accent text-background rounded-full font-bold hover:bg-accent/90 transition-colors"
+              >
+                Next →
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
