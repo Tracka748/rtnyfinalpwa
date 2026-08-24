@@ -1198,6 +1198,8 @@ export type Database = {
           sale_end_date: string | null
           sale_start_date: string | null
           status: string | null
+          theme_custom_text: string | null
+          theme_id: string | null
           ticket_prices: Json | null
           tier_discounts: Json | null
           total_tickets: number | null
@@ -1221,6 +1223,8 @@ export type Database = {
           sale_end_date?: string | null
           sale_start_date?: string | null
           status?: string | null
+          theme_custom_text?: string | null
+          theme_id?: string | null
           ticket_prices?: Json | null
           tier_discounts?: Json | null
           total_tickets?: number | null
@@ -1244,6 +1248,8 @@ export type Database = {
           sale_end_date?: string | null
           sale_start_date?: string | null
           status?: string | null
+          theme_custom_text?: string | null
+          theme_id?: string | null
           ticket_prices?: Json | null
           tier_discounts?: Json | null
           total_tickets?: number | null
@@ -1258,6 +1264,13 @@ export type Database = {
             columns: ["published_event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_drafts_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
           {

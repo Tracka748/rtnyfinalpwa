@@ -109,6 +109,7 @@ function CreateEventForm() {
   const [loadingDraft, setLoadingDraft] = useState(!!draftId);
   const [venues, setVenues] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [themes, setThemes] = useState<any[]>([]);
   const [ticketNameError, setTicketNameError] = useState<string | null>(null);
   const [ticketPhysicalErrors, setTicketPhysicalErrors] = useState<Record<number, boolean>>({});
   const [printingRateCents, setPrintingRateCents] = useState<number | null>(null);
@@ -123,6 +124,8 @@ function CreateEventForm() {
     event_time: '19:00',
     event_end_date: '19:00',
     until_tbd: false,
+    theme_id: '',
+    theme_custom_text: '',
 
     // Details
     description: '',
@@ -153,6 +156,9 @@ function CreateEventForm() {
     fetch('/api/v1/groups')
       .then(res => res.json())
       .then(data => setGroups(data.data || []));
+    fetch('/api/v1/themes')
+      .then(res => res.json())
+      .then(data => setThemes(data.data || []));
     fetch('/api/v1/settings/printing-rate')
       .then(res => res.json())
       .then(data => {
@@ -195,6 +201,8 @@ function CreateEventForm() {
             event_time: startSplit.time,
             event_end_date: endSplit.time,
             until_tbd: !draft.event_end_date,
+            theme_id: draft.theme_id || '',
+            theme_custom_text: draft.theme_custom_text || '',
             description: draft.description || '',
             venue_id: draft.venue_id || '',
             custom_venue_name: draft.venue_name || '',
@@ -394,6 +402,8 @@ function CreateEventForm() {
           ? null
           : combineEndDateTime(formData.event_date, formData.event_time, formData.event_end_date),
         until_tbd: formData.until_tbd,
+        theme_id: formData.theme_id || null,
+        theme_custom_text: formData.theme_custom_text || null,
         description: formData.description,
         venue_id: formData.venue_id || null,
         venue_name: formData.custom_venue_name || null,
@@ -639,6 +649,38 @@ function CreateEventForm() {
                 />
                 Until TBD
               </label>
+
+              {/* Theme */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Theme (optional)
+                </label>
+                <input
+                  type="text"
+                  list="theme-options"
+                  value={
+                    formData.theme_id
+                      ? themes.find((t) => t.id === formData.theme_id)?.name ?? ''
+                      : formData.theme_custom_text
+                  }
+                  onChange={(e) => {
+                    const typed = e.target.value;
+                    const match = themes.find((t) => t.name.toLowerCase() === typed.toLowerCase());
+                    if (match) {
+                      setFormData({ ...formData, theme_id: match.id, theme_custom_text: '' });
+                    } else {
+                      setFormData({ ...formData, theme_id: '', theme_custom_text: typed });
+                    }
+                  }}
+                  placeholder="Search or type a theme (e.g. 80s, Masquerade, Neon)"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
+                />
+                <datalist id="theme-options">
+                  {themes.map((theme) => (
+                    <option key={theme.id} value={theme.name} />
+                  ))}
+                </datalist>
+              </div>
             </div>
           )}
 

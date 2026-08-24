@@ -371,6 +371,8 @@ export async function POST(request: NextRequest) {
       category: body.category || null,
       event_date: body.event_date || null,
       event_end_date: body.event_end_date || null,
+      theme_id: body.theme_id || null,
+      theme_custom_text: body.theme_custom_text || null,
       venue_id: body.venue_id || null,
       venue_name: body.venue_name || null,
       total_tickets: body.total_tickets || 0,
@@ -397,11 +399,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Log a custom (non-catalog) theme as a suggestion for admin review.
+    // Best-effort — never blocks the draft save itself.
+    if (body.theme_custom_text && !body.theme_id) {
+      const { error: suggestionError } = await supabase
+        .from('theme_suggestions')
+        .insert({
+          name: body.theme_custom_text,
+          submitted_by_user_id: user.id,
+          event_draft_id: data.id,
+          status: 'pending',
+        })
+
+      if (suggestionError) {
+        console.error('Failed to log theme suggestion (non-blocking):', suggestionError)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data,
-      message: draftData.status === 'pending_review' 
-        ? 'Event submitted for review' 
+      message: draftData.status === 'pending_review'
+        ? 'Event submitted for review'
         : 'Draft saved successfully'
     })
 

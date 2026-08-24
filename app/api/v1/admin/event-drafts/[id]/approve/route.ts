@@ -68,6 +68,8 @@ export async function POST(
         category: draft.category || 'nightlife',
         event_date: draft.event_date,
         event_end_date: draft.event_end_date || null,
+        theme_id: draft.theme_id || null,
+        theme_custom_text: draft.theme_custom_text || null,
         venue_id: draft.venue_id,
         custom_address: draft.venue_name || null,
         flyer_image_url: draft.flyer_image_url,

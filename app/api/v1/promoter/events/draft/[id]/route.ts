@@ -87,7 +87,7 @@ export async function PATCH(
 
     const body = await request.json();
 
-    const allowedFields = ['name', 'description', 'category', 'event_date', 'event_end_date', 'venue_id', 'venue_name', 'ticket_prices', 'flyer_image_url', 'tier_discounts'];
+    const allowedFields = ['name', 'description', 'category', 'event_date', 'event_end_date', 'theme_id', 'theme_custom_text', 'venue_id', 'venue_name', 'ticket_prices', 'flyer_image_url', 'tier_discounts'];
 
     // Handle submit for review
     if (body.submit_for_review) {
@@ -175,6 +175,23 @@ export async function PATCH(
         return NextResponse.json({ error: 'Failed to submit draft' }, { status: 500 });
       }
 
+      // Log a custom (non-catalog) theme as a suggestion for admin review.
+      // Best-effort — never blocks the draft submission itself.
+      if (merged.theme_custom_text && !merged.theme_id) {
+        const { error: suggestionError } = await supabase
+          .from('theme_suggestions')
+          .insert({
+            name: merged.theme_custom_text,
+            submitted_by_user_id: user.id,
+            event_draft_id: id,
+            status: 'pending',
+          });
+
+        if (suggestionError) {
+          console.error('Failed to log theme suggestion (non-blocking):', suggestionError);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         data,
@@ -206,6 +223,24 @@ export async function PATCH(
     if (error) {
       console.error('Error updating draft:', error);
       return NextResponse.json({ error: 'Failed to update draft' }, { status: 500 });
+    }
+
+    // Log a custom (non-catalog) theme as a suggestion for admin review.
+    // Best-effort — never blocks the draft save itself. No `merged` here
+    // (this path doesn't build one), so check the incoming body directly.
+    if (body.theme_custom_text && !body.theme_id) {
+      const { error: suggestionError } = await supabase
+        .from('theme_suggestions')
+        .insert({
+          name: body.theme_custom_text,
+          submitted_by_user_id: user.id,
+          event_draft_id: id,
+          status: 'pending',
+        });
+
+      if (suggestionError) {
+        console.error('Failed to log theme suggestion (non-blocking):', suggestionError);
+      }
     }
 
     return NextResponse.json({
