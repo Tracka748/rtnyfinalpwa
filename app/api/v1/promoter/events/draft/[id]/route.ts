@@ -87,7 +87,7 @@ export async function PATCH(
 
     const body = await request.json();
 
-    const allowedFields = ['name', 'description', 'category', 'event_date', 'venue_id', 'venue_name', 'ticket_prices', 'flyer_image_url', 'tier_discounts'];
+    const allowedFields = ['name', 'description', 'category', 'event_date', 'event_end_date', 'venue_id', 'venue_name', 'ticket_prices', 'flyer_image_url', 'tier_discounts'];
 
     // Handle submit for review
     if (body.submit_for_review) {
@@ -121,6 +121,46 @@ export async function PATCH(
           { error: `Cannot submit: missing ${missing.join(', ')}. Please edit the draft first.` },
           { status: 400 }
         );
+      }
+
+      // Validate event_end_date, unless the promoter marked the end time as TBD
+      const untilTbd = body.until_tbd === true;
+      if (!untilTbd) {
+        if (!merged.event_end_date) {
+          return NextResponse.json(
+            {
+              error: 'event_end_date is required unless until_tbd is true',
+              code: 'VALIDATION_ERROR',
+              received: merged.event_end_date
+            },
+            { status: 400 }
+          );
+        }
+
+        const eventEndDate = new Date(merged.event_end_date);
+        if (isNaN(eventEndDate.getTime())) {
+          return NextResponse.json(
+            {
+              error: 'Invalid event_end_date format. Must be ISO 8601 format.',
+              code: 'VALIDATION_ERROR',
+              received: merged.event_end_date,
+              example: '2025-03-15T23:00:00'
+            },
+            { status: 400 }
+          );
+        }
+
+        const eventDate = new Date(merged.event_date);
+        if (eventEndDate <= eventDate) {
+          return NextResponse.json(
+            {
+              error: 'Event end time must be after the start time',
+              code: 'VALIDATION_ERROR',
+              received: { event_date: merged.event_date, event_end_date: merged.event_end_date }
+            },
+            { status: 400 }
+          );
+        }
       }
 
       const { data, error } = await supabase
