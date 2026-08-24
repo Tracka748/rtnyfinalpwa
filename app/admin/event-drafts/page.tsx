@@ -16,7 +16,15 @@ interface EventDraft {
   event_date: string
   venue_id: string
   flyer_image_url: string | null
-  ticket_prices: Record<string, number>
+  ticket_prices: Record<string, {
+    name: string
+    price: number
+    quantity: number
+    ticket_format?: 'digital' | 'physical' | 'both'
+    fee_payer?: 'buyer' | 'promoter' | null
+    printing_quantity?: number | null
+    rtny_distribution?: boolean
+  }>
   tier_discounts: Record<string, number> | null
   status: 'draft' | 'pending_review' | 'approved' | 'rejected'
   created_at: string
@@ -24,6 +32,12 @@ interface EventDraft {
     name: string
     address: string
   }
+}
+
+const TICKET_FORMAT_LABELS: Record<'digital' | 'physical' | 'both', string> = {
+  digital: 'Digital',
+  physical: 'Physical',
+  both: 'Digital + Physical',
 }
 
 export default function AdminEventDraftsPage() {
@@ -202,13 +216,28 @@ export default function AdminEventDraftsPage() {
                       <DollarSign className="h-4 w-4" />
                       <span className="font-medium">Ticket Pricing:</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {Object.entries(draft.ticket_prices).map(([type, price]) => (
-                        <div key={type} className="flex justify-between">
-                          <span className="capitalize">{type}:</span>
-                          <span className="font-medium">${Number(price).toFixed(2)}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-3 text-sm">
+                      {Object.entries(draft.ticket_prices).map(([slug, tt]) => {
+                        const format = tt.ticket_format || 'digital'
+                        const isPhysical = format === 'physical' || format === 'both'
+                        return (
+                          <div key={slug} className="border-b border-border last:border-0 pb-2 last:pb-0">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{tt.name || slug}</span>
+                              <span className="font-medium">${Number(tt.price).toFixed(2)} · {tt.quantity} available</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline">{TICKET_FORMAT_LABELS[format]}</Badge>
+                              {isPhysical && (
+                                <span className="text-[#7DD8E8]">
+                                  {tt.fee_payer === 'buyer' ? 'Buyer pays fee' : tt.fee_payer === 'promoter' ? 'Promoter absorbs fee' : 'Fee payer not set'}
+                                  {tt.printing_quantity ? ` · Printing ${tt.printing_quantity}` : ''}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
 

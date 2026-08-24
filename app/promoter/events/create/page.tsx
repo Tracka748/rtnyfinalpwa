@@ -41,10 +41,29 @@ const CATEGORY_CONFIG: Record<EventCategory, { icon: string; label: string }> = 
   sports: { icon: '⚽', label: 'Sports' },
 };
 
+type TicketFormat = 'digital' | 'physical' | 'both';
+
+const TICKET_FORMAT_LABELS: Record<TicketFormat, string> = {
+  digital: 'Digital',
+  physical: 'Physical',
+  both: 'Digital + Physical',
+};
+
+const TICKET_NAME_PRESETS = [
+  { label: 'GA', value: 'General Admission' },
+  { label: 'VIP', value: 'VIP' },
+  { label: 'Early Bird', value: 'Early Bird' },
+  { label: 'Crew', value: 'Crew' },
+] as const;
+
 interface TicketType {
   name: string;
   price: number;
   quantity: number;
+  ticket_format?: TicketFormat;
+  fee_payer?: 'buyer' | 'promoter' | null;
+  printing_quantity?: number | null;
+  rtny_distribution?: boolean;
 }
 
 function slugifyTicketName(name: string): string {
@@ -65,6 +84,8 @@ function CreateEventForm() {
   const [venues, setVenues] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [ticketNameError, setTicketNameError] = useState<string | null>(null);
+  const [ticketPhysicalErrors, setTicketPhysicalErrors] = useState<Record<number, boolean>>({});
+  const [printingRateCents, setPrintingRateCents] = useState<number | null>(null);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -82,7 +103,7 @@ function CreateEventForm() {
     
     // Tickets
     ticket_types: [
-      { name: 'General Admission', price: 25, quantity: 100 },
+      { name: 'General Admission', price: 25, quantity: 100, ticket_format: 'digital' as TicketFormat, fee_payer: null, printing_quantity: null, rtny_distribution: false },
     ] as TicketType[],
     sale_start_date: '',
     sale_end_date: '',
@@ -103,6 +124,12 @@ function CreateEventForm() {
     fetch('/api/v1/groups')
       .then(res => res.json())
       .then(data => setGroups(data.data || []));
+    fetch('/api/v1/settings/printing-rate')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.rate_cents === 'number') setPrintingRateCents(data.rate_cents);
+      })
+      .catch(err => console.error('Failed to fetch printing rate:', err));
   }, []);
 
   // Load existing draft if editing
@@ -123,8 +150,12 @@ function CreateEventForm() {
                 name: tt.name ?? slug.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                 price: tt.price,
                 quantity: tt.quantity,
+                ticket_format: tt.ticket_format ?? 'digital',
+                fee_payer: tt.fee_payer ?? null,
+                printing_quantity: tt.printing_quantity ?? null,
+                rtny_distribution: tt.rtny_distribution ?? false,
               }))
-            : [{ name: 'General Admission', price: 25, quantity: 100 }];
+            : [{ name: 'General Admission', price: 25, quantity: 100, ticket_format: 'digital', fee_payer: null, printing_quantity: null, rtny_distribution: false }];
 
           setFormData(prev => ({
             ...prev,
@@ -196,7 +227,7 @@ function CreateEventForm() {
       ...formData,
       ticket_types: [
         ...formData.ticket_types,
-        { name: '', price: 0, quantity: 0 },
+        { name: '', price: 0, quantity: 0, ticket_format: 'digital' as TicketFormat, fee_payer: null, printing_quantity: null, rtny_distribution: false },
       ],
     });
   };
@@ -210,7 +241,11 @@ function CreateEventForm() {
   };
 
   // Update ticket type
-  const updateTicketType = (index: number, field: 'name' | 'price' | 'quantity', value: string | number) => {
+  const updateTicketType = (
+    index: number,
+    field: 'name' | 'price' | 'quantity' | 'ticket_format' | 'fee_payer' | 'printing_quantity' | 'rtny_distribution',
+    value: string | number | boolean | null
+  ) => {
     const updated = [...formData.ticket_types];
     updated[index] = { ...updated[index], [field]: value };
     setFormData({ ...formData, ticket_types: updated });
@@ -218,6 +253,13 @@ function CreateEventForm() {
 
   // Submit form
   const handleSubmit = async () => {
+    // Block submission if any ticket type has an empty/whitespace-only name
+    const emptyNameIndex = formData.ticket_types.findIndex((tt) => !tt.name.trim());
+    if (emptyNameIndex !== -1) {
+      setTicketNameError(`Ticket type ${emptyNameIndex + 1} is missing a name. Please choose a preset or enter a custom name.`);
+      return;
+    }
+
     // Block submission if two ticket type names normalize to the same slug
     const slugMap = new Map<string, string>();
     for (const tt of formData.ticket_types) {
@@ -229,6 +271,20 @@ function CreateEventForm() {
       slugMap.set(slug, tt.name);
     }
     setTicketNameError(null);
+
+    // Block submission if a physical/both ticket type is missing a fee payer
+    const missingFeePayer: Record<number, boolean> = {};
+    formData.ticket_types.forEach((tt, i) => {
+      if ((tt.ticket_format === 'physical' || tt.ticket_format === 'both') && !tt.fee_payer) {
+        missingFeePayer[i] = true;
+      }
+    });
+    if (Object.keys(missingFeePayer).length > 0) {
+      setTicketPhysicalErrors(missingFeePayer);
+      setCurrentStep('tickets');
+      return;
+    }
+    setTicketPhysicalErrors({});
 
     setLoading(true);
 
@@ -282,9 +338,17 @@ function CreateEventForm() {
         venue_address: formData.custom_venue_address || null,
         total_tickets: formData.ticket_types.reduce((sum, tt) => sum + (Number(tt.quantity) || 0), 0),
         ticket_prices: formData.ticket_types.reduce((acc, tt) => {
-          acc[slugifyTicketName(tt.name)] = { name: tt.name, price: tt.price, quantity: tt.quantity };
+          acc[slugifyTicketName(tt.name)] = {
+            name: tt.name,
+            price: tt.price,
+            quantity: tt.quantity,
+            ticket_format: tt.ticket_format ?? 'digital',
+            fee_payer: tt.fee_payer ?? null,
+            printing_quantity: tt.printing_quantity ?? null,
+            rtny_distribution: tt.rtny_distribution ?? false,
+          };
           return acc;
-        }, {} as Record<string, { name: string; price: number; quantity: number }>),
+        }, {} as Record<string, { name: string; price: number; quantity: number; ticket_format: TicketFormat; fee_payer: string | null; printing_quantity: number | null; rtny_distribution: boolean }>),
         sale_start_date: formData.sale_start_date,
         sale_end_date: formData.sale_end_date,
         flyer_image_url,
@@ -584,16 +648,9 @@ function CreateEventForm() {
           {/* STEP 3: TICKETS */}
           {currentStep === 'tickets' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold mb-6">Tickets & Pricing</h2>
-
-              {/* Total Capacity (computed from ticket type quantities) */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Total Tickets Available
-                </label>
-                <div className="w-full px-4 py-3 bg-background border border-border rounded-xl text-[#7DD8E8]">
-                  {formData.ticket_types.reduce((sum, tt) => sum + (Number(tt.quantity) || 0), 0)} tickets (sum of ticket type quantities below)
-                </div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Ticket Creator</h2>
+                <span className="font-header text-2xl font-bold text-[#59FFA0]">RTNY</span>
               </div>
 
               {/* Ticket Types */}
@@ -612,50 +669,210 @@ function CreateEventForm() {
                 </div>
 
                 <div className="space-y-3">
-                  {formData.ticket_types.map((ticket, index) => (
-                    <div key={index} className="flex gap-3">
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ticket name (e.g., VIP, Early Bird)"
-                        value={ticket.name}
-                        onChange={(e) => updateTicketType(index, 'name', e.target.value)}
-                        className="flex-1 px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
-                      />
-                      <div className="flex items-center gap-2 px-4 py-3 bg-background border border-border rounded-xl">
-                        <span className="text-[#7DD8E8]">$</span>
+                  {formData.ticket_types.map((ticket, index) => {
+                    const isOtherName = !TICKET_NAME_PRESETS.some((preset) => preset.value === ticket.name);
+                    return (
+                    <div key={index} className="p-4 bg-background/50 border border-border rounded-xl space-y-3">
+                      {/* Row 1: Name (preset pills) + Price */}
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-[#7DD8E8] mb-2">Ticket Name</label>
+                          <div className="flex flex-wrap gap-2">
+                            {TICKET_NAME_PRESETS.map((preset) => (
+                              <button
+                                key={preset.value}
+                                type="button"
+                                onClick={() => updateTicketType(index, 'name', preset.value)}
+                                className={`px-3 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                                  ticket.name === preset.value
+                                    ? 'border-accent bg-accent/10 text-[#F9FDFF]'
+                                    : 'border-border text-[#7DD8E8] hover:border-accent/50'
+                                }`}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => updateTicketType(index, 'name', '')}
+                              className={`px-3 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                                isOtherName
+                                  ? 'border-accent bg-accent/10 text-[#F9FDFF]'
+                                  : 'border-border text-[#7DD8E8] hover:border-accent/50'
+                              }`}
+                            >
+                              Other
+                            </button>
+                          </div>
+                          {isOtherName && (
+                            <input
+                              type="text"
+                              required
+                              placeholder="Custom ticket name"
+                              value={ticket.name}
+                              onChange={(e) => updateTicketType(index, 'name', e.target.value)}
+                              className="mt-2 w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex gap-3">
+                          <div className="flex items-center gap-2 px-4 py-3 bg-background border border-border rounded-xl">
+                            <span className="text-[#7DD8E8]">$</span>
+                            <input
+                              type="number"
+                              required
+                              min={0}
+                              step={0.01}
+                              placeholder="0.00"
+                              value={ticket.price || ''}
+                              onChange={(e) => updateTicketType(index, 'price', parseFloat(e.target.value) || 0)}
+                              className="w-20 bg-transparent focus:outline-none"
+                            />
+                          </div>
+                          {formData.ticket_types.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeTicketType(index)}
+                              className="px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 2: Ticket Format */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#7DD8E8] mb-2">Ticket Format</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(Object.entries(TICKET_FORMAT_LABELS) as [TicketFormat, string][]).map(([value, label]) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => updateTicketType(index, 'ticket_format', value)}
+                              className={`px-3 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                                (ticket.ticket_format || 'digital') === value
+                                  ? 'border-accent bg-accent/10 text-[#F9FDFF]'
+                                  : 'border-border text-[#7DD8E8] hover:border-accent/50'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Row 3: Quantity */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#7DD8E8] mb-2">Qty</label>
                         <input
                           type="number"
                           required
                           min={0}
-                          step={0.01}
-                          placeholder="0.00"
-                          value={ticket.price || ''}
-                          onChange={(e) => updateTicketType(index, 'price', parseFloat(e.target.value) || 0)}
-                          className="w-20 bg-transparent focus:outline-none"
+                          step={1}
+                          placeholder="Qty"
+                          value={ticket.quantity || ''}
+                          onChange={(e) => updateTicketType(index, 'quantity', parseInt(e.target.value) || 0)}
+                          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
                         />
                       </div>
-                      <input
-                        type="number"
-                        required
-                        min={0}
-                        step={1}
-                        placeholder="Qty"
-                        value={ticket.quantity || ''}
-                        onChange={(e) => updateTicketType(index, 'quantity', parseInt(e.target.value) || 0)}
-                        className="w-24 px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
-                      />
-                      {formData.ticket_types.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeTicketType(index)}
-                          className="px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                        >
-                          ✕
-                        </button>
+
+                      {/* Conditional: Physical Ticket Options */}
+                      {(ticket.ticket_format === 'physical' || ticket.ticket_format === 'both') && (
+                        <div className="p-4 bg-accent/5 border border-accent/30 rounded-xl space-y-4">
+                          <div className="text-sm font-semibold text-accent">Physical Ticket Options</div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-[#7DD8E8] mb-2">
+                              Who pays the printing fee? *
+                            </label>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`fee-payer-${index}`}
+                                  checked={ticket.fee_payer === 'buyer'}
+                                  onChange={() => updateTicketType(index, 'fee_payer', 'buyer')}
+                                />
+                                Buyer pays fee
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`fee-payer-${index}`}
+                                  checked={ticket.fee_payer === 'promoter'}
+                                  onChange={() => updateTicketType(index, 'fee_payer', 'promoter')}
+                                />
+                                Promoter absorbs fee
+                              </label>
+                            </div>
+                            {ticketPhysicalErrors[index] && (
+                              <p className="text-xs text-red-400 mt-1">
+                                Fee payer is required when Physical or Digital + Physical is selected.
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-[#7DD8E8] mb-2">
+                              Printing Quantity
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              placeholder="Number of physical tickets to print"
+                              value={ticket.printing_quantity ?? ''}
+                              onChange={(e) =>
+                                updateTicketType(
+                                  index,
+                                  'printing_quantity',
+                                  e.target.value === '' ? null : parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent transition-colors"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-[#7DD8E8] mb-2">
+                              Estimated Printing Cost
+                            </label>
+                            <div className="w-full px-4 py-3 bg-background border border-border rounded-xl text-[#7DD8E8]">
+                              {printingRateCents != null && ticket.printing_quantity
+                                ? `$${((ticket.printing_quantity * printingRateCents) / 100).toFixed(2)}`
+                                : '—'}
+                            </div>
+                            <p className="text-xs text-[#7DD8E8] mt-1">
+                              Preview only — the final cost is calculated when your event is approved.
+                            </p>
+                          </div>
+
+                          <label className="flex items-start gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={ticket.rtny_distribution || false}
+                              onChange={(e) => updateTicketType(index, 'rtny_distribution', e.target.checked)}
+                              className="mt-1"
+                            />
+                            <span>Distribute through RTNY partner network (pickup at partner venues/retail locations)</span>
+                          </label>
+                        </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Total Capacity (computed from ticket type quantities) */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Total Tickets Available
+                </label>
+                <div className="w-full px-4 py-3 bg-background border border-border rounded-xl text-[#7DD8E8]">
+                  {formData.ticket_types.reduce((sum, tt) => sum + (Number(tt.quantity) || 0), 0)} tickets (sum of ticket type quantities above)
                 </div>
               </div>
 
@@ -777,9 +994,21 @@ function CreateEventForm() {
                     <div><strong>Total Capacity:</strong> {formData.ticket_types.reduce((sum, tt) => sum + (Number(tt.quantity) || 0), 0)} tickets</div>
                     <div><strong>Ticket Types:</strong></div>
                     <ul className="list-disc list-inside ml-4">
-                      {formData.ticket_types.map((tt, i) => (
-                        <li key={i}>{tt.name}: ${tt.price.toFixed(2)} ({tt.quantity} available)</li>
-                      ))}
+                      {formData.ticket_types.map((tt, i) => {
+                        const format = tt.ticket_format || 'digital';
+                        const isPhysical = format === 'physical' || format === 'both';
+                        return (
+                          <li key={i}>
+                            {tt.name}: ${tt.price.toFixed(2)} ({tt.quantity} available) — {TICKET_FORMAT_LABELS[format]}
+                            {isPhysical && (
+                              <span className="text-[#7DD8E8]">
+                                {' '}· {tt.fee_payer === 'buyer' ? 'Buyer pays fee' : tt.fee_payer === 'promoter' ? 'Promoter absorbs fee' : 'Fee payer not set'}
+                                {tt.printing_quantity ? `, printing ${tt.printing_quantity}` : ''}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                     <div className="mt-2"><strong>Sale Period:</strong> {formData.sale_start_date} to {formData.sale_end_date}</div>
                   </div>

@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ad_events: {
@@ -2878,6 +2903,24 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       point_earning_limits: {
         Row: {
           count_in_window: number
@@ -3562,34 +3605,49 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          estimated_printing_cost_cents: number | null
           event_id: string | null
+          fee_payer: string | null
           id: string
           name: string
           price: number
+          printing_quantity: number | null
           quantity: number
           remaining: number
+          rtny_distribution: boolean
+          ticket_format: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           description?: string | null
+          estimated_printing_cost_cents?: number | null
           event_id?: string | null
+          fee_payer?: string | null
           id?: string
           name: string
           price: number
+          printing_quantity?: number | null
           quantity: number
           remaining: number
+          rtny_distribution?: boolean
+          ticket_format?: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           description?: string | null
+          estimated_printing_cost_cents?: number | null
           event_id?: string | null
+          fee_payer?: string | null
           id?: string
           name?: string
           price?: number
+          printing_quantity?: number | null
           quantity?: number
           remaining?: number
+          rtny_distribution?: boolean
+          ticket_format?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -4719,6 +4777,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       discount_type: ["percentage", "fixed"],
