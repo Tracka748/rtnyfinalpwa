@@ -3656,7 +3656,7 @@ export type Database = {
       theme_suggestions: {
         Row: {
           created_at: string
-          event_id: string | null
+          event_draft_id: string | null
           id: string
           name: string
           reviewed_at: string | null
@@ -3666,7 +3666,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          event_id?: string | null
+          event_draft_id?: string | null
           id?: string
           name: string
           reviewed_at?: string | null
@@ -3676,7 +3676,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          event_id?: string | null
+          event_draft_id?: string | null
           id?: string
           name?: string
           reviewed_at?: string | null
@@ -3686,10 +3686,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "theme_suggestions_event_id_fkey"
-            columns: ["event_id"]
+            foreignKeyName: "theme_suggestions_event_draft_id_fkey"
+            columns: ["event_draft_id"]
             isOneToOne: false
-            referencedRelation: "events"
+            referencedRelation: "event_drafts"
             referencedColumns: ["id"]
           },
         ]
