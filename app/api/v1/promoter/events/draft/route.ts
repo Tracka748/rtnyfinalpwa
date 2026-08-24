@@ -146,6 +146,48 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      // Validate event_end_date, unless the promoter marked the end time as TBD
+      const untilTbd = body.until_tbd === true
+      if (!untilTbd) {
+        if (!body.event_end_date) {
+          console.error('❌ Missing event_end_date (until_tbd is false)')
+          return NextResponse.json(
+            {
+              error: 'event_end_date is required unless until_tbd is true',
+              code: 'VALIDATION_ERROR',
+              received: body.event_end_date
+            },
+            { status: 400 }
+          )
+        }
+
+        const eventEndDate = new Date(body.event_end_date)
+        if (isNaN(eventEndDate.getTime())) {
+          console.error('❌ Invalid date format:', body.event_end_date)
+          return NextResponse.json(
+            {
+              error: 'Invalid event_end_date format. Must be ISO 8601 format.',
+              code: 'VALIDATION_ERROR',
+              received: body.event_end_date,
+              example: '2025-03-15T23:00:00'
+            },
+            { status: 400 }
+          )
+        }
+
+        if (eventEndDate <= eventDate) {
+          console.error('❌ event_end_date is not after event_date:', body.event_end_date)
+          return NextResponse.json(
+            {
+              error: 'Event end time must be after the start time',
+              code: 'VALIDATION_ERROR',
+              received: { event_date: body.event_date, event_end_date: body.event_end_date }
+            },
+            { status: 400 }
+          )
+        }
+      }
+
       // Validate ticket_prices
       if (!body.ticket_prices || typeof body.ticket_prices !== 'object') {
         console.error('❌ Invalid ticket_prices:', body.ticket_prices)
@@ -245,6 +287,39 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Validate event_end_date format only if provided, and its relation to
+      // event_date only if that's present and valid too
+      if (body.event_end_date) {
+        const eventEndDate = new Date(body.event_end_date)
+        if (isNaN(eventEndDate.getTime())) {
+          console.error('❌ Invalid date format:', body.event_end_date)
+          return NextResponse.json(
+            {
+              error: 'Invalid event_end_date format. Must be ISO 8601 format.',
+              code: 'VALIDATION_ERROR',
+              received: body.event_end_date,
+              example: '2025-03-15T23:00:00'
+            },
+            { status: 400 }
+          )
+        }
+
+        if (body.event_date) {
+          const eventDate = new Date(body.event_date)
+          if (!isNaN(eventDate.getTime()) && eventEndDate <= eventDate) {
+            console.error('❌ event_end_date is not after event_date:', body.event_end_date)
+            return NextResponse.json(
+              {
+                error: 'Event end time must be after the start time',
+                code: 'VALIDATION_ERROR',
+                received: { event_date: body.event_date, event_end_date: body.event_end_date }
+              },
+              { status: 400 }
+            )
+          }
+        }
+      }
+
       // Validate ticket_prices types only if provided
       if (body.ticket_prices && typeof body.ticket_prices === 'object') {
         for (const [type, value] of Object.entries(body.ticket_prices)) {
@@ -295,6 +370,7 @@ export async function POST(request: NextRequest) {
       description: body.description || null,
       category: body.category || null,
       event_date: body.event_date || null,
+      event_end_date: body.event_end_date || null,
       venue_id: body.venue_id || null,
       venue_name: body.venue_name || null,
       total_tickets: body.total_tickets || 0,
