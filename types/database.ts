@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ad_events: {
@@ -1213,6 +1188,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           event_date: string | null
+          event_end_date: string | null
           featured: boolean | null
           flyer_image_url: string | null
           id: string
@@ -1235,6 +1211,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           event_date?: string | null
+          event_end_date?: string | null
           featured?: boolean | null
           flyer_image_url?: string | null
           id?: string
@@ -1257,6 +1234,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           event_date?: string | null
+          event_end_date?: string | null
           featured?: boolean | null
           flyer_image_url?: string | null
           id?: string
@@ -1450,6 +1428,7 @@ export type Database = {
           custom_address: string | null
           description: string
           event_date: string
+          event_end_date: string | null
           featured: boolean | null
           featured_until: string | null
           flyer_image_url: string | null
@@ -1469,6 +1448,8 @@ export type Database = {
           target_age_ranges: string[] | null
           target_neighborhoods: string[] | null
           target_vibes: string[] | null
+          theme_custom_text: string | null
+          theme_id: string | null
           ticket_prices: Json
           tickets_sold: number | null
           tier_discounts: Json | null
@@ -1485,6 +1466,7 @@ export type Database = {
           custom_address?: string | null
           description: string
           event_date: string
+          event_end_date?: string | null
           featured?: boolean | null
           featured_until?: string | null
           flyer_image_url?: string | null
@@ -1504,6 +1486,8 @@ export type Database = {
           target_age_ranges?: string[] | null
           target_neighborhoods?: string[] | null
           target_vibes?: string[] | null
+          theme_custom_text?: string | null
+          theme_id?: string | null
           ticket_prices: Json
           tickets_sold?: number | null
           tier_discounts?: Json | null
@@ -1520,6 +1504,7 @@ export type Database = {
           custom_address?: string | null
           description?: string
           event_date?: string
+          event_end_date?: string | null
           featured?: boolean | null
           featured_until?: string | null
           flyer_image_url?: string | null
@@ -1539,6 +1524,8 @@ export type Database = {
           target_age_ranges?: string[] | null
           target_neighborhoods?: string[] | null
           target_vibes?: string[] | null
+          theme_custom_text?: string | null
+          theme_id?: string | null
           ticket_prices?: Json
           tickets_sold?: number | null
           tier_discounts?: Json | null
@@ -1552,6 +1539,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
           {
@@ -2494,7 +2488,9 @@ export type Database = {
           id: string
           media_type: string
           partner_id: string
+          photo_review_status: string | null
           sort_order: number
+          theme_tag_id: string | null
           url: string
         }
         Insert: {
@@ -2503,7 +2499,9 @@ export type Database = {
           id?: string
           media_type: string
           partner_id: string
+          photo_review_status?: string | null
           sort_order?: number
+          theme_tag_id?: string | null
           url: string
         }
         Update: {
@@ -2512,7 +2510,9 @@ export type Database = {
           id?: string
           media_type?: string
           partner_id?: string
+          photo_review_status?: string | null
           sort_order?: number
+          theme_tag_id?: string | null
           url?: string
         }
         Relationships: [
@@ -2521,6 +2521,13 @@ export type Database = {
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_media_theme_tag_id_fkey"
+            columns: ["theme_tag_id"]
+            isOneToOne: false
+            referencedRelation: "partner_theme_tags"
             referencedColumns: ["id"]
           },
         ]
@@ -2554,6 +2561,48 @@ export type Database = {
           },
         ]
       }
+      partner_theme_tags: {
+        Row: {
+          created_at: string
+          first_approved_at: string | null
+          id: string
+          partner_id: string
+          status: string
+          theme_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_approved_at?: string | null
+          id?: string
+          partner_id: string
+          status?: string
+          theme_id: string
+        }
+        Update: {
+          created_at?: string
+          first_approved_at?: string | null
+          id?: string
+          partner_id?: string
+          status?: string
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_theme_tags_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_theme_tags_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           active: boolean
@@ -2568,6 +2617,7 @@ export type Database = {
           logo_url: string | null
           owner_id: string
           partner_type: string
+          requires_photo_verified_tags: boolean
           supporter_count: number
           tagline: string | null
           updated_at: string
@@ -2590,6 +2640,7 @@ export type Database = {
           logo_url?: string | null
           owner_id: string
           partner_type: string
+          requires_photo_verified_tags?: boolean
           supporter_count?: number
           tagline?: string | null
           updated_at?: string
@@ -2612,6 +2663,7 @@ export type Database = {
           logo_url?: string | null
           owner_id?: string
           partner_type?: string
+          requires_photo_verified_tags?: boolean
           supporter_count?: number
           tagline?: string | null
           updated_at?: string
@@ -3600,6 +3652,68 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      theme_suggestions: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          name: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          name: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          name?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_suggestions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      themes: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       ticket_types: {
         Row: {
@@ -4777,9 +4891,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       discount_type: ["percentage", "fixed"],
