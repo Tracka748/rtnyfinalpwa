@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CheckCircle, XCircle, Clock, Calendar, MapPin, DollarSign } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Calendar, MapPin, DollarSign, Palette } from 'lucide-react'
 import Image from 'next/image'
 
 interface EventDraft {
@@ -16,6 +16,9 @@ interface EventDraft {
   event_date: string
   venue_id: string
   flyer_image_url: string | null
+  theme_id: string | null
+  theme_custom_text: string | null
+  themes?: { name: string } | null
   ticket_prices: Record<string, {
     name: string
     price: number
@@ -208,6 +211,17 @@ export default function AdminEventDraftsPage() {
                       <span className="font-medium">Category:</span>
                       <span className="capitalize">{draft.category}</span>
                     </div>
+                    {(draft.theme_id || draft.theme_custom_text) && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Palette className="h-4 w-4 text-[#7DD8E8]" />
+                        <span className="font-medium">Theme:</span>
+                        <span>
+                          {draft.theme_id
+                            ? draft.themes?.name ?? 'Unknown theme'
+                            : `Custom: ${draft.theme_custom_text} (pending review)`}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Ticket Pricing */}

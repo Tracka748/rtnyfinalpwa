@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
         venues (
           name,
           address
+        ),
+        themes (
+          name
         )
       `)
       .order('created_at', { ascending: false })
