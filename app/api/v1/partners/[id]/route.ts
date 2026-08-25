@@ -31,6 +31,7 @@ export async function GET(
         .from('partner_media')
         .select('*')
         .eq('partner_id', id)
+        .or('photo_review_status.is.null,photo_review_status.eq.approved')
         .order('sort_order', { ascending: true }),
       supabase
         .from('partner_supporters')

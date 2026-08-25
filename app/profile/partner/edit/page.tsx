@@ -4,6 +4,20 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
 
+interface ThemeTagPhoto {
+  id: string;
+  url: string;
+  photo_review_status: string | null;
+}
+
+interface ThemeTag {
+  id: string;
+  theme_id: string;
+  status: string;
+  themes?: { name: string } | null;
+  partner_media?: ThemeTagPhoto[];
+}
+
 interface Modules {
   about: boolean;
   upcoming_events: boolean;
@@ -33,6 +47,19 @@ const DEFAULT_MODULES: Modules = {
   activity_feed: false,
   experiences: false,
 };
+
+function ThemeStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    approved: 'bg-[#59FFA0]/10 text-[#59FFA0] border-[#59FFA0]/20',
+    pending: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+  };
+  return (
+    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-label uppercase tracking-wider ${styles[status] ?? styles.pending}`}>
+      {status}
+    </span>
+  );
+}
 
 function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
   return (
@@ -79,8 +106,12 @@ export default function PartnerEditPage() {
   const [modules, setModules] = useState<Modules>({ ...DEFAULT_MODULES });
   const [requiresPhotoVerifiedTags, setRequiresPhotoVerifiedTags] = useState(false);
   const [themes, setThemes] = useState<{ id: string; name: string }[]>([]);
-  const [taggedThemeIds, setTaggedThemeIds] = useState<Set<string>>(new Set());
+  const [themeTags, setThemeTags] = useState<ThemeTag[]>([]);
   const [themeUpdating, setThemeUpdating] = useState<string | null>(null);
+  const [photoThemeId, setPhotoThemeId] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoSubmitting, setPhotoSubmitting] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -122,10 +153,10 @@ export default function PartnerEditPage() {
 
       const [themesRes, tagsRes] = await Promise.all([
         fetch('/api/v1/themes').then(r => r.json()),
-        fetch(`/api/v1/partners/${partner.id}/theme-tags`).then(r => r.json()),
+        fetch(`/api/v1/partners/${partner.id}/theme-tags?mine=true`).then(r => r.json()),
       ]);
       setThemes(themesRes.data || []);
-      setTaggedThemeIds(new Set((tagsRes.data || []).map((t: { theme_id: string }) => t.theme_id)));
+      setThemeTags(tagsRes.data || []);
 
       setLoading(false);
     }
@@ -143,11 +174,7 @@ export default function PartnerEditPage() {
     try {
       if (isTagged) {
         await fetch(`/api/v1/partners/${partnerId}/theme-tags?theme_id=${themeId}`, { method: 'DELETE' });
-        setTaggedThemeIds(prev => {
-          const next = new Set(prev);
-          next.delete(themeId);
-          return next;
-        });
+        setThemeTags(prev => prev.filter(t => t.theme_id !== themeId));
       } else {
         const res = await fetch(`/api/v1/partners/${partnerId}/theme-tags`, {
           method: 'POST',
@@ -156,7 +183,7 @@ export default function PartnerEditPage() {
         });
         const data = await res.json();
         if (data.success) {
-          setTaggedThemeIds(prev => new Set(prev).add(themeId));
+          setThemeTags(prev => [...prev, data.data]);
         } else {
           setToast({ type: 'error', message: data.error ?? 'Failed to update theme tag' });
         }
@@ -165,6 +192,54 @@ export default function PartnerEditPage() {
       setToast({ type: 'error', message: 'Unexpected error updating theme tag.' });
     } finally {
       setThemeUpdating(null);
+    }
+  }
+
+  async function submitPhotoTag(e: React.FormEvent) {
+    e.preventDefault();
+    if (!partnerId || !photoThemeId || !photoFile) return;
+    setPhotoSubmitting(true);
+    setPhotoError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('theme_id', photoThemeId);
+      formData.append('file', photoFile);
+
+      const res = await fetch(`/api/v1/partners/${partnerId}/theme-tags/photo`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setThemeTags(prev => {
+          const existingIdx = prev.findIndex(t => t.id === data.data.tag.id);
+          if (existingIdx >= 0) {
+            const next = [...prev];
+            const existing = next[existingIdx];
+            next[existingIdx] = { ...existing, partner_media: [...(existing.partner_media || []), data.data.media] };
+            return next;
+          }
+          const themeName = themes.find(t => t.id === photoThemeId)?.name;
+          return [...prev, {
+            id: data.data.tag.id,
+            theme_id: photoThemeId,
+            status: data.data.tag.status,
+            themes: themeName ? { name: themeName } : null,
+            partner_media: [data.data.media],
+          }];
+        });
+        setPhotoThemeId('');
+        setPhotoFile(null);
+        setToast({ type: 'success', message: 'Photo submitted for review!' });
+      } else {
+        setPhotoError(data.error ?? 'Failed to submit photo');
+      }
+    } catch {
+      setPhotoError('Unexpected error submitting photo.');
+    } finally {
+      setPhotoSubmitting(false);
     }
   }
 
@@ -435,13 +510,77 @@ export default function PartnerEditPage() {
               </p>
             </div>
             {requiresPhotoVerifiedTags ? (
-              <p className="text-sm text-white/40">
-                Theme tagging for this partner type requires photo verification — coming soon.
-              </p>
+              <>
+                <form onSubmit={submitPhotoTag} className="flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[160px] space-y-1.5">
+                    <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
+                      Theme
+                    </label>
+                    <select
+                      value={photoThemeId}
+                      onChange={e => setPhotoThemeId(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
+                    >
+                      <option value="" className="bg-[#1a1a1d]">Select a theme…</option>
+                      {themes.map((theme) => (
+                        <option key={theme.id} value={theme.id} className="bg-[#1a1a1d]">
+                          {theme.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[160px] space-y-1.5">
+                    <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
+                      Photo
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={e => setPhotoFile(e.target.files?.[0] ?? null)}
+                      className="w-full text-xs text-white/70 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#59FFA0]/20 file:text-[#59FFA0] file:text-xs file:cursor-pointer cursor-pointer"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!photoThemeId || !photoFile || photoSubmitting}
+                    className="px-4 py-2.5 bg-[#59FFA0] text-[#121113] font-header font-bold rounded-lg hover:bg-[#59FFA0]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                  >
+                    {photoSubmitting ? 'Submitting…' : 'Submit'}
+                  </button>
+                </form>
+                {photoError && <p className="text-xs text-red-400">{photoError}</p>}
+
+                {themeTags.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    {themeTags.map((tag) => (
+                      <div key={tag.id} className="bg-white/5 rounded-lg px-4 py-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-white">
+                            {tag.themes?.name ?? themes.find(t => t.id === tag.theme_id)?.name ?? 'Theme'}
+                          </span>
+                          <ThemeStatusBadge status={tag.status} />
+                        </div>
+                        {tag.partner_media && tag.partner_media.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {tag.partner_media.map((photo) => (
+                              <div key={photo.id} className="relative w-14 h-14 rounded-lg overflow-hidden border border-white/10">
+                                <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                                <span className="absolute bottom-0 inset-x-0 text-[8px] text-center py-0.5 bg-black/60 text-white uppercase tracking-wider">
+                                  {photo.photo_review_status ?? 'pending'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {themes.map((theme) => {
-                  const isTagged = taggedThemeIds.has(theme.id);
+                  const isTagged = themeTags.some(t => t.theme_id === theme.id && t.status === 'approved');
                   return (
                     <button
                       key={theme.id}

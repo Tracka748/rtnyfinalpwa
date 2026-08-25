@@ -1,13 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdmin, createSupabaseServer } from '@/lib/supabase'
+import { createSupabaseAdmin } from '@/lib/supabase'
+import { checkOwnerOrAdmin } from '@/lib/partner-auth'
 
 // GET /api/v1/partners/[id]/theme-tags - public, approved tags only
+// GET /api/v1/partners/[id]/theme-tags?mine=true - owner/admin only, all
+// statuses plus attached photos, for the partner's own submission status view
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+    const mine = new URL(request.url).searchParams.get('mine') === 'true'
+
+    if (mine) {
+      const auth = await checkOwnerOrAdmin(id)
+      if ('error' in auth) return auth.error
+      const { supabase } = auth
+
+      const { data, error } = await supabase
+        .from('partner_theme_tags')
+        .select('id, theme_id, status, first_approved_at, themes(name), partner_media(id, url, photo_review_status, created_at)')
+        .eq('partner_id', id)
+
+      if (error) {
+        console.error('partner_theme_tags fetch (mine) error:', error)
+        return NextResponse.json({ error: 'Failed to fetch theme tags' }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, data: data || [] })
+    }
+
     const supabase = createSupabaseAdmin()
 
     const { data, error } = await supabase
@@ -26,36 +49,6 @@ export async function GET(
     console.error('theme-tags GET error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
-
-// Shared ownership/admin check for POST and DELETE — same pattern as
-// app/api/v1/partners/[id]/route.ts's PATCH handler.
-async function checkOwnerOrAdmin(partnerId: string) {
-  const supabase = createSupabaseAdmin()
-  const supabaseServer = await createSupabaseServer()
-
-  const { data: { user } } = await supabaseServer.auth.getUser()
-  if (!user) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) } as const
-  }
-
-  const [profileResult, partnerResult] = await Promise.all([
-    supabase.from('profiles').select('role').eq('id', user.id).single(),
-    supabase.from('partners').select('owner_id, requires_photo_verified_tags').eq('id', partnerId).single(),
-  ])
-
-  if (!partnerResult.data) {
-    return { error: NextResponse.json({ error: 'Partner not found' }, { status: 404 }) } as const
-  }
-
-  const isAdmin = profileResult.data?.role === 'admin'
-  const isOwner = partnerResult.data.owner_id === user.id
-
-  if (!isAdmin && !isOwner) {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) } as const
-  }
-
-  return { supabase, partner: partnerResult.data } as const
 }
 
 // POST /api/v1/partners/[id]/theme-tags - self-select tag (no photo required)
