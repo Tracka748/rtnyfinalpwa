@@ -229,6 +229,7 @@ export default function AdminEditPartnerPage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [verified, setVerified] = useState(false);
+  const [requiresPhotoVerifiedTags, setRequiresPhotoVerifiedTags] = useState(false);
 
   // Modules
   const [modules, setModules] = useState<Modules>({ ...DEFAULT_MODULES });
@@ -288,6 +289,7 @@ export default function AdminEditPartnerPage() {
       setLogoUrl(p.logo_url ?? '');
       setCoverImageUrl(p.cover_image_url ?? '');
       setVerified(p.verified ?? false);
+      setRequiresPhotoVerifiedTags(p.requires_photo_verified_tags ?? false);
       setOwnerId(p.owner_id ?? null);
 
       // Resolve venue name
@@ -391,6 +393,7 @@ export default function AdminEditPartnerPage() {
           logo_url: logoUrl || null,
           cover_image_url: coverImageUrl || null,
           verified,
+          requires_photo_verified_tags: requiresPhotoVerifiedTags,
           visible_modules: modules,
         }),
       });
@@ -702,6 +705,20 @@ export default function AdminEditPartnerPage() {
             <div className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3">
               <span className="text-sm text-white">Mark as Verified</span>
               <Toggle value={verified} onChange={() => setVerified(v => !v)} />
+            </div>
+
+            {/* Photo-verified theme tags toggle */}
+            <div className="bg-white/5 rounded-lg px-4 py-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-white">Require photo verification for theme tags</span>
+                <Toggle
+                  value={requiresPhotoVerifiedTags}
+                  onChange={() => setRequiresPhotoVerifiedTags(v => !v)}
+                />
+              </div>
+              <p className="text-xs text-[#7DD8E8]">
+                When on, this partner can only tag a theme by submitting a photo for admin review — self-select tagging is disabled.
+              </p>
             </div>
 
             {/* Submit */}

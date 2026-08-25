@@ -77,6 +77,10 @@ export default function PartnerEditPage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [modules, setModules] = useState<Modules>({ ...DEFAULT_MODULES });
+  const [requiresPhotoVerifiedTags, setRequiresPhotoVerifiedTags] = useState(false);
+  const [themes, setThemes] = useState<{ id: string; name: string }[]>([]);
+  const [taggedThemeIds, setTaggedThemeIds] = useState<Set<string>>(new Set());
+  const [themeUpdating, setThemeUpdating] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -114,6 +118,15 @@ export default function PartnerEditPage() {
       setLogoUrl(partner.logo_url ?? '');
       setCoverImageUrl(partner.cover_image_url ?? '');
       setModules({ ...DEFAULT_MODULES, ...((partner.visible_modules as Partial<Modules>) ?? {}) });
+      setRequiresPhotoVerifiedTags(partner.requires_photo_verified_tags ?? false);
+
+      const [themesRes, tagsRes] = await Promise.all([
+        fetch('/api/v1/themes').then(r => r.json()),
+        fetch(`/api/v1/partners/${partner.id}/theme-tags`).then(r => r.json()),
+      ]);
+      setThemes(themesRes.data || []);
+      setTaggedThemeIds(new Set((tagsRes.data || []).map((t: { theme_id: string }) => t.theme_id)));
+
       setLoading(false);
     }
 
@@ -122,6 +135,37 @@ export default function PartnerEditPage() {
 
   function toggleModule(key: keyof Modules) {
     setModules(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  async function toggleTheme(themeId: string, isTagged: boolean) {
+    if (!partnerId) return;
+    setThemeUpdating(themeId);
+    try {
+      if (isTagged) {
+        await fetch(`/api/v1/partners/${partnerId}/theme-tags?theme_id=${themeId}`, { method: 'DELETE' });
+        setTaggedThemeIds(prev => {
+          const next = new Set(prev);
+          next.delete(themeId);
+          return next;
+        });
+      } else {
+        const res = await fetch(`/api/v1/partners/${partnerId}/theme-tags`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme_id: themeId }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setTaggedThemeIds(prev => new Set(prev).add(themeId));
+        } else {
+          setToast({ type: 'error', message: data.error ?? 'Failed to update theme tag' });
+        }
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Unexpected error updating theme tag.' });
+    } finally {
+      setThemeUpdating(null);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -380,6 +424,43 @@ export default function PartnerEditPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Themes */}
+          <div className="bg-[#1a1a1d] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-header font-bold text-white">Themes</h2>
+              <p className="text-sm text-[#7DD8E8] mt-1">
+                Tag the themes your venue/service fits — helps promoters find you for themed events
+              </p>
+            </div>
+            {requiresPhotoVerifiedTags ? (
+              <p className="text-sm text-white/40">
+                Theme tagging for this partner type requires photo verification — coming soon.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {themes.map((theme) => {
+                  const isTagged = taggedThemeIds.has(theme.id);
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      disabled={themeUpdating === theme.id}
+                      onClick={() => toggleTheme(theme.id, isTagged)}
+                      className={[
+                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-all disabled:opacity-50',
+                        isTagged
+                          ? 'bg-[#59FFA0]/20 border-[#59FFA0] text-[#59FFA0]'
+                          : 'border-white/20 text-[#7DD8E8] hover:border-white/40',
+                      ].join(' ')}
+                    >
+                      {theme.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <button

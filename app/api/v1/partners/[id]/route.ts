@@ -119,6 +119,7 @@ export async function PATCH(
       if (body.venue_id !== undefined) updates.venue_id = body.venue_id
       if (body.vendor_id !== undefined) updates.vendor_id = body.vendor_id
       if (body.owner_id !== undefined) updates.owner_id = body.owner_id
+      if (typeof body.requires_photo_verified_tags === 'boolean') updates.requires_photo_verified_tags = body.requires_photo_verified_tags
     }
 
     for (const field of ownerAllowedFields) {
