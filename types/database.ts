@@ -2451,6 +2451,30 @@ export type Database = {
           },
         ]
       }
+      partner_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          partner_type: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          partner_type: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          partner_type?: string
+        }
+        Relationships: []
+      }
       partner_event_links: {
         Row: {
           created_at: string
@@ -2621,6 +2645,7 @@ export type Database = {
           active: boolean
           bio: string | null
           category: string | null
+          category_id: string | null
           contact_email: string | null
           contact_phone: string | null
           cover_image_url: string | null
@@ -2644,6 +2669,7 @@ export type Database = {
           active?: boolean
           bio?: string | null
           category?: string | null
+          category_id?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           cover_image_url?: string | null
@@ -2667,6 +2693,7 @@ export type Database = {
           active?: boolean
           bio?: string | null
           category?: string | null
+          category_id?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           cover_image_url?: string | null
@@ -2687,6 +2714,13 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partners_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "partner_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partners_vendor_id_fkey"
             columns: ["vendor_id"]
