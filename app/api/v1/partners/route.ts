@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
         tagline: body.tagline ?? null,
         bio: body.bio ?? null,
         category: body.category ?? null,
+        category_id: body.category_id ?? null,
         contact_email: body.contact_email ?? null,
         contact_phone: body.contact_phone ?? null,
         website_url: body.website_url ?? null,

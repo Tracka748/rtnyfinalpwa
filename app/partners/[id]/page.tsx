@@ -169,14 +169,17 @@ export default async function PartnerProfilePage({ params }: PageProps) {
         {/* Name block */}
         <div className="px-4 pt-12 pb-6">
           {/* Category label */}
-          {partner.category && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-[#59FFA0] animate-pulse" />
-              <span className="font-label text-xs tracking-[0.25em] uppercase text-[#59FFA0]">
-                {partner.category}
-              </span>
-            </div>
-          )}
+          {(() => {
+            const categoryLabel = partner.category_id ? partner.partner_categories?.name : partner.category
+            return categoryLabel && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-[#59FFA0] animate-pulse" />
+                <span className="font-label text-xs tracking-[0.25em] uppercase text-[#59FFA0]">
+                  {categoryLabel}
+                </span>
+              </div>
+            )
+          })()}
 
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="font-slab-serif text-3xl font-bold leading-tight">

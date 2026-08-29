@@ -97,7 +97,8 @@ export default function PartnerEditPage() {
   const [displayName, setDisplayName] = useState('');
   const [tagline, setTagline] = useState('');
   const [bio, setBio] = useState('');
-  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -142,7 +143,7 @@ export default function PartnerEditPage() {
       setDisplayName(partner.display_name ?? '');
       setTagline(partner.tagline ?? '');
       setBio(partner.bio ?? '');
-      setCategory(partner.category ?? '');
+      setCategoryId(partner.category_id ?? null);
       setContactEmail(partner.contact_email ?? '');
       setContactPhone(partner.contact_phone ?? '');
       setWebsiteUrl(partner.website_url ?? '');
@@ -151,12 +152,14 @@ export default function PartnerEditPage() {
       setModules({ ...DEFAULT_MODULES, ...((partner.visible_modules as Partial<Modules>) ?? {}) });
       setRequiresPhotoVerifiedTags(partner.requires_photo_verified_tags ?? false);
 
-      const [themesRes, tagsRes] = await Promise.all([
+      const [themesRes, tagsRes, categoriesRes] = await Promise.all([
         fetch('/api/v1/themes').then(r => r.json()),
         fetch(`/api/v1/partners/${partner.id}/theme-tags?mine=true`).then(r => r.json()),
+        fetch(`/api/v1/partner-categories?partner_type=${partner.partner_type}`).then(r => r.json()),
       ]);
       setThemes(themesRes.data || []);
       setThemeTags(tagsRes.data || []);
+      setCategories(categoriesRes.data || []);
 
       setLoading(false);
     }
@@ -257,7 +260,7 @@ export default function PartnerEditPage() {
           display_name: displayName,
           tagline: tagline || null,
           bio: bio || null,
-          category: category || null,
+          category_id: categoryId,
           contact_email: contactEmail || null,
           contact_phone: contactPhone || null,
           website_url: websiteUrl || null,
@@ -407,13 +410,19 @@ export default function PartnerEditPage() {
               <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
                 Category
               </label>
-              <input
-                type="text"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-                placeholder="e.g. Live Music, Restaurant, DJ"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              />
+              <select
+                value={categoryId ?? ''}
+                onChange={e => setCategoryId(e.target.value || null)}
+                disabled={categories.length === 0}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors disabled:opacity-50"
+              >
+                <option value="" className="bg-[#1a1a1d]">Select a category…</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id} className="bg-[#1a1a1d]">
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1.5">

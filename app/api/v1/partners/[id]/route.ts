@@ -11,7 +11,7 @@ export async function GET(
 
     const { data: partner, error: partnerError } = await supabase
       .from('partners')
-      .select('*')
+      .select('*, partner_categories(name)')
       .eq('id', id)
       .eq('active', true)
       .single()
@@ -109,7 +109,7 @@ export async function PATCH(
     const updates: Record<string, unknown> = {}
 
     const ownerAllowedFields = new Set([
-      'display_name', 'tagline', 'bio', 'category', 'contact_email',
+      'display_name', 'tagline', 'bio', 'category', 'category_id', 'contact_email',
       'contact_phone', 'website_url', 'logo_url', 'cover_image_url', 'visible_modules',
     ])
 

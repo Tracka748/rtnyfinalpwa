@@ -228,7 +228,8 @@ export default function AdminCreatePartnerPage() {
   const [displayName, setDisplayName] = useState('');
   const [tagline, setTagline] = useState('');
   const [bio, setBio] = useState('');
-  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -280,6 +281,17 @@ export default function AdminCreatePartnerPage() {
       .then(({ data }) => { if (data) setUsers(data); })
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (!partnerType) {
+      setCategories([]);
+      return;
+    }
+    fetch(`/api/v1/partner-categories?partner_type=${partnerType}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setCategories(d.data); })
+      .catch(console.error);
+  }, [partnerType]);
 
   // ── Link helpers ───────────────────────────────────────────────────────────
 
@@ -344,7 +356,7 @@ export default function AdminCreatePartnerPage() {
           display_name: displayName,
           tagline: tagline || null,
           bio: bio || null,
-          category: category || null,
+          category_id: categoryId,
           contact_email: contactEmail || null,
           contact_phone: contactPhone || null,
           website_url: websiteUrl || null,
@@ -426,6 +438,7 @@ export default function AdminCreatePartnerPage() {
                       setSkipLinking(false);
                       clearVenue();
                       clearVendor();
+                      setCategoryId(null);
                     }}
                   />
                 ))}
@@ -522,13 +535,21 @@ export default function AdminCreatePartnerPage() {
               <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
                 Category
               </label>
-              <input
-                type="text"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-                placeholder="e.g. Live Music, Restaurant, DJ"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              />
+              <select
+                value={categoryId ?? ''}
+                onChange={e => setCategoryId(e.target.value || null)}
+                disabled={!partnerType || categories.length === 0}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors disabled:opacity-50"
+              >
+                <option value="" className="bg-[#1a1a1d]">
+                  {partnerType ? 'Select a category…' : 'Select a partner type first'}
+                </option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id} className="bg-[#1a1a1d]">
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Contact Email */}

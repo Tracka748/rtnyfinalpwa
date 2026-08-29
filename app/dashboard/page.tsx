@@ -48,7 +48,7 @@ export default async function DashboardPage() {
 
   const { data: partnerProfile } = await supabase
     .from('partners')
-    .select('id, display_name, partner_type, verified, active, supporter_count, logo_url, tagline, category')
+    .select('id, display_name, partner_type, verified, active, supporter_count, logo_url, tagline, category, category_id, partner_categories(name)')
     .eq('owner_id', user!.id)
     .eq('active', true)
     .single()
@@ -228,7 +228,9 @@ export default async function DashboardPage() {
                   {partnerProfile.display_name}
                 </p>
                 <div className="flex items-center mt-0.5">
-                  <span className="text-xs text-foreground/40">{partnerProfile.category}</span>
+                  <span className="text-xs text-foreground/40">
+                    {partnerProfile.category_id ? (partnerProfile.partner_categories as unknown as { name: string } | null)?.name : partnerProfile.category}
+                  </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-[#59FFA0]/10 text-[#59FFA0] border border-[#59FFA0]/20 font-label uppercase tracking-wider ml-2">
                     {partnerProfile.partner_type}
                   </span>
