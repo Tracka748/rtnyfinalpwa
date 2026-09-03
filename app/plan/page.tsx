@@ -159,10 +159,13 @@ function EventBuilderView() {
                   loading={builder.vendorsLoading}
                   error={builder.vendorsError}
                   categoryFilter={builder.categoryFilter}
+                  themeFilter={builder.themeFilter}
+                  themeOptions={builder.themeOptions}
                   selectedServiceIds={builder.selectedServiceIds}
                   eventDate={builder.eventDetails.eventDate}
                   planItems={builder.planItems}
                   onCategoryChange={builder.setCategoryFilter}
+                  onThemeChange={builder.setThemeFilter}
                   onToggleService={builder.toggleService}
                   onAddToPlan={builder.addToPlan}
                   onBack={builder.goBack}

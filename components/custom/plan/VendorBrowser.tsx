@@ -44,10 +44,13 @@ interface VendorBrowserProps {
   loading: boolean
   error: string | null
   categoryFilter: string
+  themeFilter: string
+  themeOptions: { id: string; name: string }[]
   selectedServiceIds: Set<string>
   eventDate: string
   planItems: PlanItem[]
   onCategoryChange: (category: string) => void
+  onThemeChange: (theme: string) => void
   onToggleService: (serviceId: string) => void
   onAddToPlan: (vendor: Vendor) => void
   onBack: () => void
@@ -60,10 +63,13 @@ export function VendorBrowser({
   loading,
   error,
   categoryFilter,
+  themeFilter,
+  themeOptions,
   selectedServiceIds,
   eventDate,
   planItems,
   onCategoryChange,
+  onThemeChange,
   onToggleService,
   onAddToPlan,
   onBack,
@@ -106,6 +112,32 @@ export function VendorBrowser({
         <span className="text-[#2a2829] text-xs">→</span>
       </div>
 
+      {/* Theme filter scroll */}
+      {themeOptions.length > 0 && (
+        <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 pt-3">
+          <div className="flex gap-3 w-max">
+            {[{ id: 'all', name: 'All Themes' }, ...themeOptions].map(theme => {
+              const active = themeFilter === theme.id
+              return (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => onThemeChange(theme.id)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-2 rounded-full border text-sm font-sans whitespace-nowrap transition-all duration-200',
+                    active
+                      ? 'border-[#59ffa0] bg-[#59ffa0]/10 text-[#59ffa0]'
+                      : 'border-[#2a2829] bg-[#1a1819] text-[#f9fdff]/70 hover:border-[#59ffa0]/30'
+                  )}
+                >
+                  <span>{theme.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Result count / state */}
       {!loading && !error && (
         <p className="text-[#7DD8E8] text-xs font-sans mt-4">
@@ -126,17 +158,24 @@ export function VendorBrowser({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => <VendorSkeleton key={i} />)
-          : vendors.map(vendor => (
-              <VendorCard
-                key={vendor.id}
-                vendor={vendor}
-                selectedServiceIds={selectedServiceIds}
-                onToggleService={onToggleService}
-                eventDate={eventDate}
-                planItems={planItems}
-                onAddToPlan={onAddToPlan}
-              />
-            ))}
+          : vendors.map(vendor => {
+              const approvedThemes = (vendor.partners?.partner_theme_tags
+                ?.filter(t => t.status === 'approved')
+                .map(t => t.themes)
+                .filter((t): t is { id: string; name: string } => t !== null)) ?? []
+              return (
+                <VendorCard
+                  key={vendor.id}
+                  vendor={vendor}
+                  selectedServiceIds={selectedServiceIds}
+                  onToggleService={onToggleService}
+                  eventDate={eventDate}
+                  planItems={planItems}
+                  onAddToPlan={onAddToPlan}
+                  approvedThemes={approvedThemes}
+                />
+              )
+            })}
       </div>
 
       {/* Navigation */}

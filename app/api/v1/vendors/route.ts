@@ -7,12 +7,24 @@ type VendorServiceRow = Database['public']['Tables']['vendor_services']['Row']
 type VendorAvailabilityRow = Database['public']['Tables']['vendor_availability']['Row']
 type VendorDynamicPricingRow = Database['public']['Tables']['vendor_dynamic_pricing']['Row']
 type VendorBlackoutDateRow = Database['public']['Tables']['vendor_blackout_dates']['Row']
+type PartnerRow = Database['public']['Tables']['partners']['Row']
+type PartnerThemeTagRow = Database['public']['Tables']['partner_theme_tags']['Row']
+type ThemeRow = Database['public']['Tables']['themes']['Row']
+
+type PartnerThemeTagResult = Pick<PartnerThemeTagRow, 'status' | 'first_approved_at'> & {
+  themes: Pick<ThemeRow, 'id' | 'name'> | null
+}
+
+type PartnerResult = PartnerRow & {
+  partner_theme_tags: PartnerThemeTagResult[]
+}
 
 type VendorResult = VendorRow & {
   vendor_services: VendorServiceRow[]
   vendor_availability: VendorAvailabilityRow[]
   vendor_dynamic_pricing: VendorDynamicPricingRow[]
   vendor_blackout_dates: VendorBlackoutDateRow[]
+  partners: PartnerResult | null
 }
 
 // Maps UI filter pill values → DB vendors.type enum values
@@ -93,7 +105,8 @@ export async function GET(request: NextRequest) {
         vendor_services (*),
         vendor_availability (*),
         vendor_dynamic_pricing (*),
-        vendor_blackout_dates (*)
+        vendor_blackout_dates (*),
+        partners (*, partner_theme_tags (status, first_approved_at, themes (id, name)))
       `)
       .eq('active', true)
 

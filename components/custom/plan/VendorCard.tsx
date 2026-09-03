@@ -159,9 +159,10 @@ interface VendorCardProps {
   eventDate: string
   planItems: PlanItem[]
   onAddToPlan: (vendor: Vendor) => void
+  approvedThemes?: { id: string; name: string }[]
 }
 
-export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventDate, planItems, onAddToPlan }: VendorCardProps) {
+export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventDate, planItems, onAddToPlan, approvedThemes }: VendorCardProps) {
   const tierConfig = getTierConfig(vendor.tier)
   const activeServices = vendor.vendor_services.filter(s => s.active !== false)
   const selectedCount = activeServices.filter(s => selectedServiceIds.has(s.id)).length
@@ -230,6 +231,19 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
             </div>
           </div>
         </div>
+
+        {approvedThemes && approvedThemes.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {approvedThemes.map(theme => (
+              <span
+                key={theme.id}
+                className="text-[10px] px-2 py-0.5 rounded-full bg-[#1AC8ED]/10 border border-[#1AC8ED]/20 text-[#1AC8ED] font-label"
+              >
+                ✓ Theme Verified: {theme.name}
+              </span>
+            ))}
+          </div>
+        )}
 
         {vendor.bio && (
           <p className="mt-3 text-[#7DD8E8] text-xs leading-relaxed line-clamp-2">{vendor.bio}</p>

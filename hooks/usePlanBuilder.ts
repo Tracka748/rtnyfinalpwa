@@ -56,6 +56,22 @@ export interface VendorBlackoutDate {
   reason: string | null
 }
 
+export interface ThemeRef {
+  id: string
+  name: string
+}
+
+export interface PartnerThemeTag {
+  status: string
+  first_approved_at: string | null
+  themes: ThemeRef | null
+}
+
+export interface PartnerRef {
+  id: string
+  partner_theme_tags: PartnerThemeTag[]
+}
+
 export interface Vendor {
   id: string
   name: string
@@ -75,6 +91,7 @@ export interface Vendor {
   vendor_availability: VendorAvailabilitySlot[]
   vendor_dynamic_pricing: DynamicPricingRule[]
   vendor_blackout_dates: VendorBlackoutDate[]
+  partners: PartnerRef | null
 }
 
 export interface PlanItem {
@@ -143,6 +160,8 @@ interface PlanBuilderState {
   vendorsLoading: boolean
   vendorsError: string | null
   categoryFilter: string
+  themeFilter: string
+  themeOptions: ThemeRef[]
   selectedServiceIds: Set<string>
   planItems: PlanItem[]
   notes: string
@@ -173,6 +192,8 @@ export function usePlanBuilder() {
     vendorsLoading: false,
     vendorsError: null,
     categoryFilter: 'all',
+    themeFilter: 'all',
+    themeOptions: [],
     selectedServiceIds: new Set(),
     planItems: [],
     notes: '',
@@ -227,7 +248,7 @@ export function usePlanBuilder() {
   // Client-side filtering: category pill → DB type mapping, plus optional day-of-week check.
   // Runs on the already-fetched vendor list so pill changes are instant (no re-fetch).
   const filteredVendors = useMemo(() => {
-    const { vendors, categoryFilter, eventDetails } = state
+    const { vendors, categoryFilter, themeFilter, eventDetails } = state
 
     let list = vendors
 
@@ -246,11 +267,27 @@ export function usePlanBuilder() {
     }
 
     // Bug 2 fix: translate UI pill value → DB type enum values before comparing.
-    if (categoryFilter === 'all') return list
-    const dbTypes = CATEGORY_TO_TYPE[categoryFilter] ?? []
-    if (dbTypes.length === 0) return list
-    return list.filter(v => dbTypes.includes(v.type))
-  }, [state.vendors, state.categoryFilter, state.eventDetails.eventDate])
+    if (categoryFilter !== 'all') {
+      const dbTypes = CATEGORY_TO_TYPE[categoryFilter] ?? []
+      if (dbTypes.length > 0) {
+        list = list.filter(v => dbTypes.includes(v.type))
+      }
+    }
+
+    // Theme sort (not a filter): vendors with an approved theme tag matching themeFilter
+    // float to the top, but nothing is removed from the list. Matched by theme id, not
+    // name, since names aren't guaranteed unique/stable for comparison. Array.prototype.sort
+    // is stable (ES2019+), so relative order within each group is preserved.
+    if (themeFilter !== 'all') {
+      const hasMatchingTheme = (v: Vendor) =>
+        v.partners?.partner_theme_tags.some(
+          t => t.status === 'approved' && t.themes?.id === themeFilter
+        ) ?? false
+      list = [...list].sort((a, b) => Number(hasMatchingTheme(b)) - Number(hasMatchingTheme(a)))
+    }
+
+    return list
+  }, [state.vendors, state.categoryFilter, state.themeFilter, state.eventDetails.eventDate])
 
   const canProceedFromStep1 = state.eventDetails.eventType.length > 0
 
@@ -283,8 +320,23 @@ export function usePlanBuilder() {
     }
   }, [])
 
+  const fetchThemeOptions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/themes')
+      if (!res.ok) return
+      const json = await res.json()
+      setState(s => ({ ...s, themeOptions: json.data ?? [] }))
+    } catch {
+      // Non-critical: theme filter UI simply has no options to show on failure.
+    }
+  }, [])
+
   const setCategoryFilter = useCallback((category: string) => {
     setState(s => ({ ...s, categoryFilter: category }))
+  }, [])
+
+  const setThemeFilter = useCallback((theme: string) => {
+    setState(s => ({ ...s, themeFilter: theme }))
   }, [])
 
   const addToPlan = useCallback((vendor: Vendor) => {
@@ -320,12 +372,13 @@ export function usePlanBuilder() {
   const goNext = useCallback(() => {
     setState(s => {
       if (s.currentStep === 1) {
-        // Kick off vendor fetch before advancing so step 2 loads with data
+        // Kick off vendor + theme option fetches before advancing so step 2 loads with data
         fetchVendors(s.eventDetails)
+        fetchThemeOptions()
       }
       return { ...s, currentStep: s.currentStep + 1 }
     })
-  }, [fetchVendors])
+  }, [fetchVendors, fetchThemeOptions])
 
   const goBack = useCallback(() => {
     setState(s => ({ ...s, currentStep: Math.max(1, s.currentStep - 1) }))
@@ -391,6 +444,8 @@ export function usePlanBuilder() {
     vendorsLoading: state.vendorsLoading,
     vendorsError: state.vendorsError,
     categoryFilter: state.categoryFilter,
+    themeFilter: state.themeFilter,
+    themeOptions: state.themeOptions,
     selectedServiceIds: state.selectedServiceIds,
     planItems: state.planItems,
     notes: state.notes,
@@ -407,6 +462,7 @@ export function usePlanBuilder() {
     // actions
     setEventDetail,
     setCategoryFilter,
+    setThemeFilter,
     toggleService,
     addToPlan,
     removeFromPlan,
