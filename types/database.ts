@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ad_events: {
@@ -2669,6 +2644,7 @@ export type Database = {
         Row: {
           active: boolean
           bio: string | null
+          business_id: string | null
           category: string | null
           category_id: string | null
           contact_email: string | null
@@ -2678,7 +2654,7 @@ export type Database = {
           display_name: string
           id: string
           logo_url: string | null
-          owner_id: string
+          owner_id: string | null
           partner_type: string
           requires_photo_verified_tags: boolean
           supporter_count: number
@@ -2693,6 +2669,7 @@ export type Database = {
         Insert: {
           active?: boolean
           bio?: string | null
+          business_id?: string | null
           category?: string | null
           category_id?: string | null
           contact_email?: string | null
@@ -2702,7 +2679,7 @@ export type Database = {
           display_name: string
           id?: string
           logo_url?: string | null
-          owner_id: string
+          owner_id?: string | null
           partner_type: string
           requires_photo_verified_tags?: boolean
           supporter_count?: number
@@ -2717,6 +2694,7 @@ export type Database = {
         Update: {
           active?: boolean
           bio?: string | null
+          business_id?: string | null
           category?: string | null
           category_id?: string | null
           contact_email?: string | null
@@ -2726,7 +2704,7 @@ export type Database = {
           display_name?: string
           id?: string
           logo_url?: string | null
-          owner_id?: string
+          owner_id?: string | null
           partner_type?: string
           requires_photo_verified_tags?: boolean
           supporter_count?: number
@@ -2739,6 +2717,13 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partners_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partners_category_id_fkey"
             columns: ["category_id"]
@@ -4435,6 +4420,7 @@ export type Database = {
           available_days: string[] | null
           base_price: number | null
           bio: string | null
+          business_id: string | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string | null
@@ -4459,6 +4445,7 @@ export type Database = {
           available_days?: string[] | null
           base_price?: number | null
           bio?: string | null
+          business_id?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string | null
@@ -4483,6 +4470,7 @@ export type Database = {
           available_days?: string[] | null
           base_price?: number | null
           bio?: string | null
+          business_id?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string | null
@@ -4502,12 +4490,21 @@ export type Database = {
           website?: string | null
           years_in_business?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendors_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       venues: {
         Row: {
           address: string
           amenities: string[] | null
+          business_id: string | null
           capacity: number
           city: string | null
           contact_email: string | null
@@ -4527,6 +4524,7 @@ export type Database = {
         Insert: {
           address: string
           amenities?: string[] | null
+          business_id?: string | null
           capacity: number
           city?: string | null
           contact_email?: string | null
@@ -4546,6 +4544,7 @@ export type Database = {
         Update: {
           address?: string
           amenities?: string[] | null
+          business_id?: string | null
           capacity?: number
           city?: string | null
           contact_email?: string | null
@@ -4561,6 +4560,74 @@ export type Database = {
           venue_type?: string | null
           website_url?: string | null
           zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venues_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vibe_shares: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          mode: string
+          user_id: string
+          vibe_tags: string[]
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          mode: string
+          user_id: string
+          vibe_tags: string[]
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          mode?: string
+          user_id?: string
+          vibe_tags?: string[]
+        }
+        Relationships: []
+      }
+      vibe_tags: {
+        Row: {
+          category: string
+          created_at: string
+          emoji: string | null
+          id: string
+          is_active: boolean
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          slug?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -4963,9 +5030,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       discount_type: ["percentage", "fixed"],
