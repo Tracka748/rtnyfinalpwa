@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { data: partner, error } = await supabase
       .from('partners')
       .insert({
-        owner_id: body.owner_id || user.id,
+        owner_id: body.owner_id || null,
         partner_type: body.partner_type,
         venue_id: body.venue_id ?? null,
         vendor_id: body.vendor_id ?? null,
