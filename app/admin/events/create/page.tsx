@@ -35,11 +35,6 @@ const NEIGHBORHOODS = [
   'park_ave', 'east_end', 'monroe_ave', 'southwest', 'urban', 'suburban',
 ] as const;
 
-const VIBE_TAGS = [
-  'hip_hop', 'reggae_dancehall', 'spanish_vibes', 'lgbtq',
-  'music_junkie', 'r_and_b', 'latin', 'afrobeats',
-] as const;
-
 const AGE_RANGES = ['18-20', '21-25', '26-30', '31-35', '36-45', '46+'] as const;
 
 const CATEGORIES = ['nightlife', 'family', 'movies', 'dining', 'arts', 'sports'] as const;
@@ -64,6 +59,13 @@ interface Venue {
   id: string;
   name: string;
   address: string;
+}
+
+interface VibeTagOption {
+  slug: string;
+  label: string;
+  emoji: string;
+  category: string;
 }
 
 interface Promoter {
@@ -138,6 +140,9 @@ export default function AdminCreateEventPage() {
   const [promoters, setPromoters] = useState<Promoter[]>([]);
   const [promoterId, setPromoterId] = useState('');
 
+  // Vibe tags — governed vocabulary, fetched rather than hardcoded
+  const [vibeTags, setVibeTags] = useState<VibeTagOption[]>([]);
+
   // Promo code
   const [generatedPromoCode, setGeneratedPromoCode] = useState<string | null>(null);
 
@@ -160,6 +165,11 @@ export default function AdminCreateEventPage() {
     fetch('/api/v1/admin/promoters', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => { if (d.success) setPromoters(d.data); })
+      .catch(console.error);
+
+    fetch('/api/v1/vibe-tags')
+      .then((r) => r.json())
+      .then((d) => { if (d.tags) setVibeTags(d.tags); })
       .catch(console.error);
 
     // Fetch total user count (no filters)
@@ -632,13 +642,13 @@ export default function AdminCreateEventPage() {
                   Vibe Tags
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {VIBE_TAGS.map((tag) => (
+                  {vibeTags.map((tag) => (
                     <Pill
-                      key={tag}
-                      label={tag}
-                      selected={selectedVibes.includes(tag)}
+                      key={tag.slug}
+                      label={tag.label}
+                      selected={selectedVibes.includes(tag.slug)}
                       color="cyan"
-                      onClick={() => toggle(selectedVibes, tag, setSelectedVibes)}
+                      onClick={() => toggle(selectedVibes, tag.slug, setSelectedVibes)}
                     />
                   ))}
                 </div>

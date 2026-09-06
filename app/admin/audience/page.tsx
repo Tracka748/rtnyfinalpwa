@@ -40,7 +40,7 @@ function topKey(obj: Record<string, number>): string {
 }
 
 function formatLabel(key: string) {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function HeroCard({

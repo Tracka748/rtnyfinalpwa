@@ -32,6 +32,13 @@ export async function GET() {
       .from('user_behavior_snapshot')
       .select('user_id, avg_spend, activity_level, purchase_pattern, preferred_event_time');
 
+    // Query 4: active vibe tag vocabulary — governed by the vibe_tags table now,
+    // not a hardcoded list of a vocabulary that predates it.
+    const { data: vibeTagRows } = await supabase
+      .from('vibe_tags')
+      .select('slug')
+      .eq('is_active', true);
+
     const p = profiles ?? [];
     const v = userVibes ?? [];
     const s = snapshots ?? [];
@@ -74,16 +81,17 @@ export async function GET() {
       else is_parent.non_parent++;
     });
 
-    // Vibe tags
-    const vibe_tags: Record<string, number> = {
-      hip_hop: 0, reggae_dancehall: 0, spanish_vibes: 0, lgbtq: 0,
-      music_junkie: 0, r_and_b: 0, latin: 0, afrobeats: 0,
-    };
+    // Vibe tags — keyed by every active slug from vibe_tags, not a fixed list.
+    // Vocabulary is single-format now (all hyphenated), so this is a direct
+    // membership check with no normalization needed.
+    const vibe_tags: Record<string, number> = {};
+    (vibeTagRows ?? []).forEach((row) => {
+      vibe_tags[row.slug] = 0;
+    });
     v.forEach((row) => {
       const tags: string[] = Array.isArray(row.vibe_tags) ? row.vibe_tags : [];
       tags.forEach((tag) => {
-        const t = tag.toLowerCase().replace(/[\s-]+/g, '_');
-        if (t in vibe_tags) vibe_tags[t]++;
+        if (tag in vibe_tags) vibe_tags[tag]++;
       });
     });
 
