@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase'
+import { findInvalidVibeTags } from '@/lib/vibes/validate-tags'
 
 export async function GET() {
   try {
@@ -55,20 +56,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Server-side membership check — never trust client-only validation of the tag list.
-    const { data: matchedTags, error: tagsError } = await supabase
-      .from('vibe_tags')
-      .select('slug')
-      .eq('is_active', true)
-      .in('slug', vibeTags)
-
-    if (tagsError) {
-      console.error('vibe_tags validation error:', tagsError)
+    const validation = await findInvalidVibeTags(supabase, vibeTags)
+    if ('error' in validation) {
+      console.error('vibe_tags validation error:', validation.error)
       return NextResponse.json({ error: 'Failed to save vibes' }, { status: 500 })
     }
-
-    const validSlugs = new Set((matchedTags ?? []).map((t) => t.slug))
-    const allValid = vibeTags.every((slug: string) => validSlugs.has(slug))
-    if (!allValid) {
+    if (validation.invalid.length > 0) {
       return NextResponse.json({ error: 'One or more selected vibes are invalid' }, { status: 400 })
     }
 

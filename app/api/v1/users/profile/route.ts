@@ -1,6 +1,7 @@
 // app/api/v1/users/profile/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { findInvalidVibeTags } from '@/lib/vibes/validate-tags'
 
 export async function GET() {
   try {
@@ -65,17 +66,35 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 })
     }
 
-    // Upsert user_vibes table
-    const { error: vibesError } = await supabase
-      .from('user_vibes')
-      .upsert(
-        { user_id: user.id, vibe_tags: vibe_tags ?? [] },
-        { onConflict: 'user_id' }
-      )
+    // Validate and upsert user_vibes only when the client actually sent vibe_tags
+    if (vibe_tags !== undefined) {
+      if (!Array.isArray(vibe_tags) || !vibe_tags.every((tag: unknown) => typeof tag === 'string')) {
+        return NextResponse.json({ error: 'vibe_tags must be an array of strings' }, { status: 400 })
+      }
 
-    if (vibesError) {
-      console.error('Vibes upsert error:', vibesError)
-      return NextResponse.json({ error: vibesError.message }, { status: 500 })
+      const validation = await findInvalidVibeTags(supabase, vibe_tags)
+      if ('error' in validation) {
+        console.error('vibe_tags validation error:', validation.error)
+        return NextResponse.json({ error: 'Failed to save vibes' }, { status: 500 })
+      }
+      if (validation.invalid.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid vibe tags: ${validation.invalid.join(', ')}` },
+          { status: 400 }
+        )
+      }
+
+      const { error: vibesError } = await supabase
+        .from('user_vibes')
+        .upsert(
+          { user_id: user.id, vibe_tags },
+          { onConflict: 'user_id' }
+        )
+
+      if (vibesError) {
+        console.error('Vibes upsert error:', vibesError)
+        return NextResponse.json({ error: vibesError.message }, { status: 500 })
+      }
     }
 
     return NextResponse.json({
