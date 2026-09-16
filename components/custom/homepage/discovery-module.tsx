@@ -7,7 +7,8 @@ import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type ActiveCategory = "concerts" | "bars" | "movies"
+type CategoryTab = "concerts" | "bars" | "movies"
+type ActiveTab = CategoryTab | "for-you"
 
 interface VenueRow {
   name: string
@@ -34,9 +35,42 @@ interface CardEvent {
   ticket_types: TicketTypeRow[]
 }
 
+// Shape returned by GET /api/v1/vibe-shares/matched-events
+interface MatchedEvent {
+  id: string
+  name: string
+  category: string
+  event_date: string
+  venue_name: string | null
+  flyer_image_url: string | null
+}
+
+// matched-events doesn't return pricing, so cards built from it fall back to
+// EventCard's own "Free" default via an empty ticket_types list.
+function matchedToHero(event: MatchedEvent): HeroEvent {
+  return {
+    id: event.id,
+    name: event.name,
+    flyer_image_url: event.flyer_image_url,
+    venue: event.venue_name ? { name: event.venue_name } : null,
+  }
+}
+
+function matchedToCard(event: MatchedEvent): CardEvent {
+  return {
+    id: event.id,
+    name: event.name,
+    flyer_image_url: event.flyer_image_url,
+    featured: null,
+    category: event.category,
+    venue: event.venue_name ? { name: event.venue_name } : null,
+    ticket_types: [],
+  }
+}
+
 // ─── Category mapping — pill value → DB enum value ───────────────────────────
 
-const DB_CATEGORY: Record<ActiveCategory, string> = {
+const DB_CATEGORY: Record<CategoryTab, string> = {
   concerts: "music",
   bars: "nightlife",
   movies: "movies",
@@ -44,11 +78,17 @@ const DB_CATEGORY: Record<ActiveCategory, string> = {
 
 // ─── Pills ───────────────────────────────────────────────────────────────────
 
-const PILLS: { label: string; value: ActiveCategory; color: string }[] = [
+const PILLS: { label: string; value: ActiveTab; color: string }[] = [
   { label: "Concerts", value: "concerts", color: "#59FFA0" },
   { label: "Bars/Clubs", value: "bars", color: "#1AC8ED" },
   { label: "Movies", value: "movies", color: "#B87FFF" },
 ]
+
+const FOR_YOU_PILL: { label: string; value: ActiveTab; color: string } = {
+  label: "For You",
+  value: "for-you",
+  color: "#FF7A00",
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -212,12 +252,31 @@ function EventCard({ event }: { event: CardEvent }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function DiscoveryModule() {
-  const [activeCategory, setActiveCategory] = useState<ActiveCategory>("concerts")
+  const [activeCategory, setActiveCategory] = useState<ActiveTab>("concerts")
   const [hero, setHero] = useState<HeroEvent | null>(null)
   const [cards, setCards] = useState<CardEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [userVibeTags, setUserVibeTags] = useState<string[] | null>(null)
+
+  // Fetch the user's saved vibes once — only used to decide whether the
+  // "For You" pill appears at all, and what to pass to matched-events below.
+  useEffect(() => {
+    let cancelled = false
+    async function fetchUserVibes() {
+      try {
+        const res = await fetch("/api/v1/user-vibes")
+        const json = await res.json()
+        if (!cancelled) setUserVibeTags(res.ok ? json.vibe_tags ?? null : null)
+      } catch {
+        if (!cancelled) setUserVibeTags(null)
+      }
+    }
+    fetchUserVibes()
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
+    if (activeCategory === "for-you") return
     let cancelled = false
     setLoading(true)
 
@@ -288,7 +347,38 @@ export function DiscoveryModule() {
     return () => { cancelled = true }
   }, [activeCategory])
 
-  const activePill = PILLS.find((p) => p.value === activeCategory)!
+  // "For You" tab — separate from the category effect above so the existing
+  // Concerts/Bars/Movies fetching is never touched by this branch.
+  useEffect(() => {
+    if (activeCategory !== "for-you") return
+    let cancelled = false
+    setLoading(true)
+
+    async function fetchForYou() {
+      try {
+        const tags = (userVibeTags ?? []).join(",")
+        const res = await fetch(`/api/v1/vibe-shares/matched-events?tags=${encodeURIComponent(tags)}`)
+        const json = await res.json()
+        if (cancelled) return
+        const matched: MatchedEvent[] = res.ok ? json.events ?? [] : []
+        setHero(matched[0] ? matchedToHero(matched[0]) : null)
+        setCards(matched.map(matchedToCard))
+      } catch {
+        if (!cancelled) {
+          setHero(null)
+          setCards([])
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    fetchForYou()
+    return () => { cancelled = true }
+  }, [activeCategory, userVibeTags])
+
+  const pills = userVibeTags && userVibeTags.length > 0 ? [...PILLS, FOR_YOU_PILL] : PILLS
+  const activePill = pills.find((p) => p.value === activeCategory)!
 
   return (
     <section className="w-full px-4 py-4 space-y-3">
@@ -303,7 +393,7 @@ export function DiscoveryModule() {
 
       {/* ── Category Pills ── */}
       <div className="flex gap-2">
-        {PILLS.map((pill) => (
+        {pills.map((pill) => (
           <button
             key={pill.value}
             onClick={() => setActiveCategory(pill.value)}
@@ -322,21 +412,32 @@ export function DiscoveryModule() {
 
       {/* ── Card Row ── */}
       <div className="flex gap-3 px-5 overflow-x-auto pb-1 scrollbar-hide">
-        {loading
-          ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
-          : cards.map((card) => <EventCard key={card.id} event={card} />)}
-
-        {!loading && (
-          <Link
-            href={`/events?category=${DB_CATEGORY[activeCategory]}`}
-            className="shrink-0 w-[80px] h-[210px] rounded-2xl bg-[#1a1819] hover:bg-[#222] transition-colors flex flex-col items-center justify-center gap-1.5 text-white/50 hover:text-white/80"
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
+        ) : activeCategory === "for-you" && cards.length === 0 ? (
+          <p
+            className="text-sm text-white/40 py-8"
             style={{ fontFamily: "var(--font-rubik), sans-serif" }}
           >
-            <span className="text-xl">→</span>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-center leading-tight">
-              See All
-            </span>
-          </Link>
+            No matches yet — check back soon.
+          </p>
+        ) : (
+          <>
+            {cards.map((card) => <EventCard key={card.id} event={card} />)}
+
+            {activeCategory !== "for-you" && (
+              <Link
+                href={`/events?category=${DB_CATEGORY[activeCategory]}`}
+                className="shrink-0 w-[80px] h-[210px] rounded-2xl bg-[#1a1819] hover:bg-[#222] transition-colors flex flex-col items-center justify-center gap-1.5 text-white/50 hover:text-white/80"
+                style={{ fontFamily: "var(--font-rubik), sans-serif" }}
+              >
+                <span className="text-xl">→</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-center leading-tight">
+                  See All
+                </span>
+              </Link>
+            )}
+          </>
         )}
       </div>
     </section>
