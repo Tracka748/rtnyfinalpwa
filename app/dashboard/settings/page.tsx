@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
+
+const MAX_VIBE_TAGS = 3
 
 // ─── Option maps ────────────────────────────────────────────────────────────
 
@@ -38,18 +41,14 @@ const RELATIONSHIP_OPTIONS = [
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ]
 
-const VIBE_OPTIONS = [
-  { value: 'hip_hop', label: 'Hip-Hop' },
-  { value: 'reggae_dancehall', label: 'Reggae / Dancehall' },
-  { value: 'spanish_vibes', label: 'Spanish Vibes' },
-  { value: 'lgbtq', label: 'LGBTQ+' },
-  { value: 'music_junkie', label: 'Music Junkie' },
-  { value: 'r_and_b', label: 'R&B' },
-  { value: 'latin', label: 'Latin' },
-  { value: 'afrobeats', label: 'Afrobeats' },
-]
-
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+interface VibeTag {
+  slug: string
+  label: string
+  emoji: string
+  category: string
+}
 
 interface ProfileForm {
   first_name: string
@@ -109,8 +108,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [vibeTags, setVibeTags] = useState<VibeTag[]>([])
+  const [vibeTagsLoading, setVibeTagsLoading] = useState(true)
 
-  // Fetch existing profile on mount
+  // Fetch existing profile and the active vibe tag vocabulary in parallel on mount
   useEffect(() => {
     async function fetchProfile() {
       try {
@@ -140,7 +141,22 @@ export default function SettingsPage() {
         setLoading(false)
       }
     }
+
+    async function fetchVibeTags() {
+      try {
+        const res = await fetch('/api/v1/vibe-tags')
+        const json = await res.json()
+        setVibeTags(res.ok ? json.tags ?? [] : [])
+      } catch (err) {
+        console.error('Failed to load vibe tags', err)
+        setVibeTags([])
+      } finally {
+        setVibeTagsLoading(false)
+      }
+    }
+
     fetchProfile()
+    fetchVibeTags()
   }, [router])
 
   function setField<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
@@ -148,12 +164,15 @@ export default function SettingsPage() {
   }
 
   function toggleVibe(value: string) {
-    setForm((prev) => ({
-      ...prev,
-      vibe_tags: prev.vibe_tags.includes(value)
-        ? prev.vibe_tags.filter((v) => v !== value)
-        : [...prev.vibe_tags, value],
-    }))
+    setForm((prev) => {
+      if (prev.vibe_tags.includes(value)) {
+        return { ...prev, vibe_tags: prev.vibe_tags.filter((v) => v !== value) }
+      }
+      if (prev.vibe_tags.length >= MAX_VIBE_TAGS) {
+        return prev
+      }
+      return { ...prev, vibe_tags: [...prev.vibe_tags, value] }
+    })
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -375,30 +394,36 @@ export default function SettingsPage() {
 
           {/* ── Vibe Tags ── */}
           <section className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-5">
-            <SectionHeader>Your Vibe</SectionHeader>
+            <SectionHeader>Preferences</SectionHeader>
             <p className="font-[family-name:var(--font-rubik)] text-xs text-[#555] mb-4">
-              Optional &mdash; select all that fit
+              Optional &mdash; select 1&ndash;3 that fit
             </p>
             <div className="flex flex-wrap gap-2">
-              {VIBE_OPTIONS.map((vibe) => {
-                const selected = form.vibe_tags.includes(vibe.value)
-                return (
-                  <button
-                    key={vibe.value}
-                    type="button"
-                    onClick={() => toggleVibe(vibe.value)}
-                    className={[
-                      'rounded-full border px-4 py-1.5 font-[family-name:var(--font-rubik)] text-sm',
-                      'transition-all duration-150 select-none',
-                      selected
-                        ? 'border-[#59FFA0] bg-[#59FFA0] text-[#121113] font-medium'
-                        : 'border-[#2A2A2A] bg-[#121113] text-[#A0A0A0] hover:border-[#59FFA0]/50 hover:text-[#F9FDFF]',
-                    ].join(' ')}
-                  >
-                    {vibe.label}
-                  </button>
-                )
-              })}
+              {vibeTagsLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="h-8 w-24 rounded-full bg-white/5 animate-pulse" />
+                  ))
+                : vibeTags.map((vibe) => {
+                    const selected = form.vibe_tags.includes(vibe.slug)
+                    const atMax = !selected && form.vibe_tags.length >= MAX_VIBE_TAGS
+                    return (
+                      <button
+                        key={vibe.slug}
+                        type="button"
+                        onClick={() => toggleVibe(vibe.slug)}
+                        disabled={atMax}
+                        className={cn(
+                          'rounded-full border px-4 py-1.5 font-[family-name:var(--font-rubik)] text-sm',
+                          'transition-all duration-150 select-none disabled:opacity-40 disabled:cursor-not-allowed',
+                          selected
+                            ? 'border-[#59FFA0] bg-[#59FFA0] text-[#121113] font-medium'
+                            : 'border-[#2A2A2A] bg-[#121113] text-[#A0A0A0] hover:border-[#59FFA0]/50 hover:text-[#F9FDFF]'
+                        )}
+                      >
+                        {vibe.label}
+                      </button>
+                    )
+                  })}
             </div>
           </section>
 
