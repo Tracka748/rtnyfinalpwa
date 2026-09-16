@@ -14,14 +14,25 @@ interface VibeShareCardEvent {
 
 interface VibeShareCardProps {
   tags: VibeShareCardTag[]
-  caption: string
-  matchedEvents: VibeShareCardEvent[]
+  caption?: string
+  matchedEvents?: VibeShareCardEvent[]
+  // 'share' (default) is the existing prompt/personalized-share card, unchanged.
+  // 'identity' is a caption-free, matches-free card for the dashboard's
+  // "Share My Vibes" flow — just branding + the user's saved tags.
+  variant?: 'share' | 'identity'
 }
 
 // Purely presentational — no fetching, no state. Square (1:1) at 360px on-screen;
-// the capture step (VibeTagPickerDialog) applies pixelRatio during html-to-image
-// export to land near a ~1080px output image.
-export default function VibeShareCard({ tags, caption, matchedEvents }: VibeShareCardProps) {
+// the capture step (VibeTagPickerDialog / VibeIdentityShareDialog) applies
+// pixelRatio during html-to-image export to land near a ~1080px output image.
+export default function VibeShareCard({
+  tags,
+  caption = '',
+  matchedEvents = [],
+  variant = 'share',
+}: VibeShareCardProps) {
+  const isIdentity = variant === 'identity'
+
   return (
     <div className="aspect-square w-[360px] flex flex-col justify-between bg-surface border border-border rounded-2xl p-5 overflow-hidden">
       <div className="flex flex-col items-center gap-3">
@@ -30,7 +41,7 @@ export default function VibeShareCard({ tags, caption, matchedEvents }: VibeShar
 
         {/* Headline — same text treatment as VibePulseModule's idle-state heading */}
         <span className="font-header font-bold uppercase leading-[1.05] text-2xl text-text-primary text-center">
-          What&apos;s the Vibe?
+          {isIdentity ? 'My Vibes' : "What's the Vibe?"}
         </span>
 
         {/* Tag chips — same border/fill treatment as VibeTagPickerDialog's tag
@@ -49,16 +60,19 @@ export default function VibeShareCard({ tags, caption, matchedEvents }: VibeShar
           ))}
         </div>
 
-        {/* Caption */}
-        <p className="font-sans text-sm text-text-primary text-center leading-relaxed line-clamp-4 px-1">
-          {caption}
-        </p>
+        {/* Caption — share variant only; identity cards are caption-free */}
+        {!isIdentity && (
+          <p className="font-sans text-sm text-text-primary text-center leading-relaxed line-clamp-4 px-1">
+            {caption}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
-        {/* Matches Tonight — omitted entirely when empty, not shown as an
-            empty state, since this renders on a card meant to be shared publicly */}
-        {matchedEvents.length > 0 && (
+        {/* Matches Tonight — share variant only; omitted entirely when empty,
+            not shown as an empty state, since this renders on a card meant
+            to be shared publicly. Identity cards never show matches. */}
+        {!isIdentity && matchedEvents.length > 0 && (
           <div className="flex flex-col gap-1 border-t border-border pt-2">
             <p className="font-label text-[10px] uppercase tracking-widest text-accent-secondary text-center">
               Matches Tonight

@@ -4,6 +4,7 @@ import { createSupabaseServer, createSupabaseAdmin } from "@/lib/supabase"
 import { redirect } from "next/navigation"
 import { LogoutButton } from "@/components/custom/auth/logout-button"
 import { SavedDayPlans } from "@/components/custom/dashboard/SavedDayPlans"
+import { ProfileVibesSection } from "@/components/custom/dashboard/ProfileVibesSection"
 import { ChevronRight, Calendar, Ticket, Settings, Users, Building2 } from "lucide-react"
 import Link from "next/link"
 
@@ -87,6 +88,9 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Profile (My Vibes display) + Profile Controls (actions) */}
+        <ProfileVibesSection />
 
         {/* Quick Actions */}
         <div className="mt-8 grid grid-cols-3 gap-3">

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { toBlob } from 'html-to-image'
 import { ArrowLeft } from 'lucide-react'
 import {
   Dialog,
@@ -12,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { captureAndShareCard } from '@/lib/vibes/share-card-capture'
 import VibeShareCard from './VibeShareCard'
 
 interface VibeTag {
@@ -40,7 +40,6 @@ type PromptStep = 'select' | 'preview'
 
 const MAX_TAGS = 3
 const CAPTION_MAX_LENGTH = 280
-const SHARE_IMAGE_PIXEL_RATIO = 3
 const FALLBACK_MESSAGE_DURATION_MS = 1800
 
 function joinGrammatically(items: string[]): string {
@@ -297,58 +296,24 @@ export default function VibeTagPickerDialog({
     setSharing(true)
     setShareError('')
     setShareFallbackMessage('')
-    try {
-      const blob = await toBlob(cardRef.current, { pixelRatio: SHARE_IMAGE_PIXEL_RATIO })
-      if (!blob) {
-        setShareError('Something went wrong creating your share image — try again.')
-        return
-      }
 
-      const file = new File([blob], 'vibe-share.png', { type: 'image/png' })
-      const canShareFiles =
-        typeof navigator !== 'undefined' &&
-        typeof navigator.share === 'function' &&
-        typeof navigator.canShare === 'function' &&
-        navigator.canShare({ files: [file] })
+    const result = await captureAndShareCard(cardRef.current, { fileName: 'vibe-share.png', caption })
 
-      if (canShareFiles) {
-        await navigator.share({ files: [file], text: caption })
-        handleClose(false)
-        onShareComplete?.()
-        return
-      }
-
-      // Fallback for browsers without file-sharing support (most desktop browsers).
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'vibe-share.png'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-
-      try {
-        await navigator.clipboard.writeText(caption)
-      } catch {
-        // Best-effort — the image download already succeeded either way.
-      }
-
+    if (result.status === 'shared') {
+      handleClose(false)
+      onShareComplete?.()
+    } else if (result.status === 'downloaded') {
       setShareFallbackMessage('Image saved — share it wherever you like! Caption copied to clipboard.')
       setTimeout(() => {
         handleClose(false)
         onShareComplete?.()
       }, FALLBACK_MESSAGE_DURATION_MS)
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // User cancelled the native share sheet — stay on preview, no error.
-        return
-      }
-      console.error('vibe share error:', err)
-      setShareError('Something went wrong sharing — try again.')
-    } finally {
-      setSharing(false)
+    } else if (result.status === 'error') {
+      setShareError(result.message)
     }
+    // 'cancelled' — user backed out of the native share sheet; stay on preview, no error.
+
+    setSharing(false)
   }
 
   const isPersonalized = mode === 'personalized'
