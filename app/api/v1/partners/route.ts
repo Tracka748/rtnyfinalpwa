@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin, createSupabaseServer } from '@/lib/supabase'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createSupabaseAdmin()
@@ -23,9 +25,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    // Optional client-supplied id (create page pre-generates it so images can be uploaded to {id}/ first)
+    if (body.id && !UUID_RE.test(String(body.id))) {
+      return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+    }
+
     const { data: partner, error } = await supabase
       .from('partners')
       .insert({
+        ...(body.id ? { id: body.id } : {}),
         owner_id: body.owner_id || null,
         partner_type: body.partner_type,
         venue_id: body.venue_id ?? null,
@@ -50,6 +58,9 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('partners POST error:', error)
+      if (error.code === '23505' && body.id) {
+        return NextResponse.json({ error: 'A partner with this id already exists' }, { status: 409 })
+      }
       return NextResponse.json({ error: 'Failed to create partner' }, { status: 500 })
     }
 

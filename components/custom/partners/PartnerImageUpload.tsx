@@ -15,6 +15,7 @@ interface Props {
   partnerId: string | null | undefined
   value: string
   onChange: (url: string) => void
+  onUploadingChange?: (uploading: boolean) => void
 }
 
 function extensionFor(file: File): string {
@@ -23,10 +24,15 @@ function extensionFor(file: File): string {
   return (fromName || fromType || 'png').toLowerCase()
 }
 
-export default function PartnerImageUpload({ kind, partnerId, value, onChange }: Props) {
+export default function PartnerImageUpload({ kind, partnerId, value, onChange, onUploadingChange }: Props) {
   const { bucket, filename, label } = KIND_CONFIG[kind]
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploadingState] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const setUploading = (next: boolean) => {
+    setUploadingState(next)
+    onUploadingChange?.(next)
+  }
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target

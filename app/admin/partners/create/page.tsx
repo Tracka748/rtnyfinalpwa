@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
+import PartnerImageUpload from '@/components/custom/partners/PartnerImageUpload';
+import { generateUuid } from '@/lib/uuid';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -237,6 +239,11 @@ export default function AdminCreatePartnerPage() {
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [verified, setVerified] = useState(false);
 
+  // Pre-generated partner id so logo/cover can upload to {id}/ before the row exists
+  const [newPartnerId, setNewPartnerId] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+
   // Modules
   const [modules, setModules] = useState<Modules>({
     about: true,
@@ -259,6 +266,10 @@ export default function AdminCreatePartnerPage() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // ── Load data ──────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    setNewPartnerId(generateUuid());
+  }, []);
 
   useEffect(() => {
     fetch('/api/v1/venues')
@@ -349,6 +360,7 @@ export default function AdminCreatePartnerPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: newPartnerId,
           partner_type: partnerType,
           venue_id: venueId,
           vendor_id: vendorId,
@@ -594,33 +606,23 @@ export default function AdminCreatePartnerPage() {
               />
             </div>
 
-            {/* Logo URL */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
-                Logo URL
-              </label>
-              <input
-                type="url"
-                value={logoUrl}
-                onChange={e => setLogoUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              />
-            </div>
+            {/* Logo */}
+            <PartnerImageUpload
+              kind="logo"
+              partnerId={newPartnerId}
+              value={logoUrl}
+              onChange={setLogoUrl}
+              onUploadingChange={setLogoUploading}
+            />
 
-            {/* Cover Image URL */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
-                Cover Image URL
-              </label>
-              <input
-                type="url"
-                value={coverImageUrl}
-                onChange={e => setCoverImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              />
-            </div>
+            {/* Cover Image */}
+            <PartnerImageUpload
+              kind="cover"
+              partnerId={newPartnerId}
+              value={coverImageUrl}
+              onChange={setCoverImageUrl}
+              onUploadingChange={setCoverUploading}
+            />
 
             {/* Verified toggle */}
             <div className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3">
@@ -631,7 +633,7 @@ export default function AdminCreatePartnerPage() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={submitting || !partnerType || !displayName}
+              disabled={submitting || logoUploading || coverUploading || !partnerType || !displayName}
               className="w-full py-3 bg-[#59FFA0] text-[#121113] font-header font-bold rounded-xl hover:bg-[#59FFA0]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {submitting ? 'Creating…' : 'Create Partner'}
