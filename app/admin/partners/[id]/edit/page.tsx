@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
+import PartnerImageUpload from '@/components/custom/partners/PartnerImageUpload';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -694,33 +695,11 @@ export default function AdminEditPartnerPage() {
               />
             </div>
 
-            {/* Logo URL */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
-                Logo URL
-              </label>
-              <input
-                type="url"
-                value={logoUrl}
-                onChange={e => setLogoUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              />
-            </div>
+            {/* Logo */}
+            <PartnerImageUpload kind="logo" partnerId={id} value={logoUrl} onChange={setLogoUrl} />
 
-            {/* Cover Image URL */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-[#7DD8E8] uppercase tracking-wider font-medium">
-                Cover Image URL
-              </label>
-              <input
-                type="url"
-                value={coverImageUrl}
-                onChange={e => setCoverImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#59FFA0]/50 transition-colors"
-              />
-            </div>
+            {/* Cover Image */}
+            <PartnerImageUpload kind="cover" partnerId={id} value={coverImageUrl} onChange={setCoverImageUrl} />
 
             {/* Verified toggle */}
             <div className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3">
