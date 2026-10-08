@@ -8,6 +8,7 @@ import {
   parseOfferFields,
   parseReviewNote,
   readJsonObject,
+  resolvePricing,
   type OfferStatus,
   type OfferUpdate,
 } from '../_shared'
@@ -80,6 +81,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     if (!offer) {
       return NextResponse.json({ error: 'Offer not found' }, { status: 404 })
+    }
+
+    if (action === 'save' || action === 'submit') {
+      const pricingError = resolvePricing(parsed.values, offer)
+      if (pricingError) {
+        return NextResponse.json({ error: pricingError }, { status: 400 })
+      }
     }
 
     const merged = { ...offer, ...parsed.values }

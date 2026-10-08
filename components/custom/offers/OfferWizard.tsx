@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useOfferWizard } from '@/hooks/useOfferWizard'
+import { fieldDomId, useOfferWizard } from '@/hooks/useOfferWizard'
 import type { WizardMode } from './types'
 import { StepProgress } from './StepProgress'
 import { StickyActionBar } from './StickyActionBar'
@@ -24,7 +24,7 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
   const router = useRouter()
   const pathname = usePathname()
   const wizard = useOfferWizard({ partnerId, offerId: offerId ?? null })
-  const { step, steps, partner, offer } = wizard
+  const { step, steps, partner, offer, focusToken, invalidFields, banner } = wizard
 
   const profileHref = mode === 'admin' ? `/admin/partners/${partnerId}/edit` : '/profile/partner/edit'
   // The admin sidebar is sticky at md+; keep the bar out from under it.
@@ -34,13 +34,30 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
     window.scrollTo({ top: 0 })
   }, [step, wizard.showSummary])
 
+  // Non-field errors (auth, conflict, network) show in the top banner.
+  useEffect(() => {
+    if (banner) window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [banner])
+
+  // After a failed save, scroll to and focus the first invalid field.
+  const handledFocusToken = useRef(0)
+  useEffect(() => {
+    if (focusToken === handledFocusToken.current) return
+    handledFocusToken.current = focusToken
+    const first = invalidFields[0]
+    const el = first ? document.getElementById(fieldDomId(first.key)) : null
+    if (!el) return
+    const target = el.matches('input, textarea, select, button')
+      ? el
+      : el.querySelector<HTMLElement>('input, textarea, select, button:not([disabled])') ?? el
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.focus({ preventScroll: true })
+  }, [focusToken, invalidFields])
+
   async function persist(intent: 'continue' | 'exit') {
     const wasNew = !offer
     const saved = await wizard.save()
-    if (!saved) {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
+    if (!saved) return
     if (wasNew) router.replace(`${pathname}?offer=${saved.id}`, { scroll: false })
     if (intent === 'exit') router.push(exitHref)
     else wizard.setShowSummary(true)
@@ -107,23 +124,34 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
         <StepProgress steps={steps} current={step} />
       </div>
 
-      <FormBanner banner={wizard.banner} />
+      <FormBanner banner={banner} />
+
+      {/* Lists the fields that still fail; shrinks as they're fixed and disappears when none remain. */}
+      {invalidFields.length > 0 && (
+        <FormBanner
+          banner={{
+            type: 'error',
+            message: `A few fields need another look: ${invalidFields.map((f) => f.label).join(', ')}.`,
+          }}
+        />
+      )}
 
       {step === 1 && <WelcomeStep partnerName={partner.displayName} />}
 
       {step === 2 && (
-        <CategoryStep categoryName={partner.categoryName} group={wizard.categoryGroup} profileHref={profileHref} />
+        <CategoryStep categoryName={partner.categoryName} config={wizard.config} profileHref={profileHref} />
       )}
 
       {step === 3 && (
         <OfferDetailsStep
           form={wizard.form}
           errors={wizard.fieldErrors}
-          group={wizard.categoryGroup}
+          config={wizard.config}
           categoryName={partner.categoryName}
+          legacyNotes={wizard.legacyNotes}
           reviewNotice={reviewNotice}
           updateField={wizard.updateField}
-          setDetail={wizard.setDetail}
+          setRequirement={wizard.setRequirement}
         />
       )}
 

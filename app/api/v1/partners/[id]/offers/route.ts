@@ -5,6 +5,7 @@ import {
   dbErrorResponse,
   parseOfferFields,
   readJsonObject,
+  resolvePricing,
   type OfferInsert,
 } from './_shared'
 
@@ -56,12 +57,15 @@ export async function POST(
       return NextResponse.json({ error: parsed.error }, { status: 400 })
     }
 
-    const { title, price, ...rest } = parsed.values
+    const pricingError = resolvePricing(parsed.values, null)
+    if (pricingError) {
+      return NextResponse.json({ error: pricingError }, { status: 400 })
+    }
+
+    // price is NOT NULL; drafts without a pricing model yet store 0.
+    const { title, price = 0, ...rest } = parsed.values
     if (typeof title !== 'string') {
       return NextResponse.json({ error: 'title is required' }, { status: 400 })
-    }
-    if (typeof price !== 'number') {
-      return NextResponse.json({ error: 'price is required' }, { status: 400 })
     }
 
     const guestError = checkGuestRange(rest.min_guests, rest.max_guests)

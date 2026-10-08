@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { OfferRecord, PartnerSummary } from '@/components/custom/offers/types'
-import { fieldsForCategory, type CategoryFieldGroup } from '@/components/custom/offers/categoryFields'
+import { PRICED_MODELS } from '@/components/custom/offers/types'
+import {
+  DURATION_OPTIONS,
+  LEGACY_NOTE_KEYS,
+  NOTICE_OPTIONS,
+  configForCategory,
+  durationLabelForHours,
+  noticeLabelForHours,
+  type CategoryConfig,
+} from '@/components/custom/offers/categoryFields'
 import { parseMoney } from '@/components/custom/offers/MoneyInput'
 import type { BannerState } from '@/components/custom/offers/FormBanner'
 
@@ -11,111 +20,170 @@ export const WIZARD_STEPS = ['Welcome', 'What you offer', 'Create your offer']
 const LAST_STEP = WIZARD_STEPS.length
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
-// Inputs hold raw strings so partial values ("12.") survive typing; they are
-// parsed and validated in buildPayload().
+
+export type RequirementValue = string | string[]
 
 export interface OfferForm {
   title: string
   description: string
-  price: string
   pricingModel: string | null
-  includes: string[]
-  minGuests: string
-  maxGuests: string
-  durationHours: string
-  advanceNoticeHours: string
-  // Adaptive category answers, keyed by AdaptiveField.key.
-  details: Record<string, string>
+  // Raw text so partial input ("12.") survives typing.
+  price: string
+  // Selected preset chips (canonical labels) and partner-typed extras; both save to `includes`.
+  includePresets: string[]
+  customIncludes: string[]
+  minGuests: number | null
+  maxGuests: number | null
+  durationLabel: string | null
+  noticeLabel: string | null
+  // Additional requirements keyed by RequirementField.key. Numbers are kept as strings.
+  requirements: Record<string, RequirementValue>
 }
 
-// Keys match API field names; adaptive fields use `details.<key>`.
+// Keys match API field names; requirement fields use `details.<key>`.
 export type FieldErrors = Record<string, string>
 
 const EMPTY_FORM: OfferForm = {
   title: '',
   description: '',
-  price: '',
   pricingModel: null,
-  includes: [],
-  minGuests: '',
-  maxGuests: '',
-  durationHours: '',
-  advanceNoticeHours: '',
-  details: {},
+  price: '',
+  includePresets: [],
+  customIncludes: [],
+  minGuests: null,
+  maxGuests: null,
+  durationLabel: null,
+  noticeLabel: null,
+  requirements: {},
 }
 
-// Limits mirror app/api/v1/partners/[id]/offers/_shared.ts.
+// Mirrors app/api/v1/partners/[id]/offers/_shared.ts (description is capped lower in the UI).
 export const LIMITS = {
   title: 80,
-  description: 1000,
+  description: 300,
   includesItems: 20,
   includesItemLength: 100,
-  durationMax: 24,
-  advanceNoticeMax: 8760,
   detailsKeys: 20,
-  detailValueLength: 500,
+  detailListItems: 12,
 } as const
 
-const PRICING_MODELS = new Set(['flat', 'per_person', 'starting_at'])
+const PRICING_MODELS = new Set(['free', 'flat', 'per_person', 'starting_at', 'contact'])
+const STEP_DETAIL_KEYS = ['duration_label', 'notice_label']
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function numToString(value: number | null | undefined) {
-  return value == null ? '' : String(value)
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 }
 
-function formFromOffer(offer: OfferRecord): OfferForm {
-  const details: Record<string, string> = {}
-  if (isPlainObject(offer.details)) {
-    for (const [k, v] of Object.entries(offer.details)) {
-      if (typeof v === 'string' || typeof v === 'number') details[k] = String(v)
+function formFromOffer(offer: OfferRecord, config: CategoryConfig): OfferForm {
+  const details = isPlainObject(offer.details) ? offer.details : {}
+
+  const presetByLower = new Map(config.includePresets.map((p) => [p.toLowerCase(), p]))
+  const includePresets: string[] = []
+  const customIncludes: string[] = []
+  for (const item of stringList(offer.includes)) {
+    const preset = presetByLower.get(item.trim().toLowerCase())
+    if (preset) {
+      if (!includePresets.includes(preset)) includePresets.push(preset)
+    } else {
+      customIncludes.push(item)
     }
   }
+
+  const requirements: Record<string, RequirementValue> = {}
+  for (const field of config.requirements?.fields ?? []) {
+    const v = details[field.key]
+    if (field.kind === 'multi') {
+      const list = stringList(v)
+      if (list.length) requirements[field.key] = list
+    } else if (typeof v === 'number' || typeof v === 'string') {
+      requirements[field.key] = String(v)
+    }
+  }
+
+  const savedDuration = typeof details.duration_label === 'string' ? details.duration_label : null
+  const savedNotice = typeof details.notice_label === 'string' ? details.notice_label : null
+
   return {
     title: offer.title ?? '',
     description: offer.description ?? '',
-    price: numToString(offer.price),
     pricingModel: offer.pricing_model && PRICING_MODELS.has(offer.pricing_model) ? offer.pricing_model : null,
-    includes: Array.isArray(offer.includes) ? offer.includes.filter((i): i is string => typeof i === 'string') : [],
-    minGuests: numToString(offer.min_guests),
-    maxGuests: numToString(offer.max_guests),
-    durationHours: numToString(offer.duration_hours),
-    advanceNoticeHours: numToString(offer.advance_notice_hours),
-    details,
+    price: offer.pricing_model && PRICED_MODELS.has(offer.pricing_model) && offer.price > 0 ? String(offer.price) : '',
+    includePresets,
+    customIncludes,
+    minGuests: offer.min_guests,
+    maxGuests: offer.max_guests,
+    durationLabel: DURATION_OPTIONS.some((o) => o.label === savedDuration)
+      ? savedDuration
+      : durationLabelForHours(offer.duration_hours),
+    noticeLabel: NOTICE_OPTIONS.some((o) => o.label === savedNotice)
+      ? savedNotice
+      : noticeLabelForHours(offer.advance_notice_hours),
+    requirements,
   }
 }
 
-// ─── Validation (client mirror of the API whitelist) ─────────────────────────
+// ─── Field labels, order and DOM ids (banner + focus) ────────────────────────
+
+const BASE_FIELD_ORDER: [string, string][] = [
+  ['title', 'Offer name'],
+  ['description', 'Short description'],
+  ['pricing_model', 'Pricing'],
+  ['price', 'Price'],
+  ['includes', 'What’s included'],
+  ['min_guests', 'Min guests'],
+  ['max_guests', 'Max guests'],
+  ['duration_hours', 'Duration'],
+  ['advance_notice_hours', 'Advance notice'],
+  ['details', 'Additional requirements'],
+]
+
+const BASE_DOM_IDS: Record<string, string> = {
+  title: 'offer-title',
+  description: 'offer-description',
+  pricing_model: 'offer-pricing-model',
+  price: 'offer-price',
+  includes: 'offer-includes',
+  min_guests: 'offer-min-guests',
+  max_guests: 'offer-max-guests',
+  duration_hours: 'offer-duration',
+  advance_notice_hours: 'offer-advance-notice',
+  details: 'offer-requirements',
+}
+
+export function fieldDomId(key: string): string {
+  if (key.startsWith('details.')) return `offer-detail-${key.slice('details.'.length)}`
+  return BASE_DOM_IDS[key] ?? key
+}
+
+function fieldOrder(config: CategoryConfig): [string, string][] {
+  return [
+    ...BASE_FIELD_ORDER,
+    ...(config.requirements?.fields ?? []).map((f): [string, string] => [`details.${f.key}`, f.label]),
+  ]
+}
+
+// ─── Validation (client mirror of the API) ───────────────────────────────────
 
 export interface OfferPayload {
   title: string
   description: string | null
-  price: number
   pricing_model: string | null
+  price?: number
   includes: string[]
   min_guests: number | null
   max_guests: number | null
   duration_hours: number | null
   advance_notice_hours: number | null
-  details: Record<string, string | number>
-}
-
-function parseInteger(value: string): number | null {
-  if (value.trim() === '') return null
-  return /^\d+$/.test(value.trim()) ? Number(value) : NaN
-}
-
-function parseDecimal(value: string): number | null {
-  if (value.trim() === '' || value === '.') return null
-  const n = Number(value)
-  return Number.isFinite(n) ? n : NaN
+  details: Record<string, string | number | string[]>
 }
 
 function buildPayload(
   form: OfferForm,
-  group: CategoryFieldGroup | null,
+  config: CategoryConfig,
   existingDetails: unknown
 ): { errors: FieldErrors; payload: OfferPayload | null } {
   const errors: FieldErrors = {}
@@ -125,102 +193,92 @@ function buildPayload(
   else if (title.length > LIMITS.title) errors.title = `Keep it under ${LIMITS.title} characters.`
 
   const description = form.description.trim()
-  if (description.length > LIMITS.description) {
-    errors.description = `Keep it under ${LIMITS.description} characters.`
+  if (description.length > LIMITS.description) errors.description = `Keep it under ${LIMITS.description} characters.`
+
+  const model = form.pricingModel
+  if (model !== null && !PRICING_MODELS.has(model)) errors.pricing_model = 'Pick how this is priced.'
+
+  let price: number | undefined
+  if (model && PRICED_MODELS.has(model)) {
+    const parsed = parseMoney(form.price)
+    if (parsed === null || parsed <= 0) errors.price = 'Add a price, or choose Free or Contact us.'
+    else price = parsed
   }
 
-  const price = parseMoney(form.price)
-  if (price === null) errors.price = 'Add a price. Use 0 if it’s free.'
-  else if (price < 0) errors.price = 'Price can’t be negative.'
-
-  if (form.pricingModel !== null && !PRICING_MODELS.has(form.pricingModel)) {
-    errors.pricing_model = 'Pick how this is priced.'
-  }
-
-  const includes = form.includes.map((i) => i.trim()).filter(Boolean)
-  if (includes.length > LIMITS.includesItems) errors.includes = `Up to ${LIMITS.includesItems} items.`
+  const includes = [...form.includePresets, ...form.customIncludes.map((i) => i.trim()).filter(Boolean)]
+  if (includes.length > LIMITS.includesItems) errors.includes = `Pick up to ${LIMITS.includesItems} items.`
   else if (includes.some((i) => i.length > LIMITS.includesItemLength)) {
     errors.includes = `Each item must be under ${LIMITS.includesItemLength} characters.`
   }
 
-  const minGuests = parseInteger(form.minGuests)
-  const maxGuests = parseInteger(form.maxGuests)
-  if (minGuests !== null && (Number.isNaN(minGuests) || minGuests < 1)) errors.min_guests = 'At least 1 guest.'
-  if (maxGuests !== null && (Number.isNaN(maxGuests) || maxGuests < 1)) errors.max_guests = 'At least 1 guest.'
-  if (!errors.min_guests && !errors.max_guests && minGuests !== null && maxGuests !== null && minGuests > maxGuests) {
+  if (form.minGuests !== null && form.maxGuests !== null && form.minGuests > form.maxGuests) {
     errors.max_guests = 'Max guests must be at least the minimum.'
   }
 
-  const duration = parseDecimal(form.durationHours)
-  if (duration !== null && (Number.isNaN(duration) || duration <= 0 || duration > LIMITS.durationMax)) {
-    errors.duration_hours = `Between 0 and ${LIMITS.durationMax} hours.`
-  }
-
-  const advance = parseInteger(form.advanceNoticeHours)
-  if (advance !== null && (Number.isNaN(advance) || advance > LIMITS.advanceNoticeMax)) {
-    errors.advance_notice_hours = `Up to ${LIMITS.advanceNoticeMax} hours (one year).`
-  }
-
-  // Keep detail keys this step doesn't own (e.g. written by later steps).
-  const details: Record<string, string | number> = {}
-  const ownedKeys = new Set(group?.fields.map((f) => f.key) ?? [])
+  // Keep every details key this step doesn't own (legacy notes, later steps).
+  const ownedKeys = new Set([...STEP_DETAIL_KEYS, ...(config.requirements?.fields.map((f) => f.key) ?? [])])
+  const details: Record<string, string | number | string[]> = {}
   if (isPlainObject(existingDetails)) {
     for (const [k, v] of Object.entries(existingDetails)) {
-      if (!ownedKeys.has(k) && (typeof v === 'string' || typeof v === 'number')) details[k] = v
+      if (ownedKeys.has(k)) continue
+      if (typeof v === 'string' || typeof v === 'number') details[k] = v
+      else if (Array.isArray(v)) details[k] = stringList(v)
     }
   }
+  if (form.durationLabel) details.duration_label = form.durationLabel
+  if (form.noticeLabel) details.notice_label = form.noticeLabel
 
-  for (const field of group?.fields ?? []) {
-    const raw = (form.details[field.key] ?? '').trim()
-    if (!raw) continue
+  for (const field of config.requirements?.fields ?? []) {
+    const raw = form.requirements[field.key]
     const errKey = `details.${field.key}`
+    if (raw === undefined) continue
     switch (field.kind) {
       case 'money': {
+        if (typeof raw !== 'string' || raw.trim() === '') break
         const n = parseMoney(raw)
         if (n === null || n < 0) errors[errKey] = 'Enter an amount of 0 or more.'
         else details[field.key] = n
         break
       }
-      case 'integer': {
-        const n = parseInteger(raw)
-        if (n === null || Number.isNaN(n) || n < field.min || n > field.max) {
-          errors[errKey] = `Enter a whole number from ${field.min} to ${field.max}.`
-        } else {
-          details[field.key] = n
+      case 'number':
+        if (typeof raw === 'string' && raw !== '') details[field.key] = Number(raw)
+        break
+      case 'choice':
+        if (typeof raw === 'string' && raw) details[field.key] = raw
+        break
+      case 'multi':
+        if (Array.isArray(raw) && raw.length > 0) {
+          if (raw.length > LIMITS.detailListItems) errors[errKey] = `Pick up to ${LIMITS.detailListItems}.`
+          else details[field.key] = raw
         }
+        break
+      case 'note': {
+        const text = typeof raw === 'string' ? raw.trim() : ''
+        if (text.length > field.maxLength) errors[errKey] = `Keep it under ${field.maxLength} characters.`
+        else if (text) details[field.key] = text
         break
       }
-      case 'text':
-        if (raw.length > Math.min(field.maxLength, LIMITS.detailValueLength)) {
-          errors[errKey] = `Keep it under ${field.maxLength} characters.`
-        } else {
-          details[field.key] = raw
-        }
-        break
-      case 'chips':
-        if (!field.options.some((o) => o.value === raw)) errors[errKey] = 'Pick one of the options.'
-        else details[field.key] = raw
-        break
     }
   }
-  if (Object.keys(details).length > LIMITS.detailsKeys) {
-    errors.details = 'Too many extra details on this offer.'
-  }
+  if (Object.keys(details).length > LIMITS.detailsKeys) errors.details = 'Too many extra details on this offer.'
 
-  if (Object.keys(errors).length > 0 || price === null) return { errors, payload: null }
+  if (Object.keys(errors).length > 0) return { errors, payload: null }
+
+  const duration = DURATION_OPTIONS.find((o) => o.label === form.durationLabel)
+  const notice = NOTICE_OPTIONS.find((o) => o.label === form.noticeLabel)
 
   return {
     errors,
     payload: {
       title,
       description: description || null,
-      price,
-      pricing_model: form.pricingModel,
+      pricing_model: model,
+      ...(price !== undefined ? { price } : {}),
       includes,
-      min_guests: minGuests,
-      max_guests: maxGuests,
-      duration_hours: duration,
-      advance_notice_hours: advance,
+      min_guests: form.minGuests,
+      max_guests: form.maxGuests,
+      duration_hours: duration?.hours ?? null,
+      advance_notice_hours: notice?.hours ?? null,
       details,
     },
   }
@@ -233,13 +291,23 @@ const API_FIELDS = new Set([
   'max_guests', 'duration_hours', 'advance_notice_hours', 'details',
 ])
 
-// API 400 messages start with the field name, e.g. "title must be 1-80 characters"
-// or "each includes item must be 1-100 characters".
-function mapApiError(message: string): { field: string; message: string } | null {
-  const match = message.match(/^(?:each\s+)?([a-z_]+)(?:\s+item)?\s+(.*)$/)
-  if (!match || !API_FIELDS.has(match[1])) return null
+const FRIENDLY_API_MESSAGES: [RegExp, string][] = [
+  [/^price is required/, 'Add a price, or choose Free or Contact us.'],
+  [/^pricing_model must be one of/, 'Pick how this is priced.'],
+  [/^min_guests must be <= max_guests/, 'Minimum can’t be more than the maximum.'],
+]
+
+// API 400 messages start with the field name, e.g. "title must be 1-80 characters",
+// "each includes item must be 1-100 characters" or "details.food_drink may have at most 12 items".
+export function mapApiError(message: string): { field: string; message: string } | null {
+  const match = message.match(/^(?:each\s+)?([a-z_]+(?:\.[a-z0-9_]+)?)(?:\s+item)?\s+(.*)$/)
+  if (!match) return null
+  const field = match[1]
+  const base = field.split('.')[0]
+  if (!API_FIELDS.has(base) || (field.includes('.') && base !== 'details')) return null
+  const friendly = FRIENDLY_API_MESSAGES.find(([re]) => re.test(message))?.[1]
   const rest = match[2]
-  return { field: match[1], message: rest.charAt(0).toUpperCase() + rest.slice(1) + '.' }
+  return { field, message: friendly ?? `${rest.charAt(0).toUpperCase()}${rest.slice(1)}.` }
 }
 
 function messageForStatus(status: number, apiError: string | undefined, action: 'load' | 'save'): string {
@@ -276,15 +344,32 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
   const [offer, setOffer] = useState<OfferRecord | null>(null)
   const [form, setForm] = useState<OfferForm>(EMPTY_FORM)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  // Non-field problems (auth, conflicts, network). Field problems are derived from fieldErrors.
   const [banner, setBanner] = useState<BannerState | null>(null)
   const [saving, setSaving] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
+  // Bumped when validation fails so the view can focus the first invalid field.
+  const [focusToken, setFocusToken] = useState(0)
 
   // Id of the offer already in state, so updating ?offer= after a create
   // doesn't trigger a reload.
   const currentOfferIdRef = useRef<string | null>(null)
 
-  const categoryGroup = useMemo(() => fieldsForCategory(partner?.categoryName), [partner?.categoryName])
+  const config = useMemo(() => configForCategory(partner?.categoryName), [partner?.categoryName])
+  const order = useMemo(() => fieldOrder(config), [config])
+
+  // Ordered list of fields that currently have an error, for the banner and focus.
+  const invalidFields = useMemo(
+    () => order.filter(([key]) => fieldErrors[key]).map(([key, label]) => ({ key, label })),
+    [order, fieldErrors]
+  )
+
+  const legacyNotes = useMemo(() => {
+    const details = isPlainObject(offer?.details) ? offer.details : {}
+    return Object.entries(LEGACY_NOTE_KEYS)
+      .filter(([key]) => typeof details[key] === 'string' && (details[key] as string).trim())
+      .map(([key, label]) => ({ key, label, value: details[key] as string }))
+  }, [offer?.details])
 
   useEffect(() => {
     if (offerId && offerId === currentOfferIdRef.current) return
@@ -311,11 +396,8 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
 
         const joined = partnerRow.partner_categories as { name: string } | { name: string }[] | null
         const joinedName = Array.isArray(joined) ? joined[0]?.name : joined?.name
-        setPartner({
-          id: partnerRow.id,
-          displayName: partnerRow.display_name,
-          categoryName: joinedName ?? partnerRow.category ?? null,
-        })
+        const categoryName = joinedName ?? partnerRow.category ?? null
+        setPartner({ id: partnerRow.id, displayName: partnerRow.display_name, categoryName })
 
         if (offersRequest) {
           const res = await offersRequest
@@ -332,7 +414,7 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
           }
           currentOfferIdRef.current = found.id
           setOffer(found)
-          setForm(formFromOffer(found))
+          setForm(formFromOffer(found, configForCategory(categoryName)))
           setStep(LAST_STEP)
         }
       } catch {
@@ -348,28 +430,30 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     }
   }, [partnerId, offerId])
 
-  const updateField = useCallback(<K extends keyof OfferForm>(key: K, value: OfferForm[K], errorKey?: string) => {
-    setForm((f) => ({ ...f, [key]: value }))
-    if (errorKey) {
-      setFieldErrors((e) => {
-        if (!e[errorKey]) return e
-        const next = { ...e }
-        delete next[errorKey]
-        return next
-      })
-    }
-  }, [])
-
-  const setDetail = useCallback((key: string, value: string) => {
-    setForm((f) => ({ ...f, details: { ...f.details, [key]: value } }))
+  const clearErrors = useCallback((...keys: string[]) => {
     setFieldErrors((e) => {
-      const errKey = `details.${key}`
-      if (!e[errKey]) return e
+      if (!keys.some((k) => e[k])) return e
       const next = { ...e }
-      delete next[errKey]
+      for (const k of keys) delete next[k]
       return next
     })
   }, [])
+
+  const updateField = useCallback(
+    <K extends keyof OfferForm>(key: K, value: OfferForm[K], ...errorKeys: string[]) => {
+      setForm((f) => ({ ...f, [key]: value }))
+      if (errorKeys.length) clearErrors(...errorKeys)
+    },
+    [clearErrors]
+  )
+
+  const setRequirement = useCallback(
+    (key: string, value: RequirementValue) => {
+      setForm((f) => ({ ...f, requirements: { ...f.requirements, [key]: value } }))
+      clearErrors(`details.${key}`, 'details')
+    },
+    [clearErrors]
+  )
 
   const goNext = useCallback(() => {
     setBanner(null)
@@ -378,21 +462,22 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
 
   const goBack = useCallback(() => {
     setBanner(null)
+    setFieldErrors({})
     setStep((s) => Math.max(s - 1, 1))
   }, [])
 
   // Creates the draft (POST) or saves edits (PATCH action 'save').
   // Returns the saved row, or null when validation or the request failed.
   const save = useCallback(async (): Promise<OfferRecord | null> => {
-    const { errors, payload } = buildPayload(form, categoryGroup, offer?.details)
+    setBanner(null)
+    const { errors, payload } = buildPayload(form, config, offer?.details)
     setFieldErrors(errors)
     if (!payload) {
-      setBanner({ type: 'error', message: errors.details ?? 'A few fields need another look.' })
+      setFocusToken((t) => t + 1)
       return null
     }
 
     setSaving(true)
-    setBanner(null)
     try {
       const base = `/api/v1/partners/${partnerId}/offers`
       const res = await fetch(offer ? `${base}/${offer.id}` : base, {
@@ -406,7 +491,7 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
         const mapped = res.status === 400 && typeof json.error === 'string' ? mapApiError(json.error) : null
         if (mapped) {
           setFieldErrors({ [mapped.field]: mapped.message })
-          setBanner({ type: 'error', message: 'A few fields need another look.' })
+          setFocusToken((t) => t + 1)
         } else {
           setBanner({ type: 'error', message: messageForStatus(res.status, json.error, 'save') })
         }
@@ -416,7 +501,9 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
       const saved = json.data as OfferRecord
       currentOfferIdRef.current = saved.id
       setOffer(saved)
-      setForm(formFromOffer(saved))
+      setForm(formFromOffer(saved, config))
+      setFieldErrors({})
+      setBanner(null)
       return saved
     } catch {
       setBanner({ type: 'error', message: 'We couldn’t reach the server. Check your connection and try again.' })
@@ -424,7 +511,7 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     } finally {
       setSaving(false)
     }
-  }, [form, categoryGroup, offer, partnerId])
+  }, [form, config, offer, partnerId])
 
   return {
     // state
@@ -433,18 +520,21 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     loading,
     loadError,
     partner,
-    categoryGroup,
+    config,
     offer,
     form,
     fieldErrors,
+    invalidFields,
+    legacyNotes,
     banner,
     saving,
     showSummary,
+    focusToken,
     // actions
     goNext,
     goBack,
     updateField,
-    setDetail,
+    setRequirement,
     setBanner,
     setShowSummary,
     save,

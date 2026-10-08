@@ -1,7 +1,8 @@
 'use client'
 
 import type { OfferRecord } from './types'
-import { formatPrice, pricingModelLabel } from './types'
+import { offerPriceDisplay } from './types'
+import { guestLabel } from './categoryFields'
 import { OfferStatusBadge } from './OfferStatusBadge'
 import { cardClass, priceFontClass } from './styles'
 
@@ -12,20 +13,29 @@ interface DraftSavedScreenProps {
 }
 
 function guestRange(min: number | null, max: number | null): string | null {
-  if (min != null && max != null) return min === max ? `${min} guests` : `${min}–${max} guests`
-  if (min != null) return `${min}+ guests`
-  if (max != null) return `Up to ${max} guests`
+  if (min != null && max != null) return min === max ? `${guestLabel(min)} guests` : `${guestLabel(min)}–${guestLabel(max)} guests`
+  if (min != null) return `${guestLabel(min)}+ guests`
+  if (max != null) return `Up to ${guestLabel(max)} guests`
   return null
+}
+
+function detailText(details: unknown, key: string): string | null {
+  if (typeof details !== 'object' || details === null || Array.isArray(details)) return null
+  const v = (details as Record<string, unknown>)[key]
+  return typeof v === 'string' && v ? v : null
 }
 
 // Temporary end of the flow until steps 4-7 exist.
 export function DraftSavedScreen({ offer, categoryName, exitHref }: DraftSavedScreenProps) {
   const includes = Array.isArray(offer.includes) ? offer.includes.filter((i): i is string => typeof i === 'string') : []
+  const durationLabel = detailText(offer.details, 'duration_label')
+  const noticeLabel = detailText(offer.details, 'notice_label')
   const facts = [
     guestRange(offer.min_guests, offer.max_guests),
-    offer.duration_hours != null ? `${offer.duration_hours} hr${offer.duration_hours === 1 ? '' : 's'}` : null,
-    offer.advance_notice_hours != null ? `${offer.advance_notice_hours} hrs notice` : null,
+    durationLabel ?? (offer.duration_hours != null ? `${offer.duration_hours} hrs` : null),
+    noticeLabel ? (noticeLabel.startsWith('I’ll') ? noticeLabel : `${noticeLabel} notice`) : null,
   ].filter(Boolean) as string[]
+  const { price, qualifier } = offerPriceDisplay(offer)
   const savedLabel = offer.status === 'draft' ? 'Draft saved' : 'Changes saved'
 
   return (
@@ -50,11 +60,9 @@ export function DraftSavedScreen({ offer, categoryName, exitHref }: DraftSavedSc
 
         <div className="flex items-baseline gap-2">
           <span className={`text-3xl font-bold text-[#59FFA0] tabular-nums ${priceFontClass}`}>
-            {formatPrice(offer.price)}
+            {price}
           </span>
-          {pricingModelLabel(offer.pricing_model) && (
-            <span className="text-sm text-white/50 font-sans">{pricingModelLabel(offer.pricing_model)}</span>
-          )}
+          {qualifier && <span className="text-sm text-white/50 font-sans">{qualifier}</span>}
         </div>
 
         {facts.length > 0 && (

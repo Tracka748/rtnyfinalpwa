@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 interface ChipOption {
   value: string
   label: string
+  disabled?: boolean
 }
 
 interface BaseProps {
@@ -54,10 +55,10 @@ export function ChipSelect(props: ChipSelectProps) {
             key={opt.value}
             type="button"
             aria-pressed={selected}
-            disabled={disabled}
+            disabled={disabled || (opt.disabled && !selected)}
             onClick={() => toggle(opt.value)}
             className={cn(
-              'min-h-12 px-5 rounded-full border text-sm font-sans font-medium transition-all disabled:opacity-50',
+              'min-h-12 px-5 rounded-full border text-sm font-sans font-medium transition-all disabled:opacity-35 disabled:cursor-not-allowed',
               selected
                 ? 'bg-[#59FFA0]/20 border-[#59FFA0] text-[#59FFA0]'
                 : 'border-white/20 text-[#7DD8E8] hover:border-white/40'

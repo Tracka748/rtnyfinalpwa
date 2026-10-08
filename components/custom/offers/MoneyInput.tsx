@@ -8,6 +8,7 @@ interface MoneyInputProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
+  suffix?: string
   hasError?: boolean
   describedById?: string
 }
@@ -26,7 +27,7 @@ export function parseMoney(value: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-export function MoneyInput({ id, value, onChange, placeholder = '0', hasError, describedById }: MoneyInputProps) {
+export function MoneyInput({ id, value, onChange, placeholder = '0', suffix, hasError, describedById }: MoneyInputProps) {
   return (
     <div className="relative">
       <span
@@ -45,8 +46,13 @@ export function MoneyInput({ id, value, onChange, placeholder = '0', hasError, d
         placeholder={placeholder}
         aria-invalid={hasError || undefined}
         aria-describedby={describedById}
-        className={inputClass(hasError, `pl-9 text-lg font-bold ${priceFontClass}`)}
+        className={inputClass(hasError, `pl-9 text-lg font-bold ${priceFontClass} ${suffix ? 'pr-28' : ''}`)}
       />
+      {suffix && (
+        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/40 font-sans pointer-events-none">
+          {suffix}
+        </span>
+      )}
     </div>
   )
 }

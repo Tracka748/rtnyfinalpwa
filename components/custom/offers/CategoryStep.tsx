@@ -1,15 +1,16 @@
 'use client'
 
-import type { CategoryFieldGroup } from './categoryFields'
+import type { CategoryConfig } from './categoryFields'
 import { cardClass } from './styles'
 
 interface CategoryStepProps {
   categoryName: string | null
-  group: CategoryFieldGroup | null
+  config: CategoryConfig
   profileHref: string
 }
 
-export function CategoryStep({ categoryName, group, profileHref }: CategoryStepProps) {
+export function CategoryStep({ categoryName, config, profileHref }: CategoryStepProps) {
+  const group = config.requirements
   return (
     <div className="space-y-6">
       <div className="space-y-2">

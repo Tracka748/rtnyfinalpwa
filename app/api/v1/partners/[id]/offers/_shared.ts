@@ -119,8 +119,10 @@ const EDITABLE_FIELDS = new Set([
   'availability', 'details', 'offer_image_url', 'gallery_urls',
 ])
 
-const PRICING_MODELS = new Set(['flat', 'per_person', 'starting_at'])
-const AVAILABILITY_KEYS = new Set(['days', 'start_time', 'end_time', 'blackout_dates', 'radius_miles'])
+const PRICING_MODELS = new Set(['free', 'flat', 'per_person', 'starting_at', 'contact'])
+// Models that need a real price. free/contact always store price = 0 (column is NOT NULL).
+export const PRICED_MODELS = new Set(['flat', 'per_person', 'starting_at'])
+const AVAILABILITY_KEYS = new Set(['days', 'start_time', 'end_time', 'blackout_dates', 'radius_miles', 'confirm_each'])
 const ADD_ON_KEYS = new Set(['name', 'price'])
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -128,9 +130,15 @@ const MAX_URL_LENGTH = 2048
 const MAX_BLACKOUT_DATES = 366
 const MAX_DETAIL_KEY_LENGTH = 50
 const MAX_DETAIL_VALUE_LENGTH = 500
+const MAX_DETAIL_LIST_ITEMS = 12
+const MAX_DETAIL_LIST_ITEM_LENGTH = 50
 const MAX_REVIEW_NOTE_LENGTH = 1000
 
-export const SUBMIT_REQUIRED_FIELDS = ['title', 'price', 'pricing_model', 'max_guests', 'pitch'] as const
+// `price` is only required when pricing_model is in PRICED_MODELS; `availability`
+// is satisfied by >= 1 availability.days entry or availability.confirm_each = true.
+export const SUBMIT_REQUIRED_FIELDS = [
+  'title', 'pricing_model', 'price', 'includes', 'max_guests', 'pitch', 'availability',
+] as const
 
 // Offer images must live in this partner's offer folder in the public partner-covers bucket.
 const OFFER_IMAGE_ORIGIN = 'https://uxpmfnbifhkayljayjtb.supabase.co'
@@ -260,6 +268,12 @@ function parseAvailability(value: unknown): FieldResult<Record<string, Json>> {
     }
     out.blackout_dates = [...new Set(dates as string[])].sort()
   }
+  if (value.confirm_each !== undefined) {
+    if (value.confirm_each !== null && typeof value.confirm_each !== 'boolean') {
+      return { error: 'availability.confirm_each must be true or false' }
+    }
+    out.confirm_each = value.confirm_each
+  }
   if (value.radius_miles !== undefined) {
     if (value.radius_miles === null) {
       out.radius_miles = null
@@ -272,23 +286,37 @@ function parseAvailability(value: unknown): FieldResult<Record<string, Json>> {
   return { value: out }
 }
 
-function parseDetails(value: unknown): FieldResult<Record<string, string | number>> {
+// Values: string (<= 500 chars), finite number, or a list of <= 12 strings (each 1-50 chars).
+// Value errors name the key ("details.<key> ...") so clients can attach them to a field.
+function parseDetails(value: unknown): FieldResult<Record<string, string | number | string[]>> {
   if (!isPlainObject(value)) return { error: 'details must be an object' }
   const keys = Object.keys(value)
   if (keys.length > 20) return { error: 'details may have at most 20 keys' }
-  const out: Record<string, string | number> = {}
+  const out: Record<string, string | number | string[]> = {}
   for (const key of keys) {
     if (key.length === 0 || key.length > MAX_DETAIL_KEY_LENGTH) {
       return { error: `details keys must be 1-${MAX_DETAIL_KEY_LENGTH} characters` }
     }
     const v = value[key]
+    const label = `details.${key}`
     if (typeof v === 'string') {
-      if (v.length > MAX_DETAIL_VALUE_LENGTH) return { error: `details values must be at most ${MAX_DETAIL_VALUE_LENGTH} characters` }
+      if (v.length > MAX_DETAIL_VALUE_LENGTH) return { error: `${label} must be at most ${MAX_DETAIL_VALUE_LENGTH} characters` }
       out[key] = v
     } else if (isFiniteNumber(v)) {
       out[key] = v
+    } else if (Array.isArray(v)) {
+      if (v.length > MAX_DETAIL_LIST_ITEMS) return { error: `${label} may have at most ${MAX_DETAIL_LIST_ITEMS} items` }
+      const items: string[] = []
+      for (const item of v) {
+        const trimmed = typeof item === 'string' ? item.trim() : ''
+        if (trimmed.length === 0 || trimmed.length > MAX_DETAIL_LIST_ITEM_LENGTH) {
+          return { error: `${label} items must be strings of 1-${MAX_DETAIL_LIST_ITEM_LENGTH} characters` }
+        }
+        if (!items.includes(trimmed)) items.push(trimmed)
+      }
+      out[key] = items
     } else {
-      return { error: 'details values must be strings or numbers' }
+      return { error: `${label} must be a string, number or list of strings` }
     }
   }
   return { value: out }
@@ -348,7 +376,7 @@ export function parseOfferFields(
         break
       case 'pricing_model':
         if (raw !== null && (typeof raw !== 'string' || !PRICING_MODELS.has(raw))) {
-          error = 'pricing_model must be one of flat, per_person, starting_at'
+          error = 'pricing_model must be one of free, flat, per_person, starting_at, contact'
         } else {
           values.pricing_model = raw as string | null
         }
@@ -398,18 +426,52 @@ export function checkGuestRange(min: number | null | undefined, max: number | nu
   return null
 }
 
-export function missingForSubmit(offer: Pick<OfferRow, (typeof SUBMIT_REQUIRED_FIELDS)[number]>): string[] {
-  return SUBMIT_REQUIRED_FIELDS.filter((field) => {
-    const value = offer[field]
-    switch (field) {
-      case 'price':
-        return !isFiniteNumber(value) || value < 0
-      case 'max_guests':
-        return !Number.isInteger(value) || (value as number) < 1
-      default:
-        return typeof value !== 'string' || value.trim().length === 0
+// Applies pricing rules to a create/save payload, mutating `values`:
+// - free/contact: price is forced to 0 (any client price is ignored).
+// - flat/per_person/starting_at: a price > 0 is required whenever pricing is being edited.
+// - no model yet: price is optional (callers default it to 0 on create).
+// Returns an error message, or null.
+export function resolvePricing(
+  values: OfferUpdate,
+  existing: Pick<OfferRow, 'pricing_model' | 'price'> | null
+): string | null {
+  const touched = values.pricing_model !== undefined || values.price !== undefined
+  const model = values.pricing_model !== undefined ? values.pricing_model : existing?.pricing_model ?? null
+
+  if (model === 'free' || model === 'contact') {
+    values.price = 0
+    return null
+  }
+  if (model && PRICED_MODELS.has(model) && touched) {
+    const price = values.price !== undefined ? values.price : existing?.price
+    if (price == null || price <= 0) {
+      return 'price is required for flat, per_person and starting_at pricing'
     }
-  })
+  }
+  return null
+}
+
+type SubmitRow = Pick<OfferRow, 'title' | 'pricing_model' | 'price' | 'includes' | 'max_guests' | 'pitch' | 'availability'>
+
+function hasText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+export function missingForSubmit(offer: SubmitRow): string[] {
+  const availability = isPlainObject(offer.availability) ? offer.availability : {}
+  const checks: Record<(typeof SUBMIT_REQUIRED_FIELDS)[number], boolean> = {
+    title: hasText(offer.title),
+    pricing_model: hasText(offer.pricing_model) && PRICING_MODELS.has(offer.pricing_model as string),
+    price:
+      !offer.pricing_model || !PRICED_MODELS.has(offer.pricing_model) ||
+      (isFiniteNumber(offer.price) && offer.price > 0),
+    includes: Array.isArray(offer.includes) && offer.includes.some(hasText),
+    max_guests: Number.isInteger(offer.max_guests) && (offer.max_guests as number) >= 1,
+    pitch: hasText(offer.pitch),
+    availability:
+      (Array.isArray(availability.days) && availability.days.length > 0) || availability.confirm_each === true,
+  }
+  return SUBMIT_REQUIRED_FIELDS.filter((field) => !checks[field])
 }
 
 export function parseReviewNote(value: unknown): FieldResult<string> {

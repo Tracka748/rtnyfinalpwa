@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, Plus } from 'lucide-react'
 import type { OfferRecord } from './types'
-import { formatPrice, pricingModelLabel } from './types'
+import { offerPriceDisplay } from './types'
 import { OfferStatusBadge } from './OfferStatusBadge'
 import { FormBanner, type BannerState } from './FormBanner'
 import { cardClass, priceFontClass } from './styles'
@@ -99,10 +99,10 @@ export function OfferList({ partnerId, wizardHref }: OfferListProps) {
               </div>
               <div className="flex items-baseline gap-2">
                 <span className={`text-lg font-bold text-[#59FFA0] tabular-nums ${priceFontClass}`}>
-                  {formatPrice(offer.price)}
+                  {offerPriceDisplay(offer).price}
                 </span>
-                {pricingModelLabel(offer.pricing_model) && (
-                  <span className="text-xs text-white/50 font-sans">{pricingModelLabel(offer.pricing_model)}</span>
+                {offerPriceDisplay(offer).qualifier && (
+                  <span className="text-xs text-white/50 font-sans">{offerPriceDisplay(offer).qualifier}</span>
                 )}
               </div>
               {offer.status === 'needs_changes' && offer.review_note && (
