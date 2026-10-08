@@ -4367,44 +4367,96 @@ export type Database = {
       vendor_services: {
         Row: {
           active: boolean | null
+          add_ons: Json
+          advance_notice_hours: number | null
+          availability: Json
           category: string
           created_at: string | null
           description: string | null
+          details: Json
           duration_hours: number | null
+          gallery_urls: string[]
           id: string
           includes: Json | null
           is_featured: boolean | null
+          max_guests: number | null
+          min_guests: number | null
+          occasions: string[]
+          offer_image_url: string | null
+          partner_id: string | null
+          pitch: string | null
           price: number
+          pricing_model: string | null
+          review_note: string | null
+          status: string
           title: string
-          vendor_id: string
+          updated_at: string
+          vendor_id: string | null
         }
         Insert: {
           active?: boolean | null
+          add_ons?: Json
+          advance_notice_hours?: number | null
+          availability?: Json
           category: string
           created_at?: string | null
           description?: string | null
+          details?: Json
           duration_hours?: number | null
+          gallery_urls?: string[]
           id?: string
           includes?: Json | null
           is_featured?: boolean | null
+          max_guests?: number | null
+          min_guests?: number | null
+          occasions?: string[]
+          offer_image_url?: string | null
+          partner_id?: string | null
+          pitch?: string | null
           price: number
+          pricing_model?: string | null
+          review_note?: string | null
+          status?: string
           title: string
-          vendor_id: string
+          updated_at?: string
+          vendor_id?: string | null
         }
         Update: {
           active?: boolean | null
+          add_ons?: Json
+          advance_notice_hours?: number | null
+          availability?: Json
           category?: string
           created_at?: string | null
           description?: string | null
+          details?: Json
           duration_hours?: number | null
+          gallery_urls?: string[]
           id?: string
           includes?: Json | null
           is_featured?: boolean | null
+          max_guests?: number | null
+          min_guests?: number | null
+          occasions?: string[]
+          offer_image_url?: string | null
+          partner_id?: string | null
+          pitch?: string | null
           price?: number
+          pricing_model?: string | null
+          review_note?: string | null
+          status?: string
           title?: string
-          vendor_id?: string
+          updated_at?: string
+          vendor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_services_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendor_services_vendor_id_fkey"
             columns: ["vendor_id"]
