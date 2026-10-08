@@ -364,6 +364,20 @@ export default function PartnerEditPage() {
           </div>
         </div>
 
+        {/* Birthday Offers */}
+        <a
+          href="/profile/partner/offers"
+          className="flex items-center gap-4 bg-[#1a1a1d] border border-[#2a2a2a] rounded-2xl p-6 hover:border-[#59FFA0]/40 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-header font-bold text-white">Birthday Offers</h2>
+            <p className="text-sm text-[#7DD8E8] mt-1">
+              Create packages people can book for their birthday
+            </p>
+          </div>
+          <span className="text-sm font-medium text-[#59FFA0] shrink-0">Manage →</span>
+        </a>
+
         {/* Edit Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-[#1a1a1d] border border-[#2a2a2a] rounded-2xl p-6 space-y-5">

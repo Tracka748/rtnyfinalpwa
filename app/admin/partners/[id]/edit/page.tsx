@@ -809,6 +809,22 @@ export default function AdminEditPartnerPage() {
                 onClear={clearUser}
               />
             </div>
+
+            {/* Birthday Offers */}
+            <div className="bg-[#1a1a1d] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+              <div>
+                <h2 className="text-lg font-header font-bold text-white">Birthday Offers</h2>
+                <p className="text-sm text-[#7DD8E8] mt-1">
+                  Build and review this partner&apos;s birthday packages
+                </p>
+              </div>
+              <a
+                href={`/admin/partners/${id}/offers`}
+                className="flex items-center justify-center w-full min-h-12 rounded-lg border border-[#59FFA0]/40 text-[#59FFA0] text-sm font-medium hover:bg-[#59FFA0]/10 transition-colors"
+              >
+                Manage Birthday Offers →
+              </a>
+            </div>
           </div>
         </div>
       </form>

@@ -199,6 +199,9 @@ export default async function DashboardPage() {
                 <a href="/profile/partner/edit" className="text-xs text-accent hover:underline">
                   Edit Profile →
                 </a>
+                <a href="/profile/partner/offers" className="text-xs text-accent hover:underline">
+                  Birthday Offers →
+                </a>
                 <a
                   href={`/partners/${partnerProfile.id}`}
                   target="_blank"
