@@ -35,7 +35,7 @@ export default function AdminPartnerOffersPage() {
         </div>
       </div>
 
-      <OfferList partnerId={id} wizardHref={wizardHref} />
+      <OfferList partnerId={id} wizardHref={wizardHref} mode="admin" />
     </div>
   );
 }

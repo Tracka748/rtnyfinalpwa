@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import { ChevronRight, Plus } from 'lucide-react'
-import type { OfferRecord } from './types'
+import { cn } from '@/lib/utils'
+import type { OfferRecord, WizardMode } from './types'
 import { offerPriceDisplay } from './types'
 import { OfferStatusBadge } from './OfferStatusBadge'
 import { FormBanner, type BannerState } from './FormBanner'
-import { cardClass, priceFontClass } from './styles'
+import { ActionSheet, RequestChangesSheet } from './ActionSheet'
+import { deleteOffer, messageForStatus, patchOffer, type OfferAction } from './offerApi'
+import { cardClass, priceFontClass, text } from './styles'
 
 interface OfferListProps {
   partnerId: string
   // Wizard route; existing offers open at `${wizardHref}?offer=<id>`.
   wizardHref: string
-}
-
-const LOAD_ERRORS: Record<number, string> = {
-  401: 'Your session has expired. Sign in again to see your offers.',
-  403: 'You don’t have access to this partner’s offers.',
+  // 'admin' adds Approve / Request changes / Deactivate quick actions.
+  mode: WizardMode
 }
 
 export function NewOfferButton({ href }: { href: string }) {
@@ -31,9 +31,19 @@ export function NewOfferButton({ href }: { href: string }) {
   )
 }
 
-export function OfferList({ partnerId, wizardHref }: OfferListProps) {
+const DELETABLE = new Set(['draft', 'needs_changes'])
+
+const actionButton =
+  'min-h-12 px-4 rounded-xl font-sans text-base font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+
+export function OfferList({ partnerId, wizardHref, mode }: OfferListProps) {
   const [offers, setOffers] = useState<OfferRecord[] | null>(null)
-  const [error, setError] = useState<BannerState | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [banner, setBanner] = useState<BannerState | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<OfferRecord | null>(null)
+  const [changesTarget, setChangesTarget] = useState<OfferRecord | null>(null)
+  const [deactivateTarget, setDeactivateTarget] = useState<OfferRecord | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -42,7 +52,7 @@ export function OfferList({ partnerId, wizardHref }: OfferListProps) {
         const json = await res.json().catch(() => ({}))
         if (cancelled) return
         if (!res.ok) {
-          setError({ type: 'error', message: LOAD_ERRORS[res.status] ?? 'We couldn’t load offers. Please try again.' })
+          setLoadError(messageForStatus(res.status, json.error, 'load'))
           setOffers([])
           return
         }
@@ -50,13 +60,53 @@ export function OfferList({ partnerId, wizardHref }: OfferListProps) {
       })
       .catch(() => {
         if (cancelled) return
-        setError({ type: 'error', message: 'We couldn’t load offers. Check your connection and try again.' })
+        setLoadError(messageForStatus(0, undefined, 'load'))
         setOffers([])
       })
     return () => {
       cancelled = true
     }
   }, [partnerId])
+
+  const replaceOffer = (updated: OfferRecord) =>
+    setOffers((list) => (list ? list.map((o) => (o.id === updated.id ? updated : o)) : list))
+
+  async function runAction(offer: OfferRecord, action: Extract<OfferAction, 'approve' | 'request_changes' | 'deactivate'>, note?: string) {
+    setBanner(null)
+    setBusyId(offer.id)
+    const result = await patchOffer(partnerId, offer.id, {
+      action,
+      ...(action === 'request_changes' ? { review_note: note } : {}),
+    })
+    setBusyId(null)
+    if (!result.ok) {
+      setBanner({ type: 'error', message: messageForStatus(result.status, result.error, 'review') })
+      return
+    }
+    replaceOffer(result.data)
+    const done = {
+      approve: `“${offer.title}” is approved and live.`,
+      request_changes: `“${offer.title}” was sent back with your note.`,
+      deactivate: `“${offer.title}” was deactivated and is back to draft.`,
+    }[action]
+    setBanner({ type: 'success', message: done })
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const target = deleteTarget
+    setBanner(null)
+    setBusyId(target.id)
+    const result = await deleteOffer(partnerId, target.id)
+    setBusyId(null)
+    setDeleteTarget(null)
+    if (!result.ok) {
+      setBanner({ type: 'error', message: messageForStatus(result.status, result.error, 'delete') })
+      return
+    }
+    setOffers((list) => (list ? list.filter((o) => o.id !== target.id) : list))
+    setBanner({ type: 'success', message: `“${target.title}” was deleted.` })
+  }
 
   if (offers === null) {
     return (
@@ -68,57 +118,144 @@ export function OfferList({ partnerId, wizardHref }: OfferListProps) {
     )
   }
 
-  if (error) return <FormBanner banner={error} />
-
-  if (offers.length === 0) {
-    return (
-      <div className={`${cardClass} p-8 text-center space-y-4`}>
-        <div className="space-y-1">
-          <p className="font-header text-xl font-bold text-white">No birthday offers yet</p>
-          <p className="font-sans text-sm text-white/60">
-            Build your first one in a few minutes. It stays a draft until you submit it.
-          </p>
-        </div>
-        <NewOfferButton href={wizardHref} />
-      </div>
-    )
-  }
+  if (loadError) return <FormBanner banner={{ type: 'error', message: loadError }} />
 
   return (
-    <ul className="space-y-3">
-      {offers.map((offer) => (
-        <li key={offer.id}>
-          <a
-            href={`${wizardHref}?offer=${offer.id}`}
-            className={`${cardClass} flex items-center gap-4 p-4 min-h-12 hover:border-white/25 transition-colors`}
-          >
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <p className="font-header text-lg font-bold text-white break-words">{offer.title}</p>
-                <OfferStatusBadge status={offer.status} />
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className={`text-lg font-bold text-[#59FFA0] tabular-nums ${priceFontClass}`}>
-                  {offerPriceDisplay(offer).price}
-                </span>
-                {offerPriceDisplay(offer).qualifier && (
-                  <span className="text-xs text-white/50 font-sans">{offerPriceDisplay(offer).qualifier}</span>
+    <div className="space-y-4">
+      <FormBanner banner={banner} />
+
+      {offers.length === 0 ? (
+        <div className={`${cardClass} p-8 text-center space-y-4`}>
+          <div className="space-y-1">
+            <p className="font-header text-xl font-bold text-white">No birthday offers yet</p>
+            <p className={text.helper}>Build your first one in a few minutes. It stays a draft until you submit it.</p>
+          </div>
+          <NewOfferButton href={wizardHref} />
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {offers.map((offer) => {
+            const { price, qualifier } = offerPriceDisplay(offer)
+            const busy = busyId === offer.id
+            const canDelete = DELETABLE.has(offer.status)
+            const adminPending = mode === 'admin' && offer.status === 'pending'
+            const adminActive = mode === 'admin' && offer.status === 'active'
+            return (
+              <li key={offer.id} className={cn(cardClass, 'overflow-hidden')}>
+                <a
+                  href={`${wizardHref}?offer=${offer.id}`}
+                  className="flex items-center gap-4 p-4 min-h-12 hover:bg-white/[0.03] transition-colors"
+                >
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-header text-lg font-bold text-white break-words min-w-0">{offer.title}</p>
+                      <OfferStatusBadge status={offer.status} />
+                    </div>
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className={`text-lg font-bold text-[#59FFA0] tabular-nums ${priceFontClass}`}>{price}</span>
+                      {qualifier && <span className={text.helper}>{qualifier}</span>}
+                    </div>
+                    {offer.status === 'needs_changes' && offer.review_note && (
+                      <p className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-base text-red-300 font-sans break-words">
+                        <span className="font-semibold">Reviewer note: </span>
+                        {offer.review_note}
+                      </p>
+                    )}
+                    <p className={text.helper}>
+                      Updated{' '}
+                      {new Date(offer.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 shrink-0 text-white/60" aria-hidden="true" />
+                </a>
+
+                {(canDelete || adminPending || adminActive) && (
+                  <div className="flex flex-wrap gap-2 px-4 pb-4">
+                    {adminPending && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => runAction(offer, 'approve')}
+                          disabled={busy}
+                          className={cn(actionButton, 'bg-[#59FFA0] text-[#121113] hover:bg-[#59FFA0]/90')}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setChangesTarget(offer)}
+                          disabled={busy}
+                          className={cn(actionButton, 'border border-red-400/60 text-red-300 hover:bg-red-500/10')}
+                        >
+                          Request changes
+                        </button>
+                      </>
+                    )}
+                    {adminActive && (
+                      <button
+                        type="button"
+                        onClick={() => setDeactivateTarget(offer)}
+                        disabled={busy}
+                        className={cn(actionButton, 'border border-red-400/60 text-red-300 hover:bg-red-500/10')}
+                      >
+                        Deactivate
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(offer)}
+                        disabled={busy}
+                        className={cn(actionButton, 'border border-white/20 text-white/85 hover:border-red-400/60 hover:text-red-300')}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 )}
-              </div>
-              {offer.status === 'needs_changes' && offer.review_note && (
-                <p className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-300 font-sans">
-                  <span className="font-semibold">Reviewer note: </span>
-                  {offer.review_note}
-                </p>
-              )}
-              <p className="text-xs text-white/40 font-sans">
-                Updated {new Date(offer.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 shrink-0 text-white/30" aria-hidden="true" />
-          </a>
-        </li>
-      ))}
-    </ul>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <ActionSheet
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this offer?"
+        description={deleteTarget ? `“${deleteTarget.title}” will be removed for good. This can’t be undone.` : undefined}
+        confirmLabel="Delete"
+        tone="danger"
+        busy={!!deleteTarget && busyId === deleteTarget.id}
+        onConfirm={confirmDelete}
+      />
+
+      <RequestChangesSheet
+        open={!!changesTarget}
+        onOpenChange={(open) => !open && setChangesTarget(null)}
+        offerTitle={changesTarget?.title}
+        busy={!!changesTarget && busyId === changesTarget.id}
+        onSubmit={async (note) => {
+          if (!changesTarget) return
+          await runAction(changesTarget, 'request_changes', note)
+          setChangesTarget(null)
+        }}
+      />
+
+      <ActionSheet
+        open={!!deactivateTarget}
+        onOpenChange={(open) => !open && setDeactivateTarget(null)}
+        title="Deactivate this offer?"
+        description="It comes off the public site right away and goes back to draft. The partner can edit and resubmit it."
+        confirmLabel="Deactivate"
+        tone="danger"
+        busy={!!deactivateTarget && busyId === deactivateTarget.id}
+        onConfirm={async () => {
+          if (!deactivateTarget) return
+          await runAction(deactivateTarget, 'deactivate')
+          setDeactivateTarget(null)
+        }}
+      />
+    </div>
   )
 }

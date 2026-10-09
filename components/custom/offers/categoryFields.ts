@@ -22,7 +22,13 @@ export type RequirementField =
   | { key: string; label: string; kind: 'multi'; options: ChipOption[] }
   | { key: string; label: string; kind: 'note'; maxLength: number; placeholder?: string }
 
+// Which copy/preset family a category belongs to (pitch starters, add-ons).
+export type CategoryKind = 'venue' | 'photo' | 'beauty' | 'transport' | 'default'
+
 export interface CategoryConfig {
+  kind: CategoryKind
+  // Step 4 preset add-on chips, saved as { name, price } in `add_ons`.
+  addOnPresets: string[]
   // Preset "What's included" chips, saved as their labels in `includes`.
   includePresets: string[]
   // "Additional requirements" section; null when the category has none.
@@ -32,6 +38,8 @@ export interface CategoryConfig {
 // ─── Venues (incl. Restaurant & Catering) ────────────────────────────────────
 
 const VENUE: CategoryConfig = {
+  kind: 'venue',
+  addOnPresets: ['Extra guest', 'Decorations', 'Photographer', 'Birthday cake', 'Premium upgrade'],
   includePresets: [
     'Birthday meal', 'Birthday dessert', 'Birthday drink', 'Reserved table', 'Private space',
     'Decorations', 'Birthday cake', 'Entertainment', 'Photography', 'Gift/perk', 'Discount',
@@ -83,6 +91,8 @@ const VENUE: CategoryConfig = {
 // ─── Photographer / Videographer ─────────────────────────────────────────────
 
 const PHOTO_VIDEO: CategoryConfig = {
+  kind: 'photo',
+  addOnPresets: ['Extra hour', 'Prints', 'Second shooter', 'Rush delivery'],
   includePresets: ['Edited photos', 'Raw files', 'Online gallery', 'Prints', 'Second shooter'],
   requirements: {
     heading: 'Additional requirements',
@@ -141,6 +151,8 @@ const PHOTO_VIDEO: CategoryConfig = {
 // ─── Beauty / Fitness and Wellness ───────────────────────────────────────────
 
 const BEAUTY_WELLNESS: CategoryConfig = {
+  kind: 'beauty',
+  addOnPresets: ['Extra guest', 'Premium upgrade', 'Refreshments', 'Gift bag'],
   includePresets: ['Service for birthday guest', 'Group package', 'Refreshments', 'Gift/perk', 'Discount'],
   requirements: {
     heading: 'Additional requirements',
@@ -189,6 +201,8 @@ const BEAUTY_WELLNESS: CategoryConfig = {
 // ─── Transportation ──────────────────────────────────────────────────────────
 
 const TRANSPORTATION: CategoryConfig = {
+  kind: 'transport',
+  addOnPresets: ['Extra hour', 'Decorations', 'Refreshments'],
   includePresets: ['Round trip', 'Driver', 'Refreshments', 'Decorations'],
   requirements: {
     heading: 'Additional requirements',
@@ -240,6 +254,8 @@ const TRANSPORTATION: CategoryConfig = {
 }
 
 const DEFAULT_CONFIG: CategoryConfig = {
+  kind: 'default',
+  addOnPresets: ['Extra guest', 'Decorations', 'Premium upgrade'],
   includePresets: ['Gift/perk', 'Discount', 'Decorations', 'Refreshments'],
   requirements: null,
 }
@@ -327,4 +343,37 @@ export const GUEST_OPTIONS = [1, 2, 3, 5, 10, 15, 20, 30, 50, 100]
 
 export function guestLabel(n: number): string {
   return n >= 100 ? '100+' : String(n)
+}
+
+// ─── Availability (step 5) ───────────────────────────────────────────────────
+
+// Mon → Sun on screen; values follow availability.days (0 = Sunday … 6 = Saturday).
+export const DAY_OPTIONS: { value: number; label: string; short: string }[] = [
+  { value: 1, label: 'Mon', short: 'Mon' },
+  { value: 2, label: 'Tue', short: 'Tue' },
+  { value: 3, label: 'Wed', short: 'Wed' },
+  { value: 4, label: 'Thu', short: 'Thu' },
+  { value: 5, label: 'Fri', short: 'Fri' },
+  { value: 6, label: 'Sat', short: 'Sat' },
+  { value: 0, label: 'Sun', short: 'Sun' },
+]
+
+// Saved as availability.radius_miles. "Anywhere in Monroe County" is stored as 30,
+// roughly the county's reach from central Rochester.
+export const RADIUS_OPTIONS: { value: number; label: string }[] = [
+  { value: 5, label: '5 miles' },
+  { value: 10, label: '10 miles' },
+  { value: 25, label: '25 miles' },
+  { value: 50, label: '50 miles' },
+  { value: 30, label: 'Anywhere in Monroe County' },
+]
+
+// Categories that travel to the customer, so they get a service-radius question.
+const TRAVEL_CATEGORIES = new Set([
+  'photographer', 'videographer', 'beauty', 'fitness and wellness', 'transportation',
+  'decorator', 'dj', 'entertainer',
+])
+
+export function categoryTravels(categoryName: string | null | undefined): boolean {
+  return !!categoryName && TRAVEL_CATEGORIES.has(categoryName.trim().toLowerCase())
 }

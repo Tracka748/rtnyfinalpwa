@@ -8,6 +8,7 @@ import {
   DURATION_OPTIONS,
   LEGACY_NOTE_KEYS,
   NOTICE_OPTIONS,
+  categoryTravels,
   configForCategory,
   durationLabelForHours,
   noticeLabelForHours,
@@ -15,13 +16,35 @@ import {
 } from '@/components/custom/offers/categoryFields'
 import { parseMoney } from '@/components/custom/offers/MoneyInput'
 import type { BannerState } from '@/components/custom/offers/FormBanner'
+import { messageForStatus, patchOffer, type OfferAction } from '@/components/custom/offers/offerApi'
 
-export const WIZARD_STEPS = ['Welcome', 'What you offer', 'Create your offer']
+export const WIZARD_STEPS = ['Welcome', 'Category', 'Your offer', 'Add-ons', 'Availability', 'Why you', 'Photos & review']
+
+export const STEP = {
+  welcome: 1,
+  category: 2,
+  offer: 3,
+  addOns: 4,
+  availability: 5,
+  pitch: 6,
+  review: 7,
+} as const
+
 const LAST_STEP = WIZARD_STEPS.length
+// Reopening an existing offer starts here; the partner can move forward from it.
+const RESUME_STEP = STEP.offer
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
 
 export type RequirementValue = string | string[]
+
+export interface CustomAddOn {
+  // Stable id for React keys and error/DOM ids (not saved).
+  id: string
+  name: string
+  // Raw money text.
+  price: string
+}
 
 export interface OfferForm {
   title: string
@@ -38,9 +61,24 @@ export interface OfferForm {
   noticeLabel: string | null
   // Additional requirements keyed by RequirementField.key. Numbers are kept as strings.
   requirements: Record<string, RequirementValue>
+  // Step 4: selected preset add-ons (name → raw price) and custom ones; both save to `add_ons`.
+  addOnPresets: Record<string, string>
+  customAddOns: CustomAddOn[]
+  // Step 5: availability.*
+  days: number[]
+  startTime: string | null // HH:MM
+  endTime: string | null // HH:MM, may be earlier than start (late nights)
+  blackoutDates: string[] // YYYY-MM-DD
+  radiusMiles: number | null
+  confirmEach: boolean
+  // Step 6
+  pitch: string
+  // Step 7
+  offerImageUrl: string | null
+  galleryUrls: string[]
 }
 
-// Keys match API field names; requirement fields use `details.<key>`.
+// Keys match API field names; requirement fields use `details.<key>`, add-ons `add_ons.<id>`.
 export type FieldErrors = Record<string, string>
 
 const EMPTY_FORM: OfferForm = {
@@ -55,6 +93,17 @@ const EMPTY_FORM: OfferForm = {
   durationLabel: null,
   noticeLabel: null,
   requirements: {},
+  addOnPresets: {},
+  customAddOns: [],
+  days: [],
+  startTime: null,
+  endTime: null,
+  blackoutDates: [],
+  radiusMiles: null,
+  confirmEach: false,
+  pitch: '',
+  offerImageUrl: null,
+  galleryUrls: [],
 }
 
 // Mirrors app/api/v1/partners/[id]/offers/_shared.ts (description is capped lower in the UI).
@@ -65,10 +114,17 @@ export const LIMITS = {
   includesItemLength: 100,
   detailsKeys: 20,
   detailListItems: 12,
+  addOns: 10,
+  addOnName: 60,
+  pitch: 300,
+  gallery: 6,
+  blackoutDates: 366,
 } as const
 
 const PRICING_MODELS = new Set(['free', 'flat', 'per_person', 'starting_at', 'contact'])
 const STEP_DETAIL_KEYS = ['duration_label', 'notice_label']
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -76,6 +132,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+}
+
+export function addOnSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+let customSeq = 0
+export function newCustomAddOnId(): string {
+  customSeq += 1
+  return `custom-${customSeq}`
 }
 
 function formFromOffer(offer: OfferRecord, config: CategoryConfig): OfferForm {
@@ -104,6 +170,24 @@ function formFromOffer(offer: OfferRecord, config: CategoryConfig): OfferForm {
     }
   }
 
+  // Add-ons: names matching this category's presets become preset chips; the rest are custom.
+  const addOnPresetByLower = new Map(config.addOnPresets.map((p) => [p.toLowerCase(), p]))
+  const addOnPresets: Record<string, string> = {}
+  const customAddOns: CustomAddOn[] = []
+  for (const item of Array.isArray(offer.add_ons) ? offer.add_ons : []) {
+    if (!isPlainObject(item) || typeof item.name !== 'string') continue
+    const price = typeof item.price === 'number' ? String(item.price) : ''
+    const preset = addOnPresetByLower.get(item.name.trim().toLowerCase())
+    if (preset && !(preset in addOnPresets)) addOnPresets[preset] = price
+    else customAddOns.push({ id: newCustomAddOnId(), name: item.name, price })
+  }
+
+  const availability = isPlainObject(offer.availability) ? offer.availability : {}
+  const days = Array.isArray(availability.days)
+    ? availability.days.filter((d): d is number => typeof d === 'number' && Number.isInteger(d) && d >= 0 && d <= 6)
+    : []
+  const time = (v: unknown) => (typeof v === 'string' && TIME_RE.test(v) ? v : null)
+
   const savedDuration = typeof details.duration_label === 'string' ? details.duration_label : null
   const savedNotice = typeof details.notice_label === 'string' ? details.notice_label : null
 
@@ -123,10 +207,21 @@ function formFromOffer(offer: OfferRecord, config: CategoryConfig): OfferForm {
       ? savedNotice
       : noticeLabelForHours(offer.advance_notice_hours),
     requirements,
+    addOnPresets,
+    customAddOns,
+    days,
+    startTime: time(availability.start_time),
+    endTime: time(availability.end_time),
+    blackoutDates: stringList(availability.blackout_dates).filter((d) => DATE_RE.test(d)),
+    radiusMiles: typeof availability.radius_miles === 'number' ? availability.radius_miles : null,
+    confirmEach: availability.confirm_each === true,
+    pitch: offer.pitch ?? '',
+    offerImageUrl: offer.offer_image_url,
+    galleryUrls: offer.gallery_urls ?? [],
   }
 }
 
-// ─── Field labels, order and DOM ids (banner + focus) ────────────────────────
+// ─── Field labels, order, steps and DOM ids (banner + focus) ─────────────────
 
 const BASE_FIELD_ORDER: [string, string][] = [
   ['title', 'Offer name'],
@@ -141,6 +236,13 @@ const BASE_FIELD_ORDER: [string, string][] = [
   ['details', 'Additional requirements'],
 ]
 
+const LATER_FIELD_ORDER: [string, string][] = [
+  ['availability', 'Availability'],
+  ['pitch', 'Why you'],
+  ['offer_image_url', 'Cover photo'],
+  ['gallery_urls', 'Gallery photos'],
+]
+
 const BASE_DOM_IDS: Record<string, string> = {
   title: 'offer-title',
   description: 'offer-description',
@@ -152,17 +254,36 @@ const BASE_DOM_IDS: Record<string, string> = {
   duration_hours: 'offer-duration',
   advance_notice_hours: 'offer-advance-notice',
   details: 'offer-requirements',
+  add_ons: 'offer-addons',
+  availability: 'offer-availability',
+  pitch: 'offer-pitch',
+  offer_image_url: 'offer-photos',
+  gallery_urls: 'offer-photos',
 }
 
 export function fieldDomId(key: string): string {
   if (key.startsWith('details.')) return `offer-detail-${key.slice('details.'.length)}`
+  if (key.startsWith('add_ons.')) return `offer-addon-${key.slice('add_ons.'.length)}`
   return BASE_DOM_IDS[key] ?? key
 }
 
-function fieldOrder(config: CategoryConfig): [string, string][] {
+// Which wizard step shows a field, so a failed save can jump there.
+export function stepForField(key: string): number {
+  if (key.startsWith('add_ons')) return STEP.addOns
+  if (key.startsWith('availability')) return STEP.availability
+  if (key === 'pitch') return STEP.pitch
+  if (key === 'offer_image_url' || key === 'gallery_urls') return STEP.review
+  return STEP.offer
+}
+
+function fieldOrder(config: CategoryConfig, form: OfferForm): [string, string][] {
   return [
     ...BASE_FIELD_ORDER,
     ...(config.requirements?.fields ?? []).map((f): [string, string] => [`details.${f.key}`, f.label]),
+    ['add_ons', 'Add-ons'],
+    ...config.addOnPresets.map((name): [string, string] => [`add_ons.${addOnSlug(name)}`, `${name} price`]),
+    ...form.customAddOns.map((c, i): [string, string] => [`add_ons.${c.id}`, c.name.trim() || `Add-on ${i + 1}`]),
+    ...LATER_FIELD_ORDER,
   ]
 }
 
@@ -179,12 +300,18 @@ export interface OfferPayload {
   duration_hours: number | null
   advance_notice_hours: number | null
   details: Record<string, string | number | string[]>
+  add_ons: { name: string; price: number }[]
+  availability: Record<string, unknown>
+  pitch: string | null
+  offer_image_url?: string | null
+  gallery_urls?: string[]
 }
 
 function buildPayload(
   form: OfferForm,
   config: CategoryConfig,
-  existingDetails: unknown
+  offer: OfferRecord | null,
+  travels: boolean
 ): { errors: FieldErrors; payload: OfferPayload | null } {
   const errors: FieldErrors = {}
 
@@ -218,8 +345,8 @@ function buildPayload(
   // Keep every details key this step doesn't own (legacy notes, later steps).
   const ownedKeys = new Set([...STEP_DETAIL_KEYS, ...(config.requirements?.fields.map((f) => f.key) ?? [])])
   const details: Record<string, string | number | string[]> = {}
-  if (isPlainObject(existingDetails)) {
-    for (const [k, v] of Object.entries(existingDetails)) {
+  if (isPlainObject(offer?.details)) {
+    for (const [k, v] of Object.entries(offer.details)) {
       if (ownedKeys.has(k)) continue
       if (typeof v === 'string' || typeof v === 'number') details[k] = v
       else if (Array.isArray(v)) details[k] = stringList(v)
@@ -262,6 +389,47 @@ function buildPayload(
   }
   if (Object.keys(details).length > LIMITS.detailsKeys) errors.details = 'Too many extra details on this offer.'
 
+  // ── Add-ons (step 4): every selected add-on needs a price ──
+  const addOns: { name: string; price: number }[] = []
+  const seen = new Set<string>()
+  for (const name of config.addOnPresets) {
+    if (!(name in form.addOnPresets)) continue
+    const p = parseMoney(form.addOnPresets[name])
+    if (p === null || p < 0) errors[`add_ons.${addOnSlug(name)}`] = 'Add a price for this add-on.'
+    else addOns.push({ name, price: p })
+    seen.add(name.toLowerCase())
+  }
+  for (const c of form.customAddOns) {
+    const key = `add_ons.${c.id}`
+    const name = c.name.trim()
+    const p = parseMoney(c.price)
+    if (!name) errors[key] = 'Name this add-on, or remove it.'
+    else if (name.length > LIMITS.addOnName) errors[key] = `Keep the name under ${LIMITS.addOnName} characters.`
+    else if (seen.has(name.toLowerCase())) errors[key] = 'You already added this one.'
+    else if (p === null || p < 0) errors[key] = 'Add a price for this add-on.'
+    else addOns.push({ name, price: p })
+    seen.add(name.toLowerCase())
+  }
+  if (form.customAddOns.length + Object.keys(form.addOnPresets).length > LIMITS.addOns) {
+    errors.add_ons = `Up to ${LIMITS.addOns} add-ons.`
+  }
+
+  // ── Availability (step 5): replace the keys this wizard owns, keep the rest ──
+  const availability: Record<string, unknown> = isPlainObject(offer?.availability) ? { ...offer.availability } : {}
+  availability.days = [...new Set(form.days)].sort((a, b) => a - b)
+  availability.start_time = form.startTime
+  availability.end_time = form.endTime
+  availability.blackout_dates = [...new Set(form.blackoutDates)].sort()
+  availability.confirm_each = form.confirmEach
+  if (travels) availability.radius_miles = form.radiusMiles
+  if (form.blackoutDates.length > LIMITS.blackoutDates) {
+    errors.availability = `Up to ${LIMITS.blackoutDates} blackout dates.`
+  }
+
+  // ── Pitch (step 6) ──
+  const pitch = form.pitch.trim()
+  if (pitch.length > LIMITS.pitch) errors.pitch = `Keep it under ${LIMITS.pitch} characters.`
+
   if (Object.keys(errors).length > 0) return { errors, payload: null }
 
   const duration = DURATION_OPTIONS.find((o) => o.label === form.durationLabel)
@@ -280,6 +448,11 @@ function buildPayload(
       duration_hours: duration?.hours ?? null,
       advance_notice_hours: notice?.hours ?? null,
       details,
+      add_ons: addOns,
+      availability,
+      pitch: pitch || null,
+      // Image URLs include the offer id, so the API only accepts them once the offer exists.
+      ...(offer ? { offer_image_url: form.offerImageUrl, gallery_urls: form.galleryUrls } : {}),
     },
   }
 }
@@ -287,46 +460,53 @@ function buildPayload(
 // ─── API error mapping ────────────────────────────────────────────────────────
 
 const API_FIELDS = new Set([
-  'title', 'price', 'description', 'pricing_model', 'includes', 'min_guests',
-  'max_guests', 'duration_hours', 'advance_notice_hours', 'details',
+  'title', 'price', 'description', 'pricing_model', 'includes', 'min_guests', 'max_guests',
+  'duration_hours', 'advance_notice_hours', 'details', 'add_ons', 'availability', 'pitch',
+  'offer_image_url', 'gallery_urls',
 ])
 
 const FRIENDLY_API_MESSAGES: [RegExp, string][] = [
   [/^price is required/, 'Add a price, or choose Free or Contact us.'],
   [/^pricing_model must be one of/, 'Pick how this is priced.'],
   [/^min_guests must be <= max_guests/, 'Minimum can’t be more than the maximum.'],
+  [/^(offer_image_url|gallery_urls)/, 'Upload photos with the button here instead of pasting a link.'],
 ]
 
 // API 400 messages start with the field name, e.g. "title must be 1-80 characters",
-// "each includes item must be 1-100 characters" or "details.food_drink may have at most 12 items".
+// "each includes item must be 1-100 characters", "details.food_drink may have at most 12 items",
+// "each add_on name must be 1-60 characters" or "availability.days must be …".
 export function mapApiError(message: string): { field: string; message: string } | null {
   const match = message.match(/^(?:each\s+)?([a-z_]+(?:\.[a-z0-9_]+)?)(?:\s+item)?\s+(.*)$/)
   if (!match) return null
-  const field = match[1]
+  let field = match[1]
+  if (field === 'add_on') field = 'add_ons'
   const base = field.split('.')[0]
-  if (!API_FIELDS.has(base) || (field.includes('.') && base !== 'details')) return null
+  if (!API_FIELDS.has(base)) return null
+  // Only details.* keeps its sub-key (each detail is its own field); others map to the base field.
+  if (field.includes('.') && base !== 'details') field = base
   const friendly = FRIENDLY_API_MESSAGES.find(([re]) => re.test(message))?.[1]
   const rest = match[2]
   return { field, message: friendly ?? `${rest.charAt(0).toUpperCase()}${rest.slice(1)}.` }
 }
 
-function messageForStatus(status: number, apiError: string | undefined, action: 'load' | 'save'): string {
-  switch (status) {
-    case 401:
-      return 'Your session has expired. Sign in again to keep working on this offer.'
-    case 403:
-      return 'You don’t have access to this partner’s offers.'
-    case 404:
-      return 'We couldn’t find this offer. It may have been deleted.'
-    case 409:
-      return 'This offer was changed somewhere else. Reload the page to get the latest version.'
-    case 400:
-      return apiError ?? 'Some details need another look.'
-    default:
-      return action === 'load'
-        ? 'We couldn’t load this offer. Please try again.'
-        : 'Something went wrong saving your offer. Please try again.'
-  }
+// Submit 400s look like "Missing required fields: pricing_model, includes, pitch".
+const SUBMIT_FIELD_KEYS: Record<string, string> = {
+  title: 'title',
+  pricing_model: 'pricing_model',
+  price: 'price',
+  includes: 'includes',
+  max_guests: 'max_guests',
+  pitch: 'pitch',
+  availability: 'availability',
+}
+
+export function parseMissingFields(message: string): string[] | null {
+  const match = message.match(/^Missing required fields:\s*(.+)$/)
+  if (!match) return null
+  return match[1]
+    .split(',')
+    .map((f) => SUBMIT_FIELD_KEYS[f.trim()])
+    .filter((f): f is string => !!f)
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -337,17 +517,19 @@ interface UseOfferWizardArgs {
 }
 
 export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState<number>(STEP.welcome)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [partner, setPartner] = useState<PartnerSummary | null>(null)
   const [offer, setOffer] = useState<OfferRecord | null>(null)
   const [form, setForm] = useState<OfferForm>(EMPTY_FORM)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  // Non-field problems (auth, conflicts, network). Field problems are derived from fieldErrors.
+  // Non-field problems (auth, conflicts, network) and success notes. Field problems come from fieldErrors.
   const [banner, setBanner] = useState<BannerState | null>(null)
   const [saving, setSaving] = useState(false)
-  const [showSummary, setShowSummary] = useState(false)
+  const [imageSaving, setImageSaving] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   // Bumped when validation fails so the view can focus the first invalid field.
   const [focusToken, setFocusToken] = useState(0)
 
@@ -356,13 +538,18 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
   const currentOfferIdRef = useRef<string | null>(null)
 
   const config = useMemo(() => configForCategory(partner?.categoryName), [partner?.categoryName])
-  const order = useMemo(() => fieldOrder(config), [config])
+  const travels = useMemo(() => categoryTravels(partner?.categoryName), [partner?.categoryName])
+  const order = useMemo(() => fieldOrder(config, form), [config, form])
 
   // Ordered list of fields that currently have an error, for the banner and focus.
-  const invalidFields = useMemo(
-    () => order.filter(([key]) => fieldErrors[key]).map(([key, label]) => ({ key, label })),
-    [order, fieldErrors]
-  )
+  const invalidFields = useMemo(() => {
+    const known = order.filter(([key]) => fieldErrors[key]).map(([key, label]) => ({ key, label }))
+    const knownKeys = new Set(known.map((f) => f.key))
+    const extra = Object.keys(fieldErrors)
+      .filter((k) => !knownKeys.has(k))
+      .map((key) => ({ key, label: key }))
+    return [...known, ...extra]
+  }, [order, fieldErrors])
 
   const legacyNotes = useMemo(() => {
     const details = isPlainObject(offer?.details) ? offer.details : {}
@@ -415,7 +602,7 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
           currentOfferIdRef.current = found.id
           setOffer(found)
           setForm(formFromOffer(found, configForCategory(categoryName)))
-          setStep(LAST_STEP)
+          setStep(RESUME_STEP)
         }
       } catch {
         if (!cancelled) setLoadError('We couldn’t load this offer. Check your connection and try again.')
@@ -455,6 +642,11 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     [clearErrors]
   )
 
+  const goToStep = useCallback((target: number) => {
+    setBanner(null)
+    setStep(Math.min(Math.max(target, STEP.welcome), LAST_STEP))
+  }, [])
+
   const goNext = useCallback(() => {
     setBanner(null)
     setStep((s) => Math.min(s + 1, LAST_STEP))
@@ -463,19 +655,40 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
   const goBack = useCallback(() => {
     setBanner(null)
     setFieldErrors({})
-    setStep((s) => Math.max(s - 1, 1))
+    setStep((s) => Math.max(s - 1, STEP.welcome))
   }, [])
+
+  // Shows field errors, jumps to the step holding the first one, and focuses it.
+  const showFieldErrors = useCallback(
+    (errors: FieldErrors) => {
+      setFieldErrors(errors)
+      const first = order.find(([key]) => errors[key])?.[0] ?? Object.keys(errors)[0]
+      if (first) setStep(stepForField(first))
+      setFocusToken((t) => t + 1)
+    },
+    [order]
+  )
+
+  const applySaved = useCallback(
+    (saved: OfferRecord) => {
+      currentOfferIdRef.current = saved.id
+      setOffer(saved)
+      setForm(formFromOffer(saved, config))
+      setFieldErrors({})
+    },
+    [config]
+  )
 
   // Creates the draft (POST) or saves edits (PATCH action 'save').
   // Returns the saved row, or null when validation or the request failed.
   const save = useCallback(async (): Promise<OfferRecord | null> => {
     setBanner(null)
-    const { errors, payload } = buildPayload(form, config, offer?.details)
-    setFieldErrors(errors)
+    const { errors, payload } = buildPayload(form, config, offer, travels)
     if (!payload) {
-      setFocusToken((t) => t + 1)
+      showFieldErrors(errors)
       return null
     }
+    setFieldErrors({})
 
     setSaving(true)
     try {
@@ -489,29 +702,101 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
 
       if (!res.ok) {
         const mapped = res.status === 400 && typeof json.error === 'string' ? mapApiError(json.error) : null
-        if (mapped) {
-          setFieldErrors({ [mapped.field]: mapped.message })
-          setFocusToken((t) => t + 1)
-        } else {
-          setBanner({ type: 'error', message: messageForStatus(res.status, json.error, 'save') })
-        }
+        if (mapped) showFieldErrors({ [mapped.field]: mapped.message })
+        else setBanner({ type: 'error', message: messageForStatus(res.status, json.error, 'save') })
         return null
       }
 
       const saved = json.data as OfferRecord
-      currentOfferIdRef.current = saved.id
-      setOffer(saved)
-      setForm(formFromOffer(saved, config))
-      setFieldErrors({})
-      setBanner(null)
+      applySaved(saved)
       return saved
     } catch {
-      setBanner({ type: 'error', message: 'We couldn’t reach the server. Check your connection and try again.' })
+      setBanner({ type: 'error', message: messageForStatus(0, undefined, 'save') })
       return null
     } finally {
       setSaving(false)
     }
-  }, [form, config, offer, partnerId])
+  }, [form, config, offer, travels, partnerId, showFieldErrors, applySaved])
+
+  // Saves only the photo fields (step 7), right after an upload or removal.
+  const saveImages = useCallback(
+    async (next: { offerImageUrl: string | null; galleryUrls: string[] }): Promise<boolean> => {
+      if (!offer) return false
+      setBanner(null)
+      setForm((f) => ({ ...f, ...next }))
+      setImageSaving(true)
+      const result = await patchOffer(partnerId, offer.id, {
+        action: 'save',
+        offer_image_url: next.offerImageUrl,
+        gallery_urls: next.galleryUrls,
+      })
+      setImageSaving(false)
+      if (!result.ok) {
+        const mapped = result.status === 400 && result.error ? mapApiError(result.error) : null
+        if (mapped) showFieldErrors({ [mapped.field]: mapped.message })
+        else setBanner({ type: 'error', message: messageForStatus(result.status, result.error, 'save') })
+        // Put the photos back the way the server has them.
+        setForm((f) => ({ ...f, offerImageUrl: offer.offer_image_url, galleryUrls: offer.gallery_urls ?? [] }))
+        return false
+      }
+      currentOfferIdRef.current = result.data.id
+      setOffer(result.data)
+      clearErrors('offer_image_url', 'gallery_urls')
+      return true
+    },
+    [offer, partnerId, showFieldErrors, clearErrors]
+  )
+
+  // PATCH action 'submit'. Missing fields from the API are shown and jumped to.
+  const submit = useCallback(async (): Promise<boolean> => {
+    if (!offer) return false
+    setBanner(null)
+    setSaving(true)
+    const result = await patchOffer(partnerId, offer.id, { action: 'submit' })
+    setSaving(false)
+    if (!result.ok) {
+      const missing = result.status === 400 && result.error ? parseMissingFields(result.error) : null
+      const mapped = !missing && result.status === 400 && result.error ? mapApiError(result.error) : null
+      if (missing && missing.length) {
+        showFieldErrors(Object.fromEntries(missing.map((f) => [f, 'Needed to submit.'])))
+      } else if (mapped) {
+        showFieldErrors({ [mapped.field]: mapped.message })
+      } else {
+        setBanner({ type: 'error', message: messageForStatus(result.status, result.error, 'submit') })
+      }
+      return false
+    }
+    applySaved(result.data)
+    setSubmitted(true)
+    return true
+  }, [offer, partnerId, showFieldErrors, applySaved])
+
+  // Admin review actions (approve / request_changes) and deactivate.
+  const review = useCallback(
+    async (action: Extract<OfferAction, 'approve' | 'request_changes' | 'deactivate'>, reviewNote?: string) => {
+      if (!offer) return false
+      setBanner(null)
+      setReviewing(true)
+      const result = await patchOffer(partnerId, offer.id, {
+        action,
+        ...(action === 'request_changes' ? { review_note: reviewNote } : {}),
+      })
+      setReviewing(false)
+      if (!result.ok) {
+        setBanner({ type: 'error', message: messageForStatus(result.status, result.error, 'review') })
+        return false
+      }
+      applySaved(result.data)
+      const done = {
+        approve: 'Approved. This offer is now live.',
+        request_changes: 'Sent back to the partner with your note.',
+        deactivate: 'Deactivated. The offer is back to draft and hidden from the public.',
+      }[action]
+      setBanner({ type: 'success', message: done })
+      return true
+    },
+    [offer, partnerId, applySaved]
+  )
 
   return {
     // state
@@ -521,6 +806,7 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     loadError,
     partner,
     config,
+    travels,
     offer,
     form,
     fieldErrors,
@@ -528,15 +814,21 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     legacyNotes,
     banner,
     saving,
-    showSummary,
+    imageSaving,
+    reviewing,
+    submitted,
     focusToken,
     // actions
     goNext,
     goBack,
+    goToStep,
     updateField,
     setRequirement,
+    clearErrors,
     setBanner,
-    setShowSummary,
     save,
+    saveImages,
+    submit,
+    review,
   }
 }

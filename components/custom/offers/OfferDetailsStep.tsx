@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { FieldErrors, OfferForm, RequirementValue } from '@/hooks/useOfferWizard'
 import { LIMITS } from '@/hooks/useOfferWizard'
@@ -20,8 +20,8 @@ import { CountedTextarea } from './CountedTextarea'
 import { MoneyInput } from './MoneyInput'
 import { ListEditor } from './ListEditor'
 import { cn } from '@/lib/utils'
-import { cardClass, inputClass, sectionCard, space, text } from './styles'
-import { SECTION_COPY, type SectionKey } from './sectionCopy'
+import { cardClass, inputClass, space, text } from './styles'
+import { SectionCard as Section } from './SectionCard'
 
 interface OfferDetailsStepProps {
   form: OfferForm
@@ -32,48 +32,6 @@ interface OfferDetailsStepProps {
   reviewNotice?: string | null
   updateField: <K extends keyof OfferForm>(key: K, value: OfferForm[K], ...errorKeys: string[]) => void
   setRequirement: (key: string, value: RequirementValue) => void
-}
-
-function Section({
-  id,
-  copyKey,
-  title,
-  note,
-  tag,
-  children,
-}: {
-  id?: string
-  copyKey: SectionKey
-  title: string
-  // Extra line after the tip (e.g. "Just for Rooftop.").
-  note?: string
-  tag?: ReactNode
-  children: ReactNode
-}) {
-  const copy = SECTION_COPY[copyKey]
-  return (
-    <section id={id} className={cn(cardClass, sectionCard.border, 'p-5', space.fields)}>
-      <div className="space-y-3">
-        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
-          <h2 className={cn(text.cardHeading, sectionCard.heading, 'min-w-0 break-words')}>
-            <span aria-hidden="true" className="mr-2">
-              {copy.emoji}
-            </span>
-            {title}
-          </h2>
-          {tag}
-        </div>
-        <p className={text.sectionIntro}>{copy.intro}</p>
-        <p className={text.sectionTip}>
-          <span aria-hidden="true">💡 </span>
-          {copy.tip}
-        </p>
-        {copy.example && <p className={cn(text.helper, 'break-words')}>Example: {copy.example}</p>}
-        {note && <p className={text.helper}>{note}</p>}
-      </div>
-      {children}
-    </section>
-  )
 }
 
 // Adds the current value as an extra chip when it isn't one of the presets
