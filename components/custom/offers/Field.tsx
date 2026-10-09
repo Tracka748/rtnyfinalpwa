@@ -1,6 +1,9 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { AlertCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { groupErrorClass, space, text } from './styles'
 
 interface FieldProps {
   id: string
@@ -17,7 +20,7 @@ interface FieldProps {
 
 export function NeededTag() {
   return (
-    <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#1AC8ED]/10 text-[#1AC8ED] font-label">
+    <span className={cn(text.neededTag, 'px-2 py-0.5 rounded bg-[#1AC8ED]/10 whitespace-nowrap')}>
       Needed to submit
     </span>
   )
@@ -26,18 +29,18 @@ export function NeededTag() {
 export function Field({ id, label, hint, error, optional, neededToSubmit, group, children }: FieldProps) {
   const caption = (
     <>
-      {label}
+      <span className="min-w-0 break-words">{label}</span>
       {neededToSubmit ? (
         <NeededTag />
       ) : optional ? (
-        <span className="text-xs font-normal text-white/40">Optional</span>
+        <span className={cn(text.helper, 'font-normal')}>Optional</span>
       ) : null}
     </>
   )
-  const captionClass = 'flex items-center gap-2 flex-wrap text-sm font-medium text-white font-sans'
+  const captionClass = cn('flex items-center gap-x-2 gap-y-1 flex-wrap', text.questionLabel)
 
   return (
-    <div className="space-y-1.5">
+    <div className={space.field}>
       {group ? (
         <p id={`${id}-label`} className={captionClass}>
           {caption}
@@ -47,13 +50,14 @@ export function Field({ id, label, hint, error, optional, neededToSubmit, group,
           {caption}
         </label>
       )}
-      {children}
+      {group ? <div className={error ? groupErrorClass : undefined}>{children}</div> : children}
       {error ? (
-        <p id={`${id}-error`} role="alert" className="text-xs text-red-400">
-          {error}
+        <p id={`${id}-error`} role="alert" className={cn(text.error, 'flex items-start gap-1.5')}>
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+          <span className="min-w-0 break-words">{error}</span>
         </p>
       ) : hint ? (
-        <p id={`${id}-hint`} className="text-xs text-white/50">
+        <p id={`${id}-hint`} className={text.helper}>
           {hint}
         </p>
       ) : null}

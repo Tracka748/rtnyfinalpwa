@@ -19,7 +19,9 @@ import { ChipSelect } from './ChipSelect'
 import { CountedTextarea } from './CountedTextarea'
 import { MoneyInput } from './MoneyInput'
 import { ListEditor } from './ListEditor'
-import { cardClass, inputClass } from './styles'
+import { cn } from '@/lib/utils'
+import { cardClass, inputClass, sectionCard, space, text } from './styles'
+import { SECTION_COPY, type SectionKey } from './sectionCopy'
 
 interface OfferDetailsStepProps {
   form: OfferForm
@@ -34,25 +36,40 @@ interface OfferDetailsStepProps {
 
 function Section({
   id,
+  copyKey,
   title,
-  subtitle,
+  note,
   tag,
   children,
 }: {
   id?: string
+  copyKey: SectionKey
   title: string
-  subtitle?: string
+  // Extra line after the tip (e.g. "Just for Rooftop.").
+  note?: string
   tag?: ReactNode
   children: ReactNode
 }) {
+  const copy = SECTION_COPY[copyKey]
   return (
-    <section id={id} className={`${cardClass} p-5 space-y-5`}>
-      <div className="space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h2 className="font-header text-xl font-bold text-white">{title}</h2>
+    <section id={id} className={cn(cardClass, sectionCard.border, 'p-5', space.fields)}>
+      <div className="space-y-3">
+        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
+          <h2 className={cn(text.cardHeading, sectionCard.heading, 'min-w-0 break-words')}>
+            <span aria-hidden="true" className="mr-2">
+              {copy.emoji}
+            </span>
+            {title}
+          </h2>
           {tag}
         </div>
-        {subtitle && <p className="font-sans text-sm text-white/50">{subtitle}</p>}
+        <p className={text.sectionIntro}>{copy.intro}</p>
+        <p className={text.sectionTip}>
+          <span aria-hidden="true">💡 </span>
+          {copy.tip}
+        </p>
+        {copy.example && <p className={cn(text.helper, 'break-words')}>Example: {copy.example}</p>}
+        {note && <p className={text.helper}>{note}</p>}
       </div>
       {children}
     </section>
@@ -164,10 +181,10 @@ function EarlierNotes({ notes }: { notes: { key: string; label: string; value: s
   if (notes.length === 0) return null
   return (
     <div className="rounded-lg bg-white/5 border border-white/10 p-4 space-y-2">
-      <p className="text-xs uppercase tracking-wider text-white/40 font-label">Earlier notes</p>
+      <p className={cn(text.eyebrow, 'text-white/60')}>Earlier notes</p>
       {notes.map((n) => (
-        <p key={n.key} className="text-sm text-white/70 font-sans break-words">
-          <span className="text-white/50">{n.label}: </span>
+        <p key={n.key} className="text-base text-white/75 font-sans break-words">
+          <span className="text-white/60">{n.label}: </span>
           {n.value}
         </p>
       ))}
@@ -202,22 +219,22 @@ export function OfferDetailsStep({
     )
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="font-header text-3xl font-bold text-white leading-tight">Create your offer</h1>
-        <p className="font-sans text-base text-white/70">
+    <div className={space.sections}>
+      <div className="space-y-3">
+        <h1 className={text.pageTitle}>Create your offer</h1>
+        <p className={text.body}>
           Tap through the options. You describe the experience, we’ll make it easy to book.
         </p>
       </div>
 
       {reviewNotice && (
-        <div className="p-4 rounded-xl border bg-[#FFB547]/10 border-[#FFB547]/30 text-sm font-sans text-[#FFB547]">
+        <div className="p-4 rounded-xl border bg-[#FFB547]/10 border-[#FFB547]/30 text-base font-sans text-[#FFB547]">
           {reviewNotice}
         </div>
       )}
 
       {/* ── The basics ─────────────────────────────────────────────────── */}
-      <Section title="The basics">
+      <Section copyKey="basics" title="The basics">
         <Field
           id="offer-title"
           label="Offer name"
@@ -253,7 +270,7 @@ export function OfferDetailsStep({
       </Section>
 
       {/* ── Pricing ────────────────────────────────────────────────────── */}
-      <Section title="Pricing" tag={<NeededTag />}>
+      <Section copyKey="pricing" title="Pricing" tag={<NeededTag />}>
         <Field id="offer-pricing-model" label="How is it priced?" error={errors.pricing_model} group>
           <ChipSelect
             id="offer-pricing-model"
@@ -277,12 +294,12 @@ export function OfferDetailsStep({
           </Field>
         )}
         {form.pricingModel === 'contact' && (
-          <p className="text-sm text-white/50 font-sans">Guests will reach out to you for a quote.</p>
+          <p className={text.helper}>Guests will reach out to you for a quote.</p>
         )}
       </Section>
 
       {/* ── What's included ────────────────────────────────────────────── */}
-      <Section title="What’s included" subtitle="Tap everything that comes with it." tag={<NeededTag />}>
+      <Section copyKey="included" title="What’s included" tag={<NeededTag />}>
         <Field id="offer-includes" label="Included" error={errors.includes} group>
           <ChipSelect
             id="offer-includes"
@@ -296,8 +313,8 @@ export function OfferDetailsStep({
         </Field>
 
         {showCustom ? (
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium text-white font-sans">Something else</p>
+          <div className={space.field}>
+            <p className={text.questionLabel}>Something else</p>
             <ListEditor
               id="offer-includes-custom"
               items={form.customIncludes}
@@ -312,7 +329,7 @@ export function OfferDetailsStep({
             type="button"
             onClick={() => setShowCustom(true)}
             disabled={includesCount >= LIMITS.includesItems}
-            className="min-h-12 px-4 rounded-full border border-dashed border-[#1AC8ED]/50 text-[#1AC8ED] text-sm font-sans font-medium inline-flex items-center gap-1.5 hover:bg-[#1AC8ED]/10 transition-colors disabled:opacity-40"
+            className="min-h-[52px] px-5 rounded-full border border-dashed border-[#1AC8ED]/50 text-[#1AC8ED] text-base font-sans font-medium inline-flex items-center gap-2 hover:bg-[#1AC8ED]/10 transition-colors disabled:opacity-40"
           >
             <Plus className="w-4 h-4" />
             Add something else
@@ -321,7 +338,7 @@ export function OfferDetailsStep({
       </Section>
 
       {/* ── Group size ─────────────────────────────────────────────────── */}
-      <Section title="Group size">
+      <Section copyKey="groupSize" title="Group size">
         <Field id="offer-min-guests" label="Minimum guests" error={errors.min_guests} optional group>
           <ChipSelect
             id="offer-min-guests"
@@ -343,7 +360,7 @@ export function OfferDetailsStep({
       </Section>
 
       {/* ── Booking ────────────────────────────────────────────────────── */}
-      <Section title="Booking">
+      <Section copyKey="booking" title="Booking">
         <Field id="offer-duration" label="How long is it?" error={errors.duration_hours} optional group>
           <ChipSelect
             id="offer-duration"
@@ -374,11 +391,13 @@ export function OfferDetailsStep({
       {requirements ? (
         <Section
           id="offer-requirements"
+          copyKey="requirements"
+         
           title={requirements.heading}
-          subtitle={categoryName ? `Just for ${categoryName}.` : undefined}
+          note={categoryName ? `Just for ${categoryName}.` : undefined}
         >
           {errors.details && (
-            <p role="alert" className="text-xs text-red-400">
+            <p role="alert" className={text.error}>
               {errors.details}
             </p>
           )}

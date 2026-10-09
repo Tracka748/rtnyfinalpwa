@@ -1,6 +1,6 @@
 'use client'
 
-import { inputClass, priceFontClass } from './styles'
+import { inputClass, priceFontClass, text } from './styles'
 
 interface MoneyInputProps {
   id: string
@@ -49,7 +49,7 @@ export function MoneyInput({ id, value, onChange, placeholder = '0', suffix, has
         className={inputClass(hasError, `pl-9 text-lg font-bold ${priceFontClass} ${suffix ? 'pr-28' : ''}`)}
       />
       {suffix && (
-        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/40 font-sans pointer-events-none">
+        <span className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${text.helper}`}>
           {suffix}
         </span>
       )}

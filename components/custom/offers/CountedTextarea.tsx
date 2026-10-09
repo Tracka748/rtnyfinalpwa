@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { inputClass } from './styles'
+import { inputClass, text } from './styles'
 
 interface CountedTextareaProps {
   id: string
@@ -28,7 +28,7 @@ export function CountedTextarea({
   const nearLimit = remaining <= Math.max(20, Math.round(maxLength * 0.1))
 
   return (
-    <div className="relative">
+    <div className="space-y-1.5">
       <textarea
         id={id}
         value={value}
@@ -38,18 +38,15 @@ export function CountedTextarea({
         placeholder={placeholder}
         aria-invalid={hasError || undefined}
         aria-describedby={[describedById, `${id}-count`].filter(Boolean).join(' ')}
-        className={inputClass(hasError, 'resize-y pb-7 leading-relaxed')}
+        className={inputClass(hasError, 'resize-y leading-relaxed')}
       />
-      <span
+      <p
         id={`${id}-count`}
         aria-live="polite"
-        className={cn(
-          'absolute right-3 bottom-2 text-xs font-sans tabular-nums pointer-events-none',
-          nearLimit ? 'text-[#FFB547]' : 'text-white/40'
-        )}
+        className={cn(text.helper, 'text-right tabular-nums', nearLimit && 'text-[#FFB547]')}
       >
         {value.length}/{maxLength}
-      </span>
+      </p>
     </div>
   )
 }

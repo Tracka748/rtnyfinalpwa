@@ -1,15 +1,78 @@
 import { cn } from '@/lib/utils'
 
+// ─── Type tokens (birthday offer wizard) ─────────────────────────────────────
+// Rokkitt = font-header, Rubik = font-sans/font-label. Helper text uses
+// white/60 or lighter, which is ~6.9:1 on the #1a1a1a cards (WCAG AA 4.5:1).
+
+// Step 3 question labels (Offer name, How is it priced?, …). Pale mint #B8F5DC is
+// ~14:1 on #1a1a1a: softer than the #59FFA0 section headings and selected chips,
+// and set apart from #F9FDFF chip text by weight and the chips' pill borders.
+// Errors use red-500 borders, red-400 text and an alert icon.
+export const LABEL_COLOR = 'text-[#B8F5DC]'
+
+export const text = {
+  pageTitle: 'font-header text-[28px] sm:text-[30px] font-bold leading-tight text-white',
+  cardHeading: 'font-header text-[22px] font-bold leading-snug text-white',
+  fieldLabel: 'font-sans text-base font-semibold text-white',
+  questionLabel: `font-sans text-base font-semibold ${LABEL_COLOR}`,
+  body: 'font-sans text-base leading-relaxed text-white/75',
+  helper: 'font-sans text-sm text-white/60',
+  neededTag: 'font-label text-xs font-semibold uppercase tracking-wider text-[#1AC8ED]',
+  eyebrow: 'font-label text-xs font-semibold uppercase tracking-wider',
+  error: 'font-sans text-sm text-red-400',
+  // Step 3 section cards: intro under the heading, then a cyan 💡 tip.
+  sectionIntro: 'font-sans text-[15px] leading-relaxed text-white/75',
+  sectionTip: 'font-sans text-sm text-[#1AC8ED]',
+} as const
+
+// Step 3 section cards: mint heading (~13:1 on #1a1a1a) and a faint mint border.
+export const sectionCard = {
+  heading: 'text-[#59FFA0]',
+  border: 'border-[#59FFA0]/20',
+} as const
+
+// ─── Spacing tokens ──────────────────────────────────────────────────────────
+
+export const space = {
+  // Between fields inside a card (was space-y-5).
+  fields: 'space-y-7',
+  // Between a field's label, control and helper text.
+  field: 'space-y-2',
+  // Between cards/sections on a step.
+  sections: 'space-y-6',
+  // Between chips, horizontally and between wrapped rows.
+  chips: 'gap-3',
+  // Clearance so the fixed StickyActionBar never covers the last field
+  // (bar is ~76px, ~136px with the secondary button, plus the safe-area inset).
+  barClearance: 'pb-[calc(13rem+env(safe-area-inset-bottom))]',
+} as const
+
+// ─── Controls ────────────────────────────────────────────────────────────────
+
 // Dark input style shared with app/profile/partner/edit/page.tsx, sized for touch
 // (min 48px tall, 16px text so iOS doesn't zoom on focus).
 export function inputClass(hasError?: boolean, extra?: string) {
   return cn(
-    'w-full min-h-12 bg-white/5 border rounded-lg px-4 py-3 text-base text-white font-sans',
-    'placeholder:text-white/30 focus:outline-none transition-colors',
-    hasError ? 'border-red-400/60 focus:border-red-400' : 'border-white/10 focus:border-[#59FFA0]/50',
+    'w-full min-w-0 min-h-12 bg-white/5 border rounded-lg px-4 py-3 text-base text-white font-sans',
+    'placeholder:text-white/40 focus:outline-none transition-colors',
+    hasError ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-[#59FFA0]/50',
     extra
   )
 }
+
+export function chipClass(selected: boolean) {
+  return cn(
+    'min-h-[52px] px-5 rounded-full border font-sans text-base font-medium text-left transition-all',
+    'disabled:opacity-35 disabled:cursor-not-allowed max-w-full break-words',
+    selected
+      ? 'bg-[#59FFA0]/20 border-[#59FFA0] text-[#59FFA0]'
+      : 'border-white/25 text-[#F9FDFF] hover:border-white/50'
+  )
+}
+
+// Chip groups aren't inputs, so an invalid group gets a red outline instead of a
+// border. Outlines don't take up space, so spacing is unchanged.
+export const groupErrorClass = 'rounded-2xl outline outline-1 outline-offset-[6px] outline-red-500/60'
 
 export const cardClass = 'bg-[#1a1a1a] border border-white/10 rounded-2xl'
 

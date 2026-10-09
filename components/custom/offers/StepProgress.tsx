@@ -13,10 +13,10 @@ export function StepProgress({ steps, current }: StepProgressProps) {
   const index = Math.min(Math.max(current, 1), total)
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-baseline justify-between gap-3 font-sans">
-        <span className="text-sm font-semibold text-white truncate">{steps[index - 1]}</span>
-        <span className="text-xs text-[#7DD8E8] shrink-0">
+        <span className="text-base font-semibold text-white truncate min-w-0">{steps[index - 1]}</span>
+        <span className="text-sm text-[#7DD8E8] shrink-0">
           Step {index} of {total}
         </span>
       </div>

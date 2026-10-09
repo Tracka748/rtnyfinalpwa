@@ -11,7 +11,8 @@ import { WelcomeStep } from './WelcomeStep'
 import { CategoryStep } from './CategoryStep'
 import { OfferDetailsStep } from './OfferDetailsStep'
 import { DraftSavedScreen } from './DraftSavedScreen'
-import { cardClass } from './styles'
+import { cn } from '@/lib/utils'
+import { cardClass, space } from './styles'
 
 export interface OfferWizardProps {
   partnerId: string
@@ -80,8 +81,8 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
     return (
       <div className="max-w-2xl mx-auto">
         <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 space-y-3" role="alert">
-          <p className="text-red-400 font-sans">{wizard.loadError ?? 'We couldn’t load this partner.'}</p>
-          <a href={exitHref} className="inline-flex min-h-12 items-center text-sm text-[#1AC8ED] hover:underline">
+          <p className="text-base text-red-400 font-sans">{wizard.loadError ?? 'We couldn’t load this partner.'}</p>
+          <a href={exitHref} className="inline-flex min-h-12 items-center text-base text-[#1AC8ED] hover:underline">
             ← Back to birthday offers
           </a>
         </div>
@@ -93,7 +94,7 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
 
   if (wizard.showSummary && offer) {
     return (
-      <div className="max-w-2xl mx-auto pb-40">
+      <div className={cn('max-w-2xl mx-auto', space.barClearance)}>
         <DraftSavedScreen offer={offer} categoryName={partner.categoryName} exitHref={exitHref} />
         <StickyActionBar
           className={barOffset}
@@ -114,10 +115,10 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
       : null
 
   return (
-    <div className="max-w-2xl mx-auto pb-44 space-y-6">
+    <div className={cn('max-w-2xl mx-auto', space.sections, space.barClearance)}>
       <div className="space-y-3">
         {mode === 'admin' && (
-          <div className={`${cardClass} px-4 py-3 text-sm font-sans text-white/70`}>
+          <div className={`${cardClass} px-4 py-3 text-base font-sans text-white/75 break-words`}>
             Editing for <span className="text-white font-medium">{partner.displayName}</span>
           </div>
         )}

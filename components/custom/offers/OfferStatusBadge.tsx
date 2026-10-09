@@ -14,7 +14,7 @@ export function OfferStatusBadge({ status, className }: { status: string; classN
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium font-sans whitespace-nowrap',
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold font-sans whitespace-nowrap shrink-0',
         style.className,
         className
       )}

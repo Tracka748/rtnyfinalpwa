@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { chipClass, space } from './styles'
 
 interface ChipOption {
   value: string
@@ -47,7 +48,7 @@ export function ChipSelect(props: ChipSelectProps) {
   }
 
   return (
-    <div id={id} role="group" aria-label={label} className="flex flex-wrap gap-2">
+    <div id={id} role="group" aria-label={label} className={cn('flex flex-wrap', space.chips)}>
       {options.map((opt) => {
         const selected = isSelected(opt.value)
         return (
@@ -57,12 +58,7 @@ export function ChipSelect(props: ChipSelectProps) {
             aria-pressed={selected}
             disabled={disabled || (opt.disabled && !selected)}
             onClick={() => toggle(opt.value)}
-            className={cn(
-              'min-h-12 px-5 rounded-full border text-sm font-sans font-medium transition-all disabled:opacity-35 disabled:cursor-not-allowed',
-              selected
-                ? 'bg-[#59FFA0]/20 border-[#59FFA0] text-[#59FFA0]'
-                : 'border-white/20 text-[#7DD8E8] hover:border-white/40'
-            )}
+            className={chipClass(selected)}
           >
             {opt.label}
           </button>
