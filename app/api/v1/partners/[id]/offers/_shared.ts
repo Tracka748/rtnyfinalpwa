@@ -119,15 +119,21 @@ const EDITABLE_FIELDS = new Set([
   'availability', 'details', 'offer_image_url', 'gallery_urls',
 ])
 
-const PRICING_MODELS = new Set(['free', 'flat', 'per_person', 'starting_at', 'contact'])
-// Models that need a real price. free/contact always store price = 0 (column is NOT NULL).
+const PRICING_MODELS = new Set(['free', 'flat', 'per_person', 'starting_at', 'contact', 'discount', 'bogo', 'perk'])
+// Models that need a real price. Every other model stores price = 0 (column is NOT NULL).
 export const PRICED_MODELS = new Set(['flat', 'per_person', 'starting_at'])
+// Fixed-price models chosen with "Switch to a fixed price"; these offers don't need details.offer_type.
+const FIXED_PRICE_MODELS = new Set(['flat', 'per_person', 'starting_at', 'contact'])
+const OFFER_TYPES = new Set(['free', 'discount', 'bogo', 'perk'])
+const DISCOUNT_TYPES = new Set(['percent', 'dollar'])
+const MONTHLY_LIMIT_LABELS = new Set(['unlimited', 'confirm_each'])
 const AVAILABILITY_KEYS = new Set(['days', 'start_time', 'end_time', 'blackout_dates', 'radius_miles', 'confirm_each'])
 const ADD_ON_KEYS = new Set(['name', 'price'])
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_URL_LENGTH = 2048
 const MAX_BLACKOUT_DATES = 366
+const MAX_DETAIL_KEYS = 30
 const MAX_DETAIL_KEY_LENGTH = 50
 const MAX_DETAIL_VALUE_LENGTH = 500
 const MAX_DETAIL_LIST_ITEMS = 12
@@ -136,8 +142,13 @@ const MAX_REVIEW_NOTE_LENGTH = 1000
 
 // `price` is only required when pricing_model is in PRICED_MODELS; `availability`
 // is satisfied by >= 1 availability.days entry or availability.confirm_each = true.
+// Birthday-perk fields live in details: offer_type (not needed for fixed-price
+// models), discount_type/discount_value (only when offer_type = discount),
+// applies_to and eligible (>= 1 each), and a monthly limit (monthly_limit number,
+// or monthly_limit_label 'unlimited' | 'confirm_each').
 export const SUBMIT_REQUIRED_FIELDS = [
   'title', 'pricing_model', 'price', 'includes', 'max_guests', 'pitch', 'availability',
+  'offer_type', 'discount_type', 'discount_value', 'applies_to', 'eligible', 'monthly_limit',
 ] as const
 
 // Offer images must live in this partner's offer folder in the public partner-covers bucket.
@@ -291,7 +302,7 @@ function parseAvailability(value: unknown): FieldResult<Record<string, Json>> {
 function parseDetails(value: unknown): FieldResult<Record<string, string | number | string[]>> {
   if (!isPlainObject(value)) return { error: 'details must be an object' }
   const keys = Object.keys(value)
-  if (keys.length > 20) return { error: 'details may have at most 20 keys' }
+  if (keys.length > MAX_DETAIL_KEYS) return { error: `details may have at most ${MAX_DETAIL_KEYS} keys` }
   const out: Record<string, string | number | string[]> = {}
   for (const key of keys) {
     if (key.length === 0 || key.length > MAX_DETAIL_KEY_LENGTH) {
@@ -376,7 +387,7 @@ export function parseOfferFields(
         break
       case 'pricing_model':
         if (raw !== null && (typeof raw !== 'string' || !PRICING_MODELS.has(raw))) {
-          error = 'pricing_model must be one of free, flat, per_person, starting_at, contact'
+          error = 'pricing_model must be one of free, flat, per_person, starting_at, contact, discount, bogo, perk'
         } else {
           values.pricing_model = raw as string | null
         }
@@ -427,7 +438,7 @@ export function checkGuestRange(min: number | null | undefined, max: number | nu
 }
 
 // Applies pricing rules to a create/save payload, mutating `values`:
-// - free/contact: price is forced to 0 (any client price is ignored).
+// - free/contact/discount/bogo/perk: price is forced to 0 (any client price is ignored).
 // - flat/per_person/starting_at: a price > 0 is required whenever pricing is being edited.
 // - no model yet: price is optional (callers default it to 0 on create).
 // Returns an error message, or null.
@@ -438,7 +449,7 @@ export function resolvePricing(
   const touched = values.pricing_model !== undefined || values.price !== undefined
   const model = values.pricing_model !== undefined ? values.pricing_model : existing?.pricing_model ?? null
 
-  if (model === 'free' || model === 'contact') {
+  if (model && !PRICED_MODELS.has(model)) {
     values.price = 0
     return null
   }
@@ -451,14 +462,24 @@ export function resolvePricing(
   return null
 }
 
-type SubmitRow = Pick<OfferRow, 'title' | 'pricing_model' | 'price' | 'includes' | 'max_guests' | 'pitch' | 'availability'>
+type SubmitRow = Pick<
+  OfferRow,
+  'title' | 'pricing_model' | 'price' | 'includes' | 'max_guests' | 'pitch' | 'availability' | 'details'
+>
 
 function hasText(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function hasListItem(value: unknown): boolean {
+  return Array.isArray(value) && value.some(hasText)
+}
+
 export function missingForSubmit(offer: SubmitRow): string[] {
   const availability = isPlainObject(offer.availability) ? offer.availability : {}
+  const details = isPlainObject(offer.details) ? offer.details : {}
+  const offerType = typeof details.offer_type === 'string' ? details.offer_type : null
+  const isDiscount = offerType === 'discount'
   const checks: Record<(typeof SUBMIT_REQUIRED_FIELDS)[number], boolean> = {
     title: hasText(offer.title),
     pricing_model: hasText(offer.pricing_model) && PRICING_MODELS.has(offer.pricing_model as string),
@@ -470,6 +491,16 @@ export function missingForSubmit(offer: SubmitRow): string[] {
     pitch: hasText(offer.pitch),
     availability:
       (Array.isArray(availability.days) && availability.days.length > 0) || availability.confirm_each === true,
+    offer_type:
+      (offerType !== null && OFFER_TYPES.has(offerType)) ||
+      (!!offer.pricing_model && FIXED_PRICE_MODELS.has(offer.pricing_model)),
+    discount_type: !isDiscount || (typeof details.discount_type === 'string' && DISCOUNT_TYPES.has(details.discount_type)),
+    discount_value: !isDiscount || (isFiniteNumber(details.discount_value) && details.discount_value > 0),
+    applies_to: hasListItem(details.applies_to),
+    eligible: hasListItem(details.eligible),
+    monthly_limit:
+      (isFiniteNumber(details.monthly_limit) && details.monthly_limit >= 1) ||
+      (typeof details.monthly_limit_label === 'string' && MONTHLY_LIMIT_LABELS.has(details.monthly_limit_label)),
   }
   return SUBMIT_REQUIRED_FIELDS.filter((field) => !checks[field])
 }

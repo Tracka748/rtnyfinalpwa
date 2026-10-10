@@ -10,6 +10,8 @@ import { FormBanner } from './FormBanner'
 import { WelcomeStep } from './WelcomeStep'
 import { CategoryStep } from './CategoryStep'
 import { OfferDetailsStep } from './OfferDetailsStep'
+import { PerksStep } from './PerksStep'
+import { PERKS_STEP_COPY } from './sectionCopy'
 import { AddOnsStep } from './AddOnsStep'
 import { AvailabilityStep } from './AvailabilityStep'
 import { PitchStep } from './PitchStep'
@@ -82,11 +84,12 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
     if (focusId) setPendingFocusId(focusId)
   }
 
-  // Saves the current step, then continues or exits. Step 3's first save creates the
-  // offer, so its id goes into the URL (?offer=) for refresh/resume.
+  // Saves the current step, then continues or exits. The first save (perks step, or
+  // the offer step for older drafts) creates the offer, so its id goes into the URL
+  // (?offer=) for refresh/resume. The perks step also fills the offer from its answers.
   async function persist(intent: 'continue' | 'exit') {
     const wasNew = !offer
-    const saved = await wizard.save()
+    const saved = step === STEP.perks ? await wizard.savePerks() : await wizard.save()
     if (!saved) return
     if (wasNew) router.replace(`${pathname}?offer=${saved.id}`, { scroll: false })
     if (intent === 'exit') router.push(exitHref)
@@ -143,9 +146,10 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
   const busy = wizard.saving || wizard.imageSaving || wizard.reviewing
   const hasAddOns = Object.keys(wizard.form.addOnPresets).length + wizard.form.customAddOns.length > 0
 
-  const saveBar = (primaryLabel = 'Continue') => (
+  const saveBar = (primaryLabel = 'Continue', layout: 'inline' | 'stacked' = 'inline') => (
     <StickyActionBar
       className={barOffset}
+      layout={layout}
       onBack={wizard.goBack}
       primaryLabel={primaryLabel}
       onPrimary={() => persist('continue')}
@@ -167,14 +171,14 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
       </div>
 
       {/* The reviewer's note stays visible on every step until the offer is resubmitted. */}
-      {changesNote && step >= STEP.offer && (
+      {changesNote && step >= STEP.perks && (
         <div role="note" className="p-4 rounded-2xl border-2 border-red-500/50 bg-red-500/10 space-y-1">
           <p className={cn(text.eyebrow, 'text-red-300')}>Changes requested</p>
           <p className="font-sans text-base text-white break-words whitespace-pre-line">{changesNote}</p>
         </div>
       )}
 
-      {reviewNotice && step >= STEP.offer && (
+      {reviewNotice && step >= STEP.perks && (
         <div className="p-4 rounded-xl border bg-[#FFB547]/10 border-[#FFB547]/30 text-base font-sans text-[#FFB547]">
           {reviewNotice}
         </div>
@@ -198,6 +202,10 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
         <CategoryStep categoryName={partner.categoryName} config={wizard.config} profileHref={profileHref} />
       )}
 
+      {step === STEP.perks && (
+        <PerksStep form={wizard.form} errors={wizard.fieldErrors} updateField={wizard.updateField} />
+      )}
+
       {step === STEP.offer && (
         <OfferDetailsStep
           form={wizard.form}
@@ -207,6 +215,8 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
           legacyNotes={wizard.legacyNotes}
           updateField={wizard.updateField}
           setRequirement={wizard.setRequirement}
+          onEditPerks={() => jumpTo(STEP.perks, 'offer-detail-offer_type')}
+          onSwitchPricingMode={wizard.switchPricingMode}
         />
       )}
 
@@ -268,6 +278,7 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
         />
       )}
 
+      {step === STEP.perks && saveBar(PERKS_STEP_COPY.continueLabel, 'stacked')}
       {step === STEP.offer && saveBar()}
       {step === STEP.addOns && saveBar(hasAddOns ? 'Continue' : 'Skip for now')}
       {step === STEP.availability && saveBar()}

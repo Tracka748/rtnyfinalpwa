@@ -22,6 +22,8 @@ import { ListEditor } from './ListEditor'
 import { cn } from '@/lib/utils'
 import { cardClass, inputClass, space, text } from './styles'
 import { SectionCard as Section } from './SectionCard'
+import { FINE_TUNE_COPY } from './sectionCopy'
+import { appliesToLabel, discountTerms, eligibleLabel, monthlyLimitWording, offerTypeLabel } from './perks'
 
 interface OfferDetailsStepProps {
   form: OfferForm
@@ -32,6 +34,33 @@ interface OfferDetailsStepProps {
   reviewNotice?: string | null
   updateField: <K extends keyof OfferForm>(key: K, value: OfferForm[K], ...errorKeys: string[]) => void
   setRequirement: (key: string, value: RequirementValue) => void
+  onEditPerks: () => void
+  onSwitchPricingMode: (mode: 'perks' | 'fixed') => void
+}
+
+const summaryChipClass =
+  'px-3 py-1.5 rounded-full bg-white/5 border border-white/15 font-sans text-sm text-white/85 max-w-full break-words'
+
+const switchButtonClass =
+  'min-h-12 px-4 rounded-xl border border-[#1AC8ED]/40 text-[#1AC8ED] font-sans text-base font-medium hover:bg-[#1AC8ED]/10 transition-colors'
+
+// Read-only chips summarizing the perks-step answers.
+function perkSummaryChips(form: OfferForm): string[] {
+  const value = Number(form.discountValue)
+  const terms = form.offerType === 'discount' ? discountTerms(form.discountType, Number.isFinite(value) ? value : null) : null
+  return [
+    form.offerType ? (terms ? `${offerTypeLabel(form.offerType)}: ${terms}` : offerTypeLabel(form.offerType)) : null,
+    ...form.appliesTo.map(appliesToLabel),
+    ...form.eligible.map(eligibleLabel),
+    monthlyLimitWording(
+      form.monthlyChoice === 'custom'
+        ? Number(form.monthlyCustom) || null
+        : form.monthlyChoice && /^\d+$/.test(form.monthlyChoice)
+          ? Number(form.monthlyChoice)
+          : null,
+      form.monthlyChoice === 'unlimited' || form.monthlyChoice === 'confirm_each' ? form.monthlyChoice : null
+    ),
+  ].filter((c): c is string => !!c)
 }
 
 // Adds the current value as an extra chip when it isn't one of the presets
@@ -159,7 +188,10 @@ export function OfferDetailsStep({
   reviewNotice,
   updateField,
   setRequirement,
+  onEditPerks,
+  onSwitchPricingMode,
 }: OfferDetailsStepProps) {
+  const perksMode = form.pricingMode === 'perks'
   const priced = !!form.pricingModel && PRICED_MODELS.has(form.pricingModel)
   const priceHint = (form.pricingModel && PRICE_HINTS[form.pricingModel]) || undefined
   const [showCustom, setShowCustom] = useState(form.customIncludes.length > 0)
@@ -179,11 +211,48 @@ export function OfferDetailsStep({
   return (
     <div className={space.sections}>
       <div className="space-y-3">
-        <h1 className={text.pageTitle}>Create your offer</h1>
-        <p className={text.body}>
-          Tap through the options. You describe the experience, we’ll make it easy to book.
-        </p>
+        <h1 className={text.pageTitle}>{FINE_TUNE_COPY.headline}</h1>
+        <p className={text.body}>{FINE_TUNE_COPY.body}</p>
       </div>
+
+      {form.autoFields.length > 0 && (
+        <div className="p-4 rounded-xl border border-[#59FFA0]/30 bg-[#59FFA0]/10 font-sans text-base text-[#B8F5DC]">
+          {FINE_TUNE_COPY.autoNote}
+        </div>
+      )}
+
+      {/* ── Birthday perk summary (replaces the pricing controls while using perks) ── */}
+      {perksMode && (
+        <Section id="offer-pricing-model" copyKey="perkSummary" title="Your birthday perk">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className={text.questionLabel}>Your answers</p>
+              <button
+                type="button"
+                onClick={onEditPerks}
+                className="min-h-12 px-3 -mr-3 shrink-0 font-sans text-base font-medium text-[#1AC8ED] hover:underline"
+              >
+                Edit
+              </button>
+            </div>
+            {perkSummaryChips(form).length ? (
+              <ul className="flex flex-wrap gap-2">
+                {perkSummaryChips(form).map((chip) => (
+                  <li key={chip} className={summaryChipClass}>
+                    {chip}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={text.helper}>No perk answers yet.</p>
+            )}
+            {errors.pricing_model && <p role="alert" className={text.error}>{errors.pricing_model}</p>}
+          </div>
+          <button type="button" onClick={() => onSwitchPricingMode('fixed')} className={switchButtonClass}>
+            {FINE_TUNE_COPY.switchToFixed}
+          </button>
+        </Section>
+      )}
 
       {reviewNotice && (
         <div className="p-4 rounded-xl border bg-[#FFB547]/10 border-[#FFB547]/30 text-base font-sans text-[#FFB547]">
@@ -227,7 +296,8 @@ export function OfferDetailsStep({
         </Field>
       </Section>
 
-      {/* ── Pricing ────────────────────────────────────────────────────── */}
+      {/* ── Fixed pricing ("Switch to a fixed price") ──────────────────── */}
+      {!perksMode && (
       <Section copyKey="pricing" title="Pricing" tag={<NeededTag />}>
         <Field id="offer-pricing-model" label="How is it priced?" error={errors.pricing_model} group>
           <ChipSelect
@@ -254,7 +324,11 @@ export function OfferDetailsStep({
         {form.pricingModel === 'contact' && (
           <p className={text.helper}>Guests will reach out to you for a quote.</p>
         )}
+        <button type="button" onClick={() => onSwitchPricingMode('perks')} className={switchButtonClass}>
+          {FINE_TUNE_COPY.switchToPerks}
+        </button>
       </Section>
+      )}
 
       {/* ── What's included ────────────────────────────────────────────── */}
       <Section copyKey="included" title="What’s included" tag={<NeededTag />}>

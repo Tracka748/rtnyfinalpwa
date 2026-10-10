@@ -4,6 +4,15 @@
 import type { OfferRecord } from './types'
 import { PRICED_MODELS, formatPrice } from './types'
 import { DAY_OPTIONS, RADIUS_OPTIONS, guestLabel, type CategoryConfig } from './categoryFields'
+import {
+  appliesToLabel,
+  discountTerms,
+  eligibleLabel,
+  isOfferType,
+  monthlyLimitWording,
+  offerTypeLabel,
+} from './perks'
+import { STEP } from '@/hooks/useOfferWizard'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -13,11 +22,28 @@ function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string' && v.trim() !== '') : []
 }
 
-// "Free", "$80 flat", "$25 per person", "Starting at $150", "Contact us".
-export function priceWording(offer: Pick<OfferRecord, 'price' | 'pricing_model'>): string {
+function detailsOf(offer: Pick<OfferRecord, 'details'>): Record<string, unknown> {
+  return isPlainObject(offer.details) ? offer.details : {}
+}
+
+// "Free", "20% off", "$10 off", "Buy one, get one", "Special perk", "$80 flat",
+// "$25 per person", "Starting at $150", "Contact us".
+export function priceWording(offer: Pick<OfferRecord, 'price' | 'pricing_model' | 'details'>): string {
+  const d = detailsOf(offer)
   switch (offer.pricing_model) {
     case 'free':
       return 'Free'
+    case 'discount':
+      return (
+        discountTerms(
+          typeof d.discount_type === 'string' ? d.discount_type : null,
+          typeof d.discount_value === 'number' ? d.discount_value : null
+        ) ?? 'Discount'
+      )
+    case 'bogo':
+      return 'Buy one, get one'
+    case 'perk':
+      return 'Special perk'
     case 'flat':
       return `${formatPrice(offer.price)} flat`
     case 'per_person':
@@ -112,6 +138,52 @@ export function addOnList(offer: Pick<OfferRecord, 'add_ons'>): { name: string; 
   )
 }
 
+// ─── Birthday perk summary (review preview) ──────────────────────────────────
+
+const FIXED_PRICE_MODELS = new Set(['flat', 'per_person', 'starting_at', 'contact'])
+
+export interface PerkSummaryRow {
+  key: string
+  label: string
+  value: string | null
+  focusId: string
+}
+
+// Fixed-price offers skip the offer-type row (they don't need one).
+export function perkSummary(offer: Pick<OfferRecord, 'details' | 'pricing_model'>): PerkSummaryRow[] {
+  const d = detailsOf(offer)
+  const type = isOfferType(d.offer_type) ? d.offer_type : null
+  const fixedPrice = !!offer.pricing_model && FIXED_PRICE_MODELS.has(offer.pricing_model)
+  const rows: PerkSummaryRow[] = fixedPrice
+    ? []
+    : [{ key: 'offer_type', label: 'Offer type', value: type ? offerTypeLabel(type) : null, focusId: 'offer-detail-offer_type' }]
+  if (type === 'discount') {
+    rows.push({
+      key: 'discount',
+      label: 'Discount terms',
+      value: discountTerms(
+        typeof d.discount_type === 'string' ? d.discount_type : null,
+        typeof d.discount_value === 'number' ? d.discount_value : null
+      ),
+      focusId: 'offer-detail-discount_type',
+    })
+  }
+  rows.push(
+    { key: 'applies_to', label: 'Applies to', value: strings(d.applies_to).map(appliesToLabel).join(', ') || null, focusId: 'offer-detail-applies_to' },
+    { key: 'eligible', label: 'Who is eligible', value: strings(d.eligible).map(eligibleLabel).join(', ') || null, focusId: 'offer-detail-eligible' },
+    {
+      key: 'monthly_limit',
+      label: 'Monthly limit',
+      value: monthlyLimitWording(
+        typeof d.monthly_limit === 'number' ? d.monthly_limit : null,
+        typeof d.monthly_limit_label === 'string' ? d.monthly_limit_label : null
+      ),
+      focusId: 'offer-detail-monthly_limit',
+    }
+  )
+  return rows
+}
+
 // ─── Submit checklist (mirrors the API's submit rules) ──────────────────────
 
 export interface ChecklistItem {
@@ -126,27 +198,54 @@ export interface ChecklistItem {
 export function submitChecklist(offer: OfferRecord): ChecklistItem[] {
   const priced = !!offer.pricing_model && PRICED_MODELS.has(offer.pricing_model)
   const a = isPlainObject(offer.availability) ? offer.availability : {}
+  const d = detailsOf(offer)
   const hasDays = Array.isArray(a.days) && a.days.length > 0
   const pricingDone = !!offer.pricing_model && (!priced || offer.price > 0)
+  const fixedPrice = !!offer.pricing_model && FIXED_PRICE_MODELS.has(offer.pricing_model)
+  const type = isOfferType(d.offer_type) ? d.offer_type : null
+  const discountDone =
+    (d.discount_type === 'percent' || d.discount_type === 'dollar') &&
+    typeof d.discount_value === 'number' &&
+    d.discount_value > 0
+  const monthlyDone =
+    (typeof d.monthly_limit === 'number' && d.monthly_limit >= 1) ||
+    d.monthly_limit_label === 'unlimited' ||
+    d.monthly_limit_label === 'confirm_each'
 
-  return [
-    { key: 'title', label: 'Offer name', done: !!offer.title?.trim(), step: 3, focusId: 'offer-title' },
+  const items: ChecklistItem[] = []
+  // Fixed-price offers (Switch to a fixed price) don't need an offer type.
+  if (!fixedPrice) {
+    items.push({
+      key: 'offer_type',
+      label: type === 'discount' ? 'Offer type and discount terms' : 'Offer type',
+      done: !!type && (type !== 'discount' || discountDone),
+      step: STEP.perks,
+      focusId: type === 'discount' && !discountDone ? 'offer-detail-discount_type' : 'offer-detail-offer_type',
+    })
+  }
+  items.push(
+    { key: 'applies_to', label: 'Applies to', done: strings(d.applies_to).length > 0, step: STEP.perks, focusId: 'offer-detail-applies_to' },
+    { key: 'eligible', label: 'Who is eligible', done: strings(d.eligible).length > 0, step: STEP.perks, focusId: 'offer-detail-eligible' },
+    { key: 'monthly_limit', label: 'Monthly limit', done: monthlyDone, step: STEP.perks, focusId: 'offer-detail-monthly_limit' },
+    { key: 'title', label: 'Offer name', done: !!offer.title?.trim(), step: STEP.offer, focusId: 'offer-title' },
     {
       key: 'pricing',
       label: priced ? 'Pricing and price' : 'Pricing',
       done: pricingDone,
-      step: 3,
-      focusId: offer.pricing_model && priced ? 'offer-price' : 'offer-pricing-model',
+      // Perk offers are priced on the perks step.
+      step: fixedPrice || !type ? STEP.offer : STEP.perks,
+      focusId: fixedPrice || !type ? (priced ? 'offer-price' : 'offer-pricing-model') : 'offer-detail-offer_type',
     },
-    { key: 'includes', label: 'At least one included item', done: strings(offer.includes).length > 0, step: 3, focusId: 'offer-includes' },
-    { key: 'max_guests', label: 'Maximum guests', done: (offer.max_guests ?? 0) >= 1, step: 3, focusId: 'offer-max-guests' },
+    { key: 'includes', label: 'At least one included item', done: strings(offer.includes).length > 0, step: STEP.offer, focusId: 'offer-includes' },
+    { key: 'max_guests', label: 'Maximum guests', done: (offer.max_guests ?? 0) >= 1, step: STEP.offer, focusId: 'offer-max-guests' },
     {
       key: 'availability',
       label: 'Availability (days or confirm each booking)',
       done: hasDays || a.confirm_each === true,
-      step: 5,
+      step: STEP.availability,
       focusId: 'offer-availability',
     },
-    { key: 'pitch', label: 'Why you (your pitch)', done: !!offer.pitch?.trim(), step: 6, focusId: 'offer-pitch' },
-  ]
+    { key: 'pitch', label: 'Why you (your pitch)', done: !!offer.pitch?.trim(), step: STEP.pitch, focusId: 'offer-pitch' },
+  )
+  return items
 }

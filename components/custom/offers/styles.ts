@@ -77,3 +77,46 @@ export const groupErrorClass = 'rounded-2xl outline outline-1 outline-offset-[6p
 export const cardClass = 'bg-[#1a1a1a] border border-white/10 rounded-2xl'
 
 export const priceFontClass = 'font-[family-name:var(--font-playfair)]'
+
+// ─── Birthday perks step (reference design) ──────────────────────────────────
+// One dark surface with divider-separated sections, grey question lines and a
+// dark-green selected state. Hex values are exported for reuse; the class strings
+// below repeat them literally because Tailwind only picks up literal class names.
+// Contrast on #121113: muted text ~10.8:1, mint ~15:1, white ~18:1.
+
+export const PERKS_SURFACE = '#121113'
+export const PERKS_SELECTED_BG = '#1D2B24'
+export const PERKS_MUTED_TEXT = '#C4C4C8'
+
+const perksFocus =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59FFA0]'
+
+export const perks = {
+  container: 'bg-[#121113] border border-white/10 rounded-2xl px-4 py-6 sm:px-6',
+  divider: 'border-t border-white/[0.12]',
+  eyebrow: 'font-label text-sm font-semibold uppercase tracking-[0.12em] text-[#59FFA0]',
+  headline: 'font-header text-[30px] font-bold leading-[1.15] text-white',
+  subline: 'font-sans text-base sm:text-[17px] leading-relaxed text-[#C4C4C8]',
+  sectionTitle: 'font-header text-2xl font-bold leading-tight text-white',
+  question: 'font-sans text-base leading-relaxed text-[#C4C4C8]',
+  sublineSmall: 'font-sans text-base leading-snug text-[#C4C4C8]',
+  // Offer-type / eligible / monthly tiles.
+  card(selected: boolean) {
+    return cn(
+      'w-full min-h-12 rounded-2xl border p-4 text-left transition-colors',
+      perksFocus,
+      selected ? 'bg-[#1D2B24] border-[#59FFA0]' : 'bg-[#121113] border-white/15 hover:border-white/30'
+    )
+  },
+  icon(selected: boolean) {
+    return cn('w-6 h-6 shrink-0', selected ? 'text-[#59FFA0]' : 'text-white')
+  },
+  // Pill chips (applies to, discount type, monthly alternatives).
+  chip(selected: boolean) {
+    return cn(
+      'min-h-12 px-4 rounded-full border font-sans text-base font-medium transition-colors max-w-full break-words',
+      perksFocus,
+      selected ? 'bg-[#1D2B24] border-[#59FFA0] text-[#59FFA0]' : 'bg-transparent border-white/20 text-white hover:border-white/40'
+    )
+  },
+} as const

@@ -4,6 +4,7 @@
 
 export type SectionKey =
   | 'basics' | 'pricing' | 'included' | 'groupSize' | 'booking' | 'requirements'
+  | 'perkType' | 'perkAppliesTo' | 'perkEligible' | 'perkLimit' | 'perkSummary'
   | 'addOns' | 'availability' | 'reach' | 'pitch' | 'photos' | 'preview' | 'checklist' | 'adminReview'
 
 export interface SectionCopy {
@@ -45,7 +46,34 @@ export const SECTION_COPY: Record<SectionKey, SectionCopy> = {
     intro: 'A few details that save guests and Specialists from asking later.',
     tip: "Skip anything that doesn't apply.",
   },
-  // ── Steps 4-7 ──
+  // ── Step 3: Birthday perks ──
+  perkType: {
+    emoji: '🎉',
+    intro: 'Pick the kind of birthday perk you’ll offer.',
+    tip: 'You can fine-tune the wording on the next step.',
+  },
+  perkAppliesTo: {
+    emoji: '🏷️',
+    intro: 'What the birthday perk is for.',
+    tip: 'Pick everything that applies.',
+  },
+  perkEligible: {
+    emoji: '👯',
+    intro: 'Who can use this perk.',
+    tip: 'Choose every group you’d happily welcome.',
+  },
+  perkLimit: {
+    emoji: '🔢',
+    intro: 'Tell us how many birthday redemptions you can handle each month. Specialists use this to know when you are full.',
+    tip: 'Not sure? Confirm each request keeps you in control.',
+  },
+  // Step 4 summary card (replaces the pricing card while using birthday perks).
+  perkSummary: {
+    emoji: '🎉',
+    intro: 'Built from your birthday perk answers.',
+    tip: 'Need a regular price instead? Switch to a fixed price below.',
+  },
+  // ── Steps 5-8 ──
   addOns: {
     emoji: '✨',
     intro: 'Optional extras that raise the total booking value.',
@@ -116,3 +144,66 @@ export const PITCH_STARTERS: Record<'venue' | 'photo' | 'beauty' | 'transport' |
     'Everything the birthday group needs, in one easy booking.',
   ],
 }
+
+// ─── Step 3: Birthday perks ──────────────────────────────────────────────────
+
+export const PERKS_STEP_COPY = {
+  eyebrow: 'RTNY · Birthday Partner',
+  headline: 'What birthday perks can you offer?',
+  subline: 'Choose the benefits your business is willing to provide. We’ll build your offer from your answers.',
+  continueLabel: 'Continue to offer details →',
+  sections: {
+    offerType: { title: '1. Offer type', question: 'What kind of birthday benefit do you provide?' },
+    appliesTo: { title: '2. What does it apply to?', question: 'Select all that apply.' },
+    eligible: { title: '3. Who is eligible?', question: 'Who receives the birthday benefit?' },
+    monthly: {
+      title: '4. Monthly offer limit',
+      question: 'How many birthday redemptions can your business accommodate each month?',
+      alternatives: 'Or choose unlimited, set a custom limit, or confirm availability individually.',
+    },
+  },
+  // Shown on the perks step when the offer uses a fixed price instead.
+  fixedPriceNote: 'You’re using a fixed price, so offer type is optional. Picking one switches you back to birthday perks.',
+}
+
+export const FINE_TUNE_COPY = {
+  headline: 'Fine-tune your offer',
+  body: 'This is what birthday planners will see.',
+  autoNote: 'We filled this in from your answers. Change anything you like.',
+  switchToFixed: 'Switch to a fixed price',
+  switchToPerks: 'Use birthday perks instead',
+}
+
+// Option labels for the perks step. Values are what gets saved in details.
+export const PERK_OPTIONS = {
+  offerTypes: [
+    { value: 'free', label: 'Free', subline: 'Complimentary item or service' },
+    { value: 'discount', label: 'Discount', subline: 'Percentage or dollar amount off' },
+    { value: 'bogo', label: 'BOGO', subline: 'Buy one, get one' },
+    { value: 'perk', label: 'Special perk', subline: 'Birthday upgrade, gift or bonus' },
+  ],
+  discountTypes: [
+    { value: 'percent', label: 'Percent off' },
+    { value: 'dollar', label: 'Dollar amount off' },
+  ],
+  appliesTo: [
+    { value: 'item', label: 'Item / product' },
+    { value: 'service', label: 'Service / activity' },
+    { value: 'space', label: 'Space / venue' },
+    { value: 'admission', label: 'Admission / event' },
+    { value: 'entire_order', label: 'Entire order' },
+  ],
+  eligible: [
+    { value: 'birthday_person', label: 'Birthday person', subline: 'The person celebrating' },
+    { value: 'birthday_crew', label: 'Birthday crew', subline: 'Friends and guests celebrating together' },
+    { value: 'couples', label: 'Couples', subline: 'A birthday date or two-person experience' },
+    { value: 'family', label: 'Family', subline: 'Family-friendly celebrations' },
+  ],
+  monthly: {
+    perMonth: 'per month',
+    unlimited: 'Unlimited',
+    custom: 'Custom',
+    customLabel: 'How many per month?',
+    confirmEach: 'Confirm each request',
+  },
+} as const

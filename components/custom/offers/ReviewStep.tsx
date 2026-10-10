@@ -13,6 +13,7 @@ import {
   availabilitySummary,
   detailText,
   groupSizeWording,
+  perkSummary,
   priceWording,
   requirementSummary,
   submitChecklist,
@@ -295,6 +296,7 @@ function OfferPreview({
     notice && (notice.startsWith('I') ? notice : `${notice} notice`),
   ].filter(Boolean) as string[]
   const requirements = requirementSummary(offer, config)
+  const perkRows = perkSummary(offer)
   const addOns = addOnList(offer)
   const availability = availabilitySummary(offer)
 
@@ -338,6 +340,31 @@ function OfferPreview({
             <Muted>Nothing included yet.</Muted>
           )}
         </PreviewBlock>
+
+        {/* Birthday perk answers; each row edits its own question on the perks step. */}
+        {perkRows.length > 0 && (
+          <div className="space-y-2 pt-4 border-t border-white/10">
+            <p className={text.questionLabel}>Birthday perk</p>
+            <dl className="space-y-1">
+              {perkRows.map((row) => (
+                <div key={row.key} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0 font-sans text-base break-words py-2">
+                    <dt className="inline text-white/60">{row.label}: </dt>
+                    <dd className={cn('inline', row.value ? 'text-white/85' : 'text-red-300')}>{row.value ?? 'Not set'}</dd>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onJump(STEP.perks, row.focusId)}
+                    aria-label={`Edit ${row.label.toLowerCase()}`}
+                    className="min-h-12 px-3 -mr-3 shrink-0 font-sans text-base font-medium text-[#1AC8ED] hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
 
         {requirements.length > 0 && (
           <PreviewBlock title="Good to know" onEdit={() => onJump(STEP.offer, 'offer-requirements')}>

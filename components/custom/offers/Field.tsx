@@ -70,3 +70,14 @@ export function describedBy(id: string, error?: string, hint?: string) {
   if (hint) return `${id}-hint`
   return undefined
 }
+
+// Error line for groups that don't use <Field> (perk cards, tiles): same red text and icon.
+export function FieldErrorText({ id, error }: { id: string; error?: string }) {
+  if (!error) return null
+  return (
+    <p id={`${id}-error`} role="alert" className={cn(text.error, 'flex items-start gap-1.5')}>
+      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+      <span className="min-w-0 break-words">{error}</span>
+    </p>
+  )
+}

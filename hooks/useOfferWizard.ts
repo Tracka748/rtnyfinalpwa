@@ -17,22 +17,36 @@ import {
 import { parseMoney } from '@/components/custom/offers/MoneyInput'
 import type { BannerState } from '@/components/custom/offers/FormBanner'
 import { messageForStatus, patchOffer, type OfferAction } from '@/components/custom/offers/offerApi'
+import {
+  MONTHLY_PRESETS,
+  PERK_DETAIL_KEYS,
+  defaultAppliesTo,
+  generateDescription,
+  generateTitle,
+  generatedIncludes,
+  isOfferType,
+  type DiscountType,
+  type MonthlyChoice,
+  type OfferType,
+  type PerkAnswers,
+} from '@/components/custom/offers/perks'
 
-export const WIZARD_STEPS = ['Welcome', 'Category', 'Your offer', 'Add-ons', 'Availability', 'Why you', 'Photos & review']
+export const WIZARD_STEPS = [
+  'Welcome', 'Category', 'Birthday perks', 'Fine-tune offer', 'Add-ons', 'Availability', 'Why you', 'Photos & review',
+]
 
 export const STEP = {
   welcome: 1,
   category: 2,
-  offer: 3,
-  addOns: 4,
-  availability: 5,
-  pitch: 6,
-  review: 7,
+  perks: 3,
+  offer: 4,
+  addOns: 5,
+  availability: 6,
+  pitch: 7,
+  review: 8,
 } as const
 
 const LAST_STEP = WIZARD_STEPS.length
-// Reopening an existing offer starts here; the partner can move forward from it.
-const RESUME_STEP = STEP.offer
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
 
@@ -47,6 +61,18 @@ export interface CustomAddOn {
 }
 
 export interface OfferForm {
+  // Step 3: birthday perks (saved in details). discountValue / monthlyCustom are raw text.
+  offerType: OfferType | null
+  discountType: DiscountType | null
+  discountValue: string
+  appliesTo: string[]
+  eligible: string[]
+  monthlyChoice: MonthlyChoice | null
+  monthlyCustom: string
+  // 'perks' prices the offer from offerType; 'fixed' shows the Flat/Per person/… controls.
+  pricingMode: 'perks' | 'fixed'
+  // Fields last filled by auto-generation (details.auto_fields). Hand edits remove them.
+  autoFields: string[]
   title: string
   description: string
   pricingModel: string | null
@@ -82,6 +108,15 @@ export interface OfferForm {
 export type FieldErrors = Record<string, string>
 
 const EMPTY_FORM: OfferForm = {
+  offerType: null,
+  discountType: null,
+  discountValue: '',
+  appliesTo: [],
+  eligible: [],
+  monthlyChoice: null,
+  monthlyCustom: '',
+  pricingMode: 'perks',
+  autoFields: [],
   title: '',
   description: '',
   pricingModel: null,
@@ -112,7 +147,8 @@ export const LIMITS = {
   description: 300,
   includesItems: 20,
   includesItemLength: 100,
-  detailsKeys: 20,
+  detailsKeys: 30,
+  discountPercent: 100,
   detailListItems: 12,
   addOns: 10,
   addOnName: 60,
@@ -121,8 +157,15 @@ export const LIMITS = {
   blackoutDates: 366,
 } as const
 
-const PRICING_MODELS = new Set(['free', 'flat', 'per_person', 'starting_at', 'contact'])
-const STEP_DETAIL_KEYS = ['duration_label', 'notice_label']
+const PRICING_MODELS = new Set(['free', 'flat', 'per_person', 'starting_at', 'contact', 'discount', 'bogo', 'perk'])
+const STEP_DETAIL_KEYS = ['duration_label', 'notice_label', ...PERK_DETAIL_KEYS]
+// Form keys whose hand edits stop auto-generation for that field.
+const AUTO_FIELD_FOR: Partial<Record<keyof OfferForm, string>> = {
+  title: 'title',
+  description: 'description',
+  includePresets: 'includes',
+  customIncludes: 'includes',
+}
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -191,7 +234,32 @@ function formFromOffer(offer: OfferRecord, config: CategoryConfig): OfferForm {
   const savedDuration = typeof details.duration_label === 'string' ? details.duration_label : null
   const savedNotice = typeof details.notice_label === 'string' ? details.notice_label : null
 
+  // Birthday perks. Drafts made before the perks step have no offer_type and stay on fixed pricing.
+  const offerType = isOfferType(details.offer_type) ? details.offer_type : null
+  const discountType = details.discount_type === 'percent' || details.discount_type === 'dollar' ? details.discount_type : null
+  const monthlyLimit = typeof details.monthly_limit === 'number' ? details.monthly_limit : null
+  let monthlyChoice: MonthlyChoice | null = null
+  let monthlyCustom = ''
+  if (details.monthly_limit_label === 'unlimited' || details.monthly_limit_label === 'confirm_each') {
+    monthlyChoice = details.monthly_limit_label
+  } else if (monthlyLimit !== null && monthlyLimit >= 1) {
+    if ((MONTHLY_PRESETS as readonly number[]).includes(monthlyLimit)) monthlyChoice = String(monthlyLimit) as MonthlyChoice
+    else {
+      monthlyChoice = 'custom'
+      monthlyCustom = String(monthlyLimit)
+    }
+  }
+
   return {
+    offerType,
+    discountType,
+    discountValue: typeof details.discount_value === 'number' ? String(details.discount_value) : '',
+    appliesTo: stringList(details.applies_to),
+    eligible: stringList(details.eligible),
+    monthlyChoice,
+    monthlyCustom,
+    pricingMode: offerType ? 'perks' : 'fixed',
+    autoFields: stringList(details.auto_fields),
     title: offer.title ?? '',
     description: offer.description ?? '',
     pricingModel: offer.pricing_model && PRICING_MODELS.has(offer.pricing_model) ? offer.pricing_model : null,
@@ -222,6 +290,17 @@ function formFromOffer(offer: OfferRecord, config: CategoryConfig): OfferForm {
 }
 
 // ─── Field labels, order, steps and DOM ids (banner + focus) ─────────────────
+
+// Step 3 (birthday perks) fields; errors use these keys and live in details.
+const PERK_FIELD_ORDER: [string, string][] = [
+  ['details.offer_type', 'Offer type'],
+  ['details.discount_type', 'Discount type'],
+  ['details.discount_value', 'Discount amount'],
+  ['details.applies_to', 'Applies to'],
+  ['details.eligible', 'Who is eligible'],
+  ['details.monthly_limit', 'Monthly limit'],
+]
+const PERK_FIELD_KEYS = new Set(PERK_FIELD_ORDER.map(([k]) => k))
 
 const BASE_FIELD_ORDER: [string, string][] = [
   ['title', 'Offer name'],
@@ -269,6 +348,7 @@ export function fieldDomId(key: string): string {
 
 // Which wizard step shows a field, so a failed save can jump there.
 export function stepForField(key: string): number {
+  if (PERK_FIELD_KEYS.has(key)) return STEP.perks
   if (key.startsWith('add_ons')) return STEP.addOns
   if (key.startsWith('availability')) return STEP.availability
   if (key === 'pitch') return STEP.pitch
@@ -278,6 +358,7 @@ export function stepForField(key: string): number {
 
 function fieldOrder(config: CategoryConfig, form: OfferForm): [string, string][] {
   return [
+    ...PERK_FIELD_ORDER,
     ...BASE_FIELD_ORDER,
     ...(config.requirements?.fields ?? []).map((f): [string, string] => [`details.${f.key}`, f.label]),
     ['add_ons', 'Add-ons'],
@@ -307,6 +388,73 @@ export interface OfferPayload {
   gallery_urls?: string[]
 }
 
+function parseDiscountValue(form: OfferForm): number | null | 'invalid' {
+  const raw = form.discountValue.trim()
+  if (!raw) return null
+  if (form.discountType === 'percent') {
+    if (!/^\d+$/.test(raw)) return 'invalid'
+    const n = Number(raw)
+    return n >= 1 && n <= LIMITS.discountPercent ? n : 'invalid'
+  }
+  const n = parseMoney(raw)
+  return n !== null && n > 0 ? n : 'invalid'
+}
+
+function parseMonthlyCustom(form: OfferForm): number | null | 'invalid' {
+  const raw = form.monthlyCustom.trim()
+  if (!raw) return null
+  return /^\d+$/.test(raw) && Number(raw) >= 1 ? Number(raw) : 'invalid'
+}
+
+// The pricing model actually saved: the offer type while using birthday perks,
+// otherwise the fixed-price choice.
+function effectiveModel(form: OfferForm): string | null {
+  return form.pricingMode === 'perks' && form.offerType ? form.offerType : form.pricingModel
+}
+
+// Writes the perks-step answers into details (format checks only; completeness is
+// checked by validatePerks on the perks step and by the API on submit).
+function writePerkDetails(form: OfferForm, details: Record<string, string | number | string[]>, errors: FieldErrors) {
+  const model = effectiveModel(form)
+  if (form.pricingMode === 'perks' && form.offerType) details.offer_type = form.offerType
+  // A fixed "Free" price is the same thing as a Free perk, so it satisfies offer_type on submit.
+  else if (form.pricingMode === 'fixed' && model === 'free') details.offer_type = 'free'
+
+  if (details.offer_type === 'discount') {
+    if (form.discountType) details.discount_type = form.discountType
+    const value = parseDiscountValue(form)
+    if (value === 'invalid') {
+      errors['details.discount_value'] =
+        form.discountType === 'percent' ? `Enter a whole number from 1 to ${LIMITS.discountPercent}.` : 'Enter an amount above $0.'
+    } else if (value !== null) {
+      details.discount_value = value
+    }
+  }
+
+  if (form.appliesTo.length) details.applies_to = form.appliesTo.slice(0, LIMITS.detailListItems)
+  if (form.eligible.length) details.eligible = form.eligible.slice(0, LIMITS.detailListItems)
+
+  switch (form.monthlyChoice) {
+    case '5':
+    case '10':
+    case '25':
+      details.monthly_limit = Number(form.monthlyChoice)
+      break
+    case 'custom': {
+      const n = parseMonthlyCustom(form)
+      if (n === 'invalid') errors['details.monthly_limit'] = 'Enter a whole number of 1 or more.'
+      else if (n !== null) details.monthly_limit = n
+      break
+    }
+    case 'unlimited':
+    case 'confirm_each':
+      details.monthly_limit_label = form.monthlyChoice
+      break
+  }
+
+  if (form.autoFields.length) details.auto_fields = [...new Set(form.autoFields)]
+}
+
 function buildPayload(
   form: OfferForm,
   config: CategoryConfig,
@@ -322,7 +470,7 @@ function buildPayload(
   const description = form.description.trim()
   if (description.length > LIMITS.description) errors.description = `Keep it under ${LIMITS.description} characters.`
 
-  const model = form.pricingModel
+  const model = effectiveModel(form)
   if (model !== null && !PRICING_MODELS.has(model)) errors.pricing_model = 'Pick how this is priced.'
 
   let price: number | undefined
@@ -354,6 +502,7 @@ function buildPayload(
   }
   if (form.durationLabel) details.duration_label = form.durationLabel
   if (form.noticeLabel) details.notice_label = form.noticeLabel
+  writePerkDetails(form, details, errors)
 
   for (const field of config.requirements?.fields ?? []) {
     const raw = form.requirements[field.key]
@@ -457,6 +606,85 @@ function buildPayload(
   }
 }
 
+// ─── Birthday perks: validation + auto-generation ────────────────────────────
+
+// Required answers for Continue on the perks step. Offer type is optional while the
+// offer uses a fixed price (picking one switches back to perks).
+export function validatePerks(form: OfferForm): FieldErrors {
+  const errors: FieldErrors = {}
+  if (!form.offerType && form.pricingMode === 'perks') errors['details.offer_type'] = 'Pick the kind of perk you’ll offer.'
+  if (form.offerType === 'discount') {
+    if (!form.discountType) errors['details.discount_type'] = 'Choose percent or dollar amount.'
+    const value = parseDiscountValue(form)
+    if (value === null) errors['details.discount_value'] = 'Enter the discount amount.'
+    else if (value === 'invalid') {
+      errors['details.discount_value'] =
+        form.discountType === 'percent' ? `Enter a whole number from 1 to ${LIMITS.discountPercent}.` : 'Enter an amount above $0.'
+    }
+  }
+  if (!form.appliesTo.length) errors['details.applies_to'] = 'Pick at least one.'
+  if (!form.eligible.length) errors['details.eligible'] = 'Pick at least one.'
+  if (!form.monthlyChoice) errors['details.monthly_limit'] = 'Choose a monthly limit.'
+  else if (form.monthlyChoice === 'custom' && typeof parseMonthlyCustom(form) !== 'number') {
+    errors['details.monthly_limit'] = 'Enter a whole number of 1 or more.'
+  }
+  return errors
+}
+
+function perkAnswers(form: OfferForm): PerkAnswers {
+  const value = parseDiscountValue(form)
+  return {
+    offerType: form.offerType,
+    discountType: form.discountType,
+    discountValue: typeof value === 'number' ? value : null,
+    appliesTo: form.appliesTo,
+    eligible: form.eligible,
+  }
+}
+
+// Fills title, description, includes and pricing from the perks answers. A field is
+// only (re)generated when it's empty or still holds an earlier generated value
+// (listed in autoFields); anything the partner typed by hand is left alone.
+export function applyGeneration(form: OfferForm, config: CategoryConfig): OfferForm {
+  const next: OfferForm = { ...form }
+  const auto = new Set(form.autoFields)
+  const answers = perkAnswers(form)
+  const canFill = (field: string, current: boolean) => !current || auto.has(field)
+
+  // Choosing an offer type means pricing comes from the perk.
+  if (form.offerType) {
+    next.pricingMode = 'perks'
+    next.pricingModel = form.offerType
+    next.price = ''
+  }
+
+  const title = generateTitle(answers)
+  if (title && canFill('title', !!form.title.trim())) {
+    next.title = title
+    auto.add('title')
+  }
+
+  const description = generateDescription(answers)
+  if (description && canFill('description', !!form.description.trim())) {
+    next.description = description
+    auto.add('description')
+  }
+
+  const currentIncludes = [...form.includePresets, ...form.customIncludes]
+  if (canFill('includes', currentIncludes.length > 0)) {
+    const have = new Set(currentIncludes.map((i) => i.toLowerCase()))
+    const presetByLower = new Map(config.includePresets.map((p) => [p.toLowerCase(), p]))
+    const room = LIMITS.includesItems - currentIncludes.length
+    const toAdd = generatedIncludes(form.appliesTo).filter((i) => !have.has(i.toLowerCase())).slice(0, Math.max(0, room))
+    next.includePresets = [...form.includePresets, ...toAdd.flatMap((i) => presetByLower.get(i.toLowerCase()) ?? [])]
+    next.customIncludes = [...form.customIncludes, ...toAdd.filter((i) => !presetByLower.has(i.toLowerCase()))]
+    if (toAdd.length || auto.has('includes')) auto.add('includes')
+  }
+
+  next.autoFields = [...auto]
+  return next
+}
+
 // ─── API error mapping ────────────────────────────────────────────────────────
 
 const API_FIELDS = new Set([
@@ -491,6 +719,12 @@ export function mapApiError(message: string): { field: string; message: string }
 
 // Submit 400s look like "Missing required fields: pricing_model, includes, pitch".
 const SUBMIT_FIELD_KEYS: Record<string, string> = {
+  offer_type: 'details.offer_type',
+  discount_type: 'details.discount_type',
+  discount_value: 'details.discount_value',
+  applies_to: 'details.applies_to',
+  eligible: 'details.eligible',
+  monthly_limit: 'details.monthly_limit',
   title: 'title',
   pricing_model: 'pricing_model',
   price: 'price',
@@ -586,6 +820,11 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
         const categoryName = joinedName ?? partnerRow.category ?? null
         setPartner({ id: partnerRow.id, displayName: partnerRow.display_name, categoryName })
 
+        // New offer: pre-select what the perk applies to from the category.
+        if (!offerId) {
+          setForm({ ...EMPTY_FORM, appliesTo: defaultAppliesTo(configForCategory(categoryName).kind) })
+        }
+
         if (offersRequest) {
           const res = await offersRequest
           const json = await res.json().catch(() => ({}))
@@ -601,8 +840,10 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
           }
           currentOfferIdRef.current = found.id
           setOffer(found)
-          setForm(formFromOffer(found, configForCategory(categoryName)))
-          setStep(RESUME_STEP)
+          const loaded = formFromOffer(found, configForCategory(categoryName))
+          setForm(loaded)
+          // Perk offers reopen on the perks step; older fixed-price drafts on the offer step.
+          setStep(loaded.offerType ? STEP.perks : STEP.offer)
         }
       } catch {
         if (!cancelled) setLoadError('We couldn’t load this offer. Check your connection and try again.')
@@ -628,8 +869,33 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
 
   const updateField = useCallback(
     <K extends keyof OfferForm>(key: K, value: OfferForm[K], ...errorKeys: string[]) => {
-      setForm((f) => ({ ...f, [key]: value }))
+      const autoField = AUTO_FIELD_FOR[key]
+      setForm((f) => ({
+        ...f,
+        [key]: value,
+        // A hand edit means auto-generation must leave this field alone from now on.
+        ...(autoField && f.autoFields.includes(autoField) ? { autoFields: f.autoFields.filter((a) => a !== autoField) } : {}),
+      }))
       if (errorKeys.length) clearErrors(...errorKeys)
+    },
+    [clearErrors]
+  )
+
+  // "Switch to a fixed price" clears the offer type and discount terms (kept aside so
+  // switching back restores them); "Use birthday perks instead" brings them back.
+  const stashedPerk = useRef<Pick<OfferForm, 'offerType' | 'discountType' | 'discountValue'> | null>(null)
+  const switchPricingMode = useCallback(
+    (mode: 'perks' | 'fixed') => {
+      setForm((f) => {
+        if (mode === f.pricingMode) return f
+        if (mode === 'fixed') {
+          stashedPerk.current = { offerType: f.offerType, discountType: f.discountType, discountValue: f.discountValue }
+          return { ...f, pricingMode: 'fixed', offerType: null, discountType: null, discountValue: '', pricingModel: null, price: '' }
+        }
+        const restored = stashedPerk.current ?? { offerType: f.offerType, discountType: f.discountType, discountValue: f.discountValue }
+        return { ...f, ...restored, pricingMode: 'perks', pricingModel: restored.offerType, price: '' }
+      })
+      clearErrors('pricing_model', 'price')
     },
     [clearErrors]
   )
@@ -681,9 +947,9 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
 
   // Creates the draft (POST) or saves edits (PATCH action 'save').
   // Returns the saved row, or null when validation or the request failed.
-  const save = useCallback(async (): Promise<OfferRecord | null> => {
+  const save = useCallback(async (formOverride?: OfferForm): Promise<OfferRecord | null> => {
     setBanner(null)
-    const { errors, payload } = buildPayload(form, config, offer, travels)
+    const { errors, payload } = buildPayload(formOverride ?? form, config, offer, travels)
     if (!payload) {
       showFieldErrors(errors)
       return null
@@ -718,7 +984,20 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     }
   }, [form, config, offer, travels, partnerId, showFieldErrors, applySaved])
 
-  // Saves only the photo fields (step 7), right after an upload or removal.
+  // Perks step Continue: check the answers, fill the offer from them, then save.
+  const savePerks = useCallback(async (): Promise<OfferRecord | null> => {
+    const errors = validatePerks(form)
+    if (Object.keys(errors).length) {
+      setBanner(null)
+      showFieldErrors(errors)
+      return null
+    }
+    const generated = applyGeneration(form, config)
+    setForm(generated)
+    return save(generated)
+  }, [form, config, save, showFieldErrors])
+
+  // Saves only the photo fields (step 8), right after an upload or removal.
   const saveImages = useCallback(
     async (next: { offerImageUrl: string | null; galleryUrls: string[] }): Promise<boolean> => {
       if (!offer) return false
@@ -827,6 +1106,8 @@ export function useOfferWizard({ partnerId, offerId }: UseOfferWizardArgs) {
     clearErrors,
     setBanner,
     save,
+    savePerks,
+    switchPricingMode,
     saveImages,
     submit,
     review,
