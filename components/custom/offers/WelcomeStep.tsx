@@ -3,6 +3,7 @@
 import { Cake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { cardClass, text } from './styles'
+import { HighlightedText } from './themed/HighlightedText'
 
 const HIGHLIGHTS = [
   { title: 'Tell us what you offer', body: 'Your category shapes the questions, so it only takes a few minutes.' },
@@ -10,15 +11,27 @@ const HIGHLIGHTS = [
   { title: 'Go live after a quick review', body: 'Our team takes a look, then birthday planners can find you.' },
 ]
 
-export function WelcomeStep({ partnerName }: { partnerName: string }) {
+const HEADLINE = 'Become an RTNY Birthday Partner'
+
+interface WelcomeStepProps {
+  partnerName: string
+  // Campaign themes draw one headline word in their accent color...
+  highlight?: { word: string; color: string }
+  // ...and supply their own illustration, so the cake icon is hidden.
+  hideIcon?: boolean
+}
+
+export function WelcomeStep({ partnerName, highlight, hideIcon }: WelcomeStepProps) {
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#59FFA0]/10 border border-[#59FFA0]/20 flex items-center justify-center">
-          <Cake className="w-6 h-6 text-[#59FFA0]" aria-hidden="true" />
-        </div>
+        {!hideIcon && (
+          <div className="w-12 h-12 rounded-2xl bg-[#59FFA0]/10 border border-[#59FFA0]/20 flex items-center justify-center">
+            <Cake className="w-6 h-6 text-[#59FFA0]" aria-hidden="true" />
+          </div>
+        )}
         <h1 className={text.pageTitle}>
-          Become an RTNY Birthday Partner
+          {highlight ? <HighlightedText text={HEADLINE} word={highlight.word} color={highlight.color} /> : HEADLINE}
         </h1>
         <p className={text.body}>
           People across Rochester plan birthdays on RTNY every week. Build an offer for{' '}

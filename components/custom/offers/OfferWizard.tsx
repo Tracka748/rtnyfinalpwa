@@ -20,6 +20,10 @@ import { SubmittedScreen } from './SubmittedScreen'
 import { ActionSheet, RequestChangesSheet } from './ActionSheet'
 import { submitChecklist } from './offerReview'
 import { cn } from '@/lib/utils'
+import { DEFAULT_THEME, type CampaignTheme } from './themes'
+import { ThemedHeader } from './themed/ThemedHeader'
+import { ThemedWelcome } from './themed/ThemedWelcome'
+import { ThemedSuccess } from './themed/ThemedSuccess'
 import { cardClass, space, text } from './styles'
 
 export interface OfferWizardProps {
@@ -27,6 +31,8 @@ export interface OfferWizardProps {
   offerId?: string | null
   mode: WizardMode
   exitHref: string
+  // Campaign skin for the welcome step, step headers, review preview and success screen.
+  theme?: CampaignTheme
 }
 
 function focusElement(id: string) {
@@ -39,7 +45,7 @@ function focusElement(id: string) {
   target.focus({ preventScroll: true })
 }
 
-export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardProps) {
+export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAULT_THEME }: OfferWizardProps) {
   const router = useRouter()
   const pathname = usePathname()
   const wizard = useOfferWizard({ partnerId, offerId: offerId ?? null })
@@ -127,7 +133,14 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
   if (wizard.submitted && offer) {
     return (
       <div className={cn('max-w-2xl mx-auto', space.barClearance)}>
-        <SubmittedScreen offer={offer} categoryName={partner.categoryName} exitHref={exitHref} />
+        <ThemedSuccess theme={theme}>
+          <SubmittedScreen
+            offer={offer}
+            categoryName={partner.categoryName}
+            exitHref={exitHref}
+            statusColor={theme.accent}
+          />
+        </ThemedSuccess>
         <StickyActionBar className={barOffset} primaryLabel="Back to offers" onPrimary={() => router.push(exitHref)} />
       </div>
     )
@@ -167,7 +180,22 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
             Editing for <span className="text-white font-medium">{partner.displayName}</span>
           </div>
         )}
-        <StepProgress steps={steps} current={step} />
+        {/* The welcome step carries the full themed header, so the light one starts at step 2. */}
+        <div>
+          <StepProgress steps={steps} current={step} />
+          {step > STEP.welcome && (
+            <ThemedHeader
+              theme={theme}
+              variant="light"
+              // The perks page body already shows the eyebrow.
+              showEyebrow={step !== STEP.perks}
+              // Max two decorations per screen: the review step's preview frame has its own.
+              decorate={step !== STEP.review}
+              seed={step}
+              className="mt-1"
+            />
+          )}
+        </div>
       </div>
 
       {/* The reviewer's note stays visible on every step until the offer is resubmitted. */}
@@ -196,7 +224,15 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
         />
       )}
 
-      {step === STEP.welcome && <WelcomeStep partnerName={partner.displayName} />}
+      {step === STEP.welcome && (
+        <ThemedWelcome theme={theme}>
+          <WelcomeStep
+            partnerName={partner.displayName}
+            highlight={{ word: theme.welcome.highlight, color: theme.accent }}
+            hideIcon
+          />
+        </ThemedWelcome>
+      )}
 
       {step === STEP.category && (
         <CategoryStep categoryName={partner.categoryName} config={wizard.config} profileHref={profileHref} />
@@ -253,6 +289,7 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref }: OfferWizardP
           onApprove={() => wizard.review('approve')}
           onRequestChanges={() => setRequestChangesOpen(true)}
           onDeactivate={() => setDeactivateOpen(true)}
+          theme={theme}
         />
       )}
 

@@ -21,6 +21,8 @@ import {
 import { OfferImageUpload, removeOfferImage } from './OfferImageUpload'
 import { OfferStatusBadge } from './OfferStatusBadge'
 import { SectionCard } from './SectionCard'
+import type { CampaignTheme } from './themes'
+import { ThemedReviewFrame } from './themed/ThemedReviewFrame'
 import { cardClass, priceFontClass, space, text } from './styles'
 
 interface ReviewStepProps {
@@ -38,6 +40,8 @@ interface ReviewStepProps {
   onApprove: () => void
   onRequestChanges: () => void
   onDeactivate: () => void
+  // Campaign theme for the preview frame; omitted = plain card.
+  theme?: CampaignTheme
 }
 
 export function ReviewStep({
@@ -55,6 +59,7 @@ export function ReviewStep({
   onApprove,
   onRequestChanges,
   onDeactivate,
+  theme,
 }: ReviewStepProps) {
   const checklist = submitChecklist(offer)
   const missing = checklist.filter((c) => !c.done)
@@ -202,13 +207,25 @@ export function ReviewStep({
 
       {/* ── Preview ────────────────────────────────────────────────────── */}
       <SectionCard copyKey="preview" title="Birthday Partner Preview">
-        <OfferPreview
-          offer={offer}
-          partnerName={partnerName}
-          categoryName={categoryName}
-          config={config}
-          onJump={onJump}
-        />
+        {theme ? (
+          <ThemedReviewFrame theme={theme}>
+            <OfferPreview
+              offer={offer}
+              partnerName={partnerName}
+              categoryName={categoryName}
+              config={config}
+              onJump={onJump}
+            />
+          </ThemedReviewFrame>
+        ) : (
+          <OfferPreview
+            offer={offer}
+            partnerName={partnerName}
+            categoryName={categoryName}
+            config={config}
+            onJump={onJump}
+          />
+        )}
       </SectionCard>
 
       {/* ── Checklist ──────────────────────────────────────────────────── */}

@@ -10,14 +10,18 @@ interface SubmittedScreenProps {
   offer: OfferRecord
   categoryName: string | null
   exitHref: string
+  // Campaign accent for the status line (default mint).
+  statusColor?: string
 }
 
 // Shown after PATCH action 'submit' succeeds.
-export function SubmittedScreen({ offer, categoryName, exitHref }: SubmittedScreenProps) {
+export function SubmittedScreen({ offer, categoryName, exitHref, statusColor }: SubmittedScreenProps) {
   return (
     <div className={space.sections}>
       <div className="space-y-3" role="status">
-        <p className={cn(text.eyebrow, 'text-[#59FFA0]')}>Submitted for review</p>
+        <p className={cn(text.eyebrow, !statusColor && 'text-[#59FFA0]')} style={statusColor ? { color: statusColor } : undefined}>
+          Submitted for review
+        </p>
         <h1 className={text.pageTitle}>Nice work. It’s with our team.</h1>
         <p className={text.body}>
           We’ll take a look and put it live once it’s approved. If anything needs a tweak, you’ll see a note on the
