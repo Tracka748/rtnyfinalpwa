@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import type { FieldErrors, OfferForm, RequirementValue } from '@/hooks/useOfferWizard'
 import { LIMITS } from '@/hooks/useOfferWizard'
 import {
@@ -23,7 +23,14 @@ import { cn } from '@/lib/utils'
 import { cardClass, inputClass, space, text } from './styles'
 import { SectionCard as Section } from './SectionCard'
 import { FINE_TUNE_COPY } from './sectionCopy'
-import { appliesToLabel, discountTerms, eligibleLabel, monthlyLimitWording, offerTypeLabel } from './perks'
+import {
+  appliesToLabel,
+  discountTerms,
+  eligibleLabel,
+  generatedIncludes,
+  monthlyLimitWording,
+  offerTypeLabel,
+} from './perks'
 
 interface OfferDetailsStepProps {
   form: OfferForm
@@ -194,9 +201,19 @@ export function OfferDetailsStep({
   const perksMode = form.pricingMode === 'perks'
   const priced = !!form.pricingModel && PRICED_MODELS.has(form.pricingModel)
   const priceHint = (form.pricingModel && PRICE_HINTS[form.pricingModel]) || undefined
-  const [showCustom, setShowCustom] = useState(form.customIncludes.length > 0)
+  // Entries the perks step generated from "applies to" (matched by label) vs. ones the
+  // partner typed. Only typed entries live under the "Something else" header.
+  const autoLabels = new Set(generatedIncludes(form.appliesTo).map((l) => l.toLowerCase()))
+  const isAuto = (item: string) => autoLabels.has(item.trim().toLowerCase())
+  const autoEntries = form.customIncludes.filter(isAuto)
+  const typedEntries = form.customIncludes.filter((i) => !isAuto(i))
+  const [showCustom, setShowCustom] = useState(typedEntries.length > 0)
   const includesCount = form.includePresets.length + form.customIncludes.length
   const requirements = config.requirements
+
+  // True when the min/max rule disables at least one chip in that group.
+  const minRuledOut = form.maxGuests !== null && GUEST_OPTIONS.some((n) => n > (form.maxGuests as number))
+  const maxRuledOut = form.minGuests !== null && GUEST_OPTIONS.some((n) => n < (form.minGuests as number))
 
   const guestOptions = (other: number | null, isMin: boolean, current: number | null) =>
     withCurrent(
@@ -344,14 +361,39 @@ export function OfferDetailsStep({
           />
         </Field>
 
+        {autoEntries.length > 0 && (
+          <ul className="space-y-2">
+            {autoEntries.map((item) => (
+              <li key={item} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg pl-4">
+                <span className="flex-1 min-w-0 py-2.5">
+                  <span className="block text-base text-white font-sans break-words">{item}</span>
+                  <span className="mt-1 inline-block rounded bg-[#59FFA0]/10 px-2 py-0.5 font-label text-xs font-semibold text-[#59FFA0]">
+                    {FINE_TUNE_COPY.fromAnswersTag}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateField('customIncludes', form.customIncludes.filter((i) => i !== item), 'includes')
+                  }
+                  aria-label={`Remove ${item}`}
+                  className="w-12 h-12 shrink-0 flex items-center justify-center text-white/60 hover:text-red-400 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {showCustom ? (
           <div className={space.field}>
             <p className={text.questionLabel}>Something else</p>
             <ListEditor
               id="offer-includes-custom"
-              items={form.customIncludes}
-              onChange={(items) => updateField('customIncludes', items, 'includes')}
-              max={Math.max(0, LIMITS.includesItems - form.includePresets.length)}
+              items={typedEntries}
+              onChange={(items) => updateField('customIncludes', [...autoEntries, ...items], 'includes')}
+              max={Math.max(0, LIMITS.includesItems - form.includePresets.length - autoEntries.length)}
               maxItemLength={LIMITS.includesItemLength}
               placeholder="e.g. Glow sticks for the group"
             />
@@ -371,7 +413,14 @@ export function OfferDetailsStep({
 
       {/* ── Group size ─────────────────────────────────────────────────── */}
       <Section copyKey="groupSize" title="Group size">
-        <Field id="offer-min-guests" label="Minimum guests" error={errors.min_guests} optional group>
+        <Field
+          id="offer-min-guests"
+          label="Minimum guests"
+          error={errors.min_guests}
+          hint={minRuledOut ? FINE_TUNE_COPY.guestRuleHint : undefined}
+          optional
+          group
+        >
           <ChipSelect
             id="offer-min-guests"
             label="Minimum guests"
@@ -380,7 +429,14 @@ export function OfferDetailsStep({
             onChange={(v) => updateField('minGuests', v ? Number(v) : null, 'min_guests', 'max_guests')}
           />
         </Field>
-        <Field id="offer-max-guests" label="Maximum guests" error={errors.max_guests} neededToSubmit group>
+        <Field
+          id="offer-max-guests"
+          label="Maximum guests"
+          error={errors.max_guests}
+          hint={maxRuledOut ? FINE_TUNE_COPY.guestRuleHint : undefined}
+          neededToSubmit
+          group
+        >
           <ChipSelect
             id="offer-max-guests"
             label="Maximum guests"

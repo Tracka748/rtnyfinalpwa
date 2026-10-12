@@ -8,7 +8,6 @@ export type SectionKey =
   | 'addOns' | 'availability' | 'reach' | 'pitch' | 'photos' | 'preview' | 'checklist' | 'adminReview'
 
 export interface SectionCopy {
-  emoji: string
   intro: string
   tip: string
   example?: string
@@ -16,101 +15,82 @@ export interface SectionCopy {
 
 export const SECTION_COPY: Record<SectionKey, SectionCopy> = {
   basics: {
-    emoji: '🎂',
     intro: 'This is the first thing planners see, so make it sound like a celebration.',
     tip: 'Short and specific beats long and fancy.',
     example: 'Birthday Section 1/2 off.',
   },
   pricing: {
-    emoji: '💰',
     intro: 'A clear price is what gets your offer picked when Specialists compare.',
     tip: 'Not sure? Starting at is a safe choice.',
   },
   included: {
-    emoji: '🎁',
     intro: 'Tap everything the birthday group gets. This is what makes your offer easy to sell.',
     tip: 'Pick at least one to submit.',
   },
   groupSize: {
-    emoji: '👥',
     intro: 'Specialists match offers to party sizes, so this decides which birthdays you show up for.',
     tip: 'Maximum is needed to submit. Skip the minimum if unsure.',
   },
   booking: {
-    emoji: '⏱️',
     intro: 'Tell us how long it runs and how much notice you need, so we only send bookings that work.',
     tip: "Choose I'll confirm availability if it changes week to week.",
   },
   requirements: {
-    emoji: '📋',
     intro: 'A few details that save guests and Specialists from asking later.',
     tip: "Skip anything that doesn't apply.",
   },
   // ── Step 3: Birthday perks ──
   perkType: {
-    emoji: '🎉',
     intro: 'Pick the kind of birthday perk you’ll offer.',
     tip: 'You can fine-tune the wording on the next step.',
   },
   perkAppliesTo: {
-    emoji: '🏷️',
     intro: 'What the birthday perk is for.',
     tip: 'Pick everything that applies.',
   },
   perkEligible: {
-    emoji: '👯',
     intro: 'Who can use this perk.',
     tip: 'Choose every group you’d happily welcome.',
   },
   perkLimit: {
-    emoji: '🔢',
     intro: 'Tell us how many birthday redemptions you can handle each month. Specialists use this to know when you are full.',
     tip: 'Not sure? Confirm each request keeps you in control.',
   },
   // Step 4 summary card (replaces the pricing card while using birthday perks).
   perkSummary: {
-    emoji: '🎉',
     intro: 'Built from your birthday perk answers.',
     tip: 'Need a regular price instead? Switch to a fixed price below.',
   },
   // ── Steps 5-8 ──
   addOns: {
-    emoji: '✨',
     intro: 'Optional extras that raise the total booking value.',
     tip: 'No extras? Skip this step.',
   },
   availability: {
-    emoji: '📅',
     intro: 'Specialists need to know when they can book you.',
     tip: 'Pick days and times, or choose confirm each booking.',
   },
   reach: {
-    emoji: '🗓️',
     intro: 'Block off dates you can’t take birthdays, like holidays or private events.',
     tip: 'Open every week? Skip this card.',
   },
   pitch: {
-    emoji: '💬',
     intro: 'A line or two in your own voice. This is what wins the booking.',
     tip: 'Tap a starter, then make it yours.',
   },
   photos: {
-    emoji: '📸',
     intro: 'Real photos make your offer feel real. Add a cover and up to 6 more.',
     tip: 'Photos are optional, but offers with photos stand out.',
   },
   preview: {
-    emoji: '👀',
     intro: 'This is roughly how Specialists will see your offer.',
     tip: 'Tap Edit on any block to change it.',
   },
   checklist: {
-    emoji: '✅',
     intro: 'Everything here needs to be done before we can review your offer.',
     tip: 'Tap a missing item to jump straight to it.',
   },
   adminReview: {
-    emoji: '🛡️',
     intro: 'Approve to put this offer live, or send it back with a note for the partner.',
     tip: 'The partner sees your note on their offer.',
   },
@@ -172,6 +152,10 @@ export const FINE_TUNE_COPY = {
   autoNote: 'We filled this in from your answers. Change anything you like.',
   switchToFixed: 'Switch to a fixed price',
   switchToPerks: 'Use birthday perks instead',
+  // Tag on "What's included" entries generated from the perks step answers.
+  fromAnswersTag: 'From your answers',
+  // Shown under a min/max guest group when the min/max rule disables some chips.
+  guestRuleHint: 'Maximum must be at least your minimum.',
 }
 
 // Option labels for the perks step. Values are what gets saved in details.

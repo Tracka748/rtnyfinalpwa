@@ -21,9 +21,11 @@ import { ActionSheet, RequestChangesSheet } from './ActionSheet'
 import { submitChecklist } from './offerReview'
 import { cn } from '@/lib/utils'
 import { DEFAULT_THEME, type CampaignTheme } from './themes'
+import { CampaignThemeProvider } from './themes/ThemeContext'
 import { ThemedHeader } from './themed/ThemedHeader'
 import { ThemedWelcome } from './themed/ThemedWelcome'
 import { ThemedSuccess } from './themed/ThemedSuccess'
+import { OfferStatusBadge } from './OfferStatusBadge'
 import { cardClass, space, text } from './styles'
 
 export interface OfferWizardProps {
@@ -85,6 +87,23 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAUL
     if (first) focusElement(fieldDomId(first.key))
   }, [focusToken, invalidFields])
 
+  // Unsaved-changes check for "Save changes" on a live offer: snapshot the form each
+  // time a saved offer arrives (load, save, photo update) and compare against it.
+  const formJson = JSON.stringify(wizard.form)
+  const [formBaseline, setFormBaseline] = useState({ offer, json: formJson })
+  if (formBaseline.offer !== offer) setFormBaseline({ offer, json: formJson })
+  const formDirty = formBaseline.offer === offer && formBaseline.json !== formJson
+
+  async function saveLiveChanges() {
+    const saved = await wizard.save()
+    if (!saved) return
+    wizard.setBanner({
+      type: 'success',
+      // An owner's edit to a live offer goes back to review (see the notice above).
+      message: saved.status === 'pending' ? 'Saved. Your changes are back with our team for review.' : 'Changes saved.',
+    })
+  }
+
   function jumpTo(target: number, focusId?: string) {
     wizard.goToStep(target)
     if (focusId) setPendingFocusId(focusId)
@@ -133,12 +152,14 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAUL
   if (wizard.submitted && offer) {
     return (
       <div className={cn('max-w-2xl mx-auto', space.barClearance)}>
-        <ThemedSuccess theme={theme}>
+        <ThemedSuccess theme={theme} badge={<OfferStatusBadge status={offer.status} />}>
           <SubmittedScreen
             offer={offer}
             categoryName={partner.categoryName}
             exitHref={exitHref}
             statusColor={theme.accent}
+            headingAs="h2"
+            hideBadge
           />
         </ThemedSuccess>
         <StickyActionBar className={barOffset} primaryLabel="Back to offers" onPrimary={() => router.push(exitHref)} />
@@ -155,6 +176,8 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAUL
   const changesNote = offer?.status === 'needs_changes' && offer.review_note ? offer.review_note : null
 
   const checklistDone = offer ? submitChecklist(offer).every((c) => c.done) : false
+  const isLive = offer?.status === 'active'
+  const isPending = offer?.status === 'pending'
   const canSubmit = !!offer && (offer.status === 'draft' || offer.status === 'needs_changes')
   const busy = wizard.saving || wizard.imageSaving || wizard.reviewing
   const hasAddOns = Object.keys(wizard.form.addOnPresets).length + wizard.form.customAddOns.length > 0
@@ -173,197 +196,205 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAUL
   )
 
   return (
-    <div className={cn('max-w-2xl mx-auto', space.sections, space.barClearance)}>
-      <div className="space-y-3">
-        {mode === 'admin' && (
-          <div className={`${cardClass} px-4 py-3 text-base font-sans text-white/75 break-words`}>
-            Editing for <span className="text-white font-medium">{partner.displayName}</span>
+    <CampaignThemeProvider value={theme}>
+      <div className={cn('max-w-2xl mx-auto', space.sections, space.barClearance)}>
+        <div className="space-y-3">
+          {mode === 'admin' && (
+            <div className={`${cardClass} px-4 py-3 text-base font-sans text-white/75 break-words`}>
+              Editing for <span className="text-white font-medium">{partner.displayName}</span>
+            </div>
+          )}
+          {/* The welcome step carries the full themed header, so the light one starts at step 2. */}
+          <div>
+            <StepProgress steps={steps} current={step} />
+            {step > STEP.welcome && (
+              <ThemedHeader
+                theme={theme}
+                variant="light"
+                // The perks page body already shows the eyebrow.
+                showEyebrow={step !== STEP.perks}
+                // Steps 4-8 show the eyebrow text only, with no sprinkle strip.
+                decorate={step < STEP.offer}
+                seed={step}
+                className="mt-1"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* The reviewer's note stays visible on every step until the offer is resubmitted. */}
+        {changesNote && step >= STEP.perks && (
+          <div role="note" className="p-4 rounded-2xl border-2 border-red-500/50 bg-red-500/10 space-y-1">
+            <p className={cn(text.eyebrow, 'text-red-300')}>Changes requested</p>
+            <p className="font-sans text-base text-white break-words whitespace-pre-line">{changesNote}</p>
           </div>
         )}
-        {/* The welcome step carries the full themed header, so the light one starts at step 2. */}
-        <div>
-          <StepProgress steps={steps} current={step} />
-          {step > STEP.welcome && (
-            <ThemedHeader
-              theme={theme}
-              variant="light"
-              // The perks page body already shows the eyebrow.
-              showEyebrow={step !== STEP.perks}
-              // Max two decorations per screen: the review step's preview frame has its own.
-              decorate={step !== STEP.review}
-              seed={step}
-              className="mt-1"
+
+        {reviewNotice && step >= STEP.perks && (
+          <div className="p-4 rounded-xl border bg-[#FFB547]/10 border-[#FFB547]/30 text-base font-sans text-[#FFB547]">
+            {reviewNotice}
+          </div>
+        )}
+
+        <FormBanner banner={banner} />
+
+        {/* Lists the fields that still fail; shrinks as they're fixed and disappears when none remain. */}
+        {invalidFields.length > 0 && (
+          <FormBanner
+            banner={{
+              type: 'error',
+              message: `A few fields need another look: ${invalidFields.map((f) => f.label).join(', ')}.`,
+            }}
+          />
+        )}
+
+        {step === STEP.welcome && (
+          <ThemedWelcome theme={theme}>
+            <WelcomeStep
+              partnerName={partner.displayName}
+              highlight={{ word: theme.welcome.highlight, color: theme.accent }}
+              hideIcon
             />
-          )}
-        </div>
-      </div>
+          </ThemedWelcome>
+        )}
 
-      {/* The reviewer's note stays visible on every step until the offer is resubmitted. */}
-      {changesNote && step >= STEP.perks && (
-        <div role="note" className="p-4 rounded-2xl border-2 border-red-500/50 bg-red-500/10 space-y-1">
-          <p className={cn(text.eyebrow, 'text-red-300')}>Changes requested</p>
-          <p className="font-sans text-base text-white break-words whitespace-pre-line">{changesNote}</p>
-        </div>
-      )}
+        {step === STEP.category && (
+          <CategoryStep categoryName={partner.categoryName} config={wizard.config} profileHref={profileHref} />
+        )}
 
-      {reviewNotice && step >= STEP.perks && (
-        <div className="p-4 rounded-xl border bg-[#FFB547]/10 border-[#FFB547]/30 text-base font-sans text-[#FFB547]">
-          {reviewNotice}
-        </div>
-      )}
+        {step === STEP.perks && (
+          <PerksStep form={wizard.form} errors={wizard.fieldErrors} updateField={wizard.updateField} />
+        )}
 
-      <FormBanner banner={banner} />
+        {step === STEP.offer && (
+          <OfferDetailsStep
+            form={wizard.form}
+            errors={wizard.fieldErrors}
+            config={wizard.config}
+            categoryName={partner.categoryName}
+            legacyNotes={wizard.legacyNotes}
+            updateField={wizard.updateField}
+            setRequirement={wizard.setRequirement}
+            onEditPerks={() => jumpTo(STEP.perks, 'offer-detail-offer_type')}
+            onSwitchPricingMode={wizard.switchPricingMode}
+          />
+        )}
 
-      {/* Lists the fields that still fail; shrinks as they're fixed and disappears when none remain. */}
-      {invalidFields.length > 0 && (
-        <FormBanner
-          banner={{
-            type: 'error',
-            message: `A few fields need another look: ${invalidFields.map((f) => f.label).join(', ')}.`,
+        {step === STEP.addOns && (
+          <AddOnsStep form={wizard.form} errors={wizard.fieldErrors} config={wizard.config} updateField={wizard.updateField} />
+        )}
+
+        {step === STEP.availability && (
+          <AvailabilityStep
+            form={wizard.form}
+            errors={wizard.fieldErrors}
+            travels={wizard.travels}
+            updateField={wizard.updateField}
+          />
+        )}
+
+        {step === STEP.pitch && (
+          <PitchStep form={wizard.form} errors={wizard.fieldErrors} config={wizard.config} updateField={wizard.updateField} />
+        )}
+
+        {step === STEP.review && offer && (
+          <ReviewStep
+            offer={offer}
+            partnerName={partner.displayName}
+            categoryName={partner.categoryName}
+            config={wizard.config}
+            form={wizard.form}
+            errors={wizard.fieldErrors}
+            mode={mode}
+            imageSaving={wizard.imageSaving}
+            reviewing={wizard.reviewing}
+            saveImages={wizard.saveImages}
+            onJump={jumpTo}
+            onApprove={() => wizard.review('approve')}
+            onRequestChanges={() => setRequestChangesOpen(true)}
+            onDeactivate={() => setDeactivateOpen(true)}
+            theme={theme}
+          />
+        )}
+
+        {/* ── Action bars ─────────────────────────────────────────────────── */}
+
+        {step === STEP.welcome && (
+          <StickyActionBar
+            className={barOffset}
+            backLabel="Cancel"
+            onBack={() => router.push(exitHref)}
+            primaryLabel="Let’s Build Your Birthday Offer"
+            onPrimary={wizard.goNext}
+          />
+        )}
+
+        {step === STEP.category && (
+          <StickyActionBar
+            className={barOffset}
+            onBack={wizard.goBack}
+            primaryLabel="Continue"
+            onPrimary={wizard.goNext}
+            disabled={!partner.categoryName}
+          />
+        )}
+
+        {step === STEP.perks && saveBar(PERKS_STEP_COPY.continueLabel, 'stacked')}
+        {step === STEP.offer && saveBar()}
+        {step === STEP.addOns && saveBar(hasAddOns ? 'Continue' : 'Skip for now')}
+        {step === STEP.availability && saveBar()}
+        {step === STEP.pitch && saveBar()}
+
+        {step === STEP.review && (
+          <StickyActionBar
+            className={barOffset}
+            onBack={wizard.goBack}
+            // Draft / needs changes: submit. Live: save edits (enabled once something changed).
+            // Pending: already submitted.
+            primaryLabel={isLive ? 'Save changes' : isPending ? 'Submitted' : 'Submit for review'}
+            loadingLabel={isLive ? 'Saving…' : 'Submitting…'}
+            onPrimary={isLive ? saveLiveChanges : () => wizard.submit()}
+            disabled={
+              isLive
+                ? !formDirty || wizard.imageSaving || wizard.reviewing
+                : !canSubmit || !checklistDone || wizard.imageSaving || wizard.reviewing
+            }
+            loading={wizard.saving}
+            secondaryLabel="Save draft"
+            onSecondary={() => persist('exit')}
+          />
+        )}
+
+        {/* ── Admin sheets ───────────────────────────────────────────────── */}
+
+        <RequestChangesSheet
+          open={requestChangesOpen}
+          onOpenChange={setRequestChangesOpen}
+          offerTitle={offer?.title}
+          busy={wizard.reviewing}
+          onSubmit={async (note) => {
+            // Success or failure is reported in the page banner, so the sheet closes either way.
+            await wizard.review('request_changes', note)
+            setRequestChangesOpen(false)
           }}
         />
-      )}
 
-      {step === STEP.welcome && (
-        <ThemedWelcome theme={theme}>
-          <WelcomeStep
-            partnerName={partner.displayName}
-            highlight={{ word: theme.welcome.highlight, color: theme.accent }}
-            hideIcon
-          />
-        </ThemedWelcome>
-      )}
-
-      {step === STEP.category && (
-        <CategoryStep categoryName={partner.categoryName} config={wizard.config} profileHref={profileHref} />
-      )}
-
-      {step === STEP.perks && (
-        <PerksStep form={wizard.form} errors={wizard.fieldErrors} updateField={wizard.updateField} />
-      )}
-
-      {step === STEP.offer && (
-        <OfferDetailsStep
-          form={wizard.form}
-          errors={wizard.fieldErrors}
-          config={wizard.config}
-          categoryName={partner.categoryName}
-          legacyNotes={wizard.legacyNotes}
-          updateField={wizard.updateField}
-          setRequirement={wizard.setRequirement}
-          onEditPerks={() => jumpTo(STEP.perks, 'offer-detail-offer_type')}
-          onSwitchPricingMode={wizard.switchPricingMode}
+        <ActionSheet
+          open={deactivateOpen}
+          onOpenChange={setDeactivateOpen}
+          title="Deactivate this offer?"
+          description="It comes off the public site right away and goes back to draft. The partner can edit and resubmit it."
+          confirmLabel="Deactivate"
+          tone="danger"
+          busy={wizard.reviewing}
+          onConfirm={async () => {
+            await wizard.review('deactivate')
+            setDeactivateOpen(false)
+          }}
         />
-      )}
 
-      {step === STEP.addOns && (
-        <AddOnsStep form={wizard.form} errors={wizard.fieldErrors} config={wizard.config} updateField={wizard.updateField} />
-      )}
-
-      {step === STEP.availability && (
-        <AvailabilityStep
-          form={wizard.form}
-          errors={wizard.fieldErrors}
-          travels={wizard.travels}
-          updateField={wizard.updateField}
-        />
-      )}
-
-      {step === STEP.pitch && (
-        <PitchStep form={wizard.form} errors={wizard.fieldErrors} config={wizard.config} updateField={wizard.updateField} />
-      )}
-
-      {step === STEP.review && offer && (
-        <ReviewStep
-          offer={offer}
-          partnerName={partner.displayName}
-          categoryName={partner.categoryName}
-          config={wizard.config}
-          form={wizard.form}
-          errors={wizard.fieldErrors}
-          mode={mode}
-          imageSaving={wizard.imageSaving}
-          reviewing={wizard.reviewing}
-          saveImages={wizard.saveImages}
-          onJump={jumpTo}
-          onApprove={() => wizard.review('approve')}
-          onRequestChanges={() => setRequestChangesOpen(true)}
-          onDeactivate={() => setDeactivateOpen(true)}
-          theme={theme}
-        />
-      )}
-
-      {/* ── Action bars ─────────────────────────────────────────────────── */}
-
-      {step === STEP.welcome && (
-        <StickyActionBar
-          className={barOffset}
-          backLabel="Cancel"
-          onBack={() => router.push(exitHref)}
-          primaryLabel="Let’s Build Your Birthday Offer"
-          onPrimary={wizard.goNext}
-        />
-      )}
-
-      {step === STEP.category && (
-        <StickyActionBar
-          className={barOffset}
-          onBack={wizard.goBack}
-          primaryLabel="Continue"
-          onPrimary={wizard.goNext}
-          disabled={!partner.categoryName}
-        />
-      )}
-
-      {step === STEP.perks && saveBar(PERKS_STEP_COPY.continueLabel, 'stacked')}
-      {step === STEP.offer && saveBar()}
-      {step === STEP.addOns && saveBar(hasAddOns ? 'Continue' : 'Skip for now')}
-      {step === STEP.availability && saveBar()}
-      {step === STEP.pitch && saveBar()}
-
-      {step === STEP.review && (
-        <StickyActionBar
-          className={barOffset}
-          onBack={wizard.goBack}
-          primaryLabel={canSubmit ? 'Submit for review' : offer?.status === 'pending' ? 'In review' : 'Live'}
-          loadingLabel="Submitting…"
-          onPrimary={() => wizard.submit()}
-          disabled={!canSubmit || !checklistDone || wizard.imageSaving || wizard.reviewing}
-          loading={wizard.saving}
-          secondaryLabel="Save draft"
-          onSecondary={() => persist('exit')}
-        />
-      )}
-
-      {/* ── Admin sheets ───────────────────────────────────────────────── */}
-
-      <RequestChangesSheet
-        open={requestChangesOpen}
-        onOpenChange={setRequestChangesOpen}
-        offerTitle={offer?.title}
-        busy={wizard.reviewing}
-        onSubmit={async (note) => {
-          // Success or failure is reported in the page banner, so the sheet closes either way.
-          await wizard.review('request_changes', note)
-          setRequestChangesOpen(false)
-        }}
-      />
-
-      <ActionSheet
-        open={deactivateOpen}
-        onOpenChange={setDeactivateOpen}
-        title="Deactivate this offer?"
-        description="It comes off the public site right away and goes back to draft. The partner can edit and resubmit it."
-        confirmLabel="Deactivate"
-        tone="danger"
-        busy={wizard.reviewing}
-        onConfirm={async () => {
-          await wizard.review('deactivate')
-          setDeactivateOpen(false)
-        }}
-      />
-
-      {busy && <span className="sr-only" aria-live="polite">Saving…</span>}
-    </div>
+        {busy && <span className="sr-only" aria-live="polite">Saving…</span>}
+      </div>
+    </CampaignThemeProvider>
   )
 }

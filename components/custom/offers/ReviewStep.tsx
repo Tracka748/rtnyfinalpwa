@@ -21,9 +21,12 @@ import {
 import { OfferImageUpload, removeOfferImage } from './OfferImageUpload'
 import { OfferStatusBadge } from './OfferStatusBadge'
 import { SectionCard } from './SectionCard'
+import { SECTION_COPY } from './sectionCopy'
 import type { CampaignTheme } from './themes'
 import { ThemedReviewFrame } from './themed/ThemedReviewFrame'
 import { cardClass, priceFontClass, space, text } from './styles'
+
+const PREVIEW_TITLE = 'Birthday Partner Preview'
 
 interface ReviewStepProps {
   offer: OfferRecord
@@ -206,9 +209,23 @@ export function ReviewStep({
       </SectionCard>
 
       {/* ── Preview ────────────────────────────────────────────────────── */}
-      <SectionCard copyKey="preview" title="Birthday Partner Preview">
-        {theme ? (
-          <ThemedReviewFrame theme={theme}>
+      {theme ? (
+        // Themed: the graffiti "Preview" <h2> is the only visible heading. The section
+        // keeps "Birthday Partner Preview" as its accessible name, and the intro/tip
+        // move inside the frame under the title.
+        <section aria-label={PREVIEW_TITLE}>
+          <ThemedReviewFrame
+            theme={theme}
+            intro={
+              <>
+                <p className={text.sectionIntro}>{SECTION_COPY.preview.intro}</p>
+                <p className={text.sectionTip}>
+                  <span aria-hidden="true">💡 </span>
+                  {SECTION_COPY.preview.tip}
+                </p>
+              </>
+            }
+          >
             <OfferPreview
               offer={offer}
               partnerName={partnerName}
@@ -217,7 +234,9 @@ export function ReviewStep({
               onJump={onJump}
             />
           </ThemedReviewFrame>
-        ) : (
+        </section>
+      ) : (
+        <SectionCard copyKey="preview" title={PREVIEW_TITLE}>
           <OfferPreview
             offer={offer}
             partnerName={partnerName}
@@ -225,8 +244,8 @@ export function ReviewStep({
             config={config}
             onJump={onJump}
           />
-        )}
-      </SectionCard>
+        </SectionCard>
+      )}
 
       {/* ── Checklist ──────────────────────────────────────────────────── */}
       <SectionCard copyKey="checklist" title="Needed to submit">
@@ -314,13 +333,28 @@ function OfferPreview({
   ].filter(Boolean) as string[]
   const requirements = requirementSummary(offer, config)
   const perkRows = perkSummary(offer)
+  const galleryOnly = (offer.gallery_urls ?? []).filter((url) => url !== offer.offer_image_url)
   const addOns = addOnList(offer)
   const availability = availabilitySummary(offer)
 
   return (
     <div className={cn(cardClass, 'bg-[#121113] overflow-hidden')}>
       {offer.offer_image_url && (
-        <img src={offer.offer_image_url} alt="" className="w-full aspect-video object-cover" />
+        // 16:9 banner, capped at 200px tall. The aspect-ratio box reserves the space,
+        // so nothing shifts while the image loads.
+        <div className="px-4 pt-4">
+          <div className="relative w-full aspect-video max-h-[200px] overflow-hidden rounded-xl border border-white/10 bg-white/5">
+            <img src={offer.offer_image_url} alt="" className="absolute inset-0 h-full w-full object-cover object-center" />
+            <button
+              type="button"
+              onClick={() => onJump(STEP.review, 'offer-photos')}
+              aria-label="Edit cover photo"
+              className="absolute right-2 top-2 min-h-12 rounded-full bg-black/75 px-4 font-sans text-base font-medium text-[#1AC8ED] hover:underline"
+            >
+              Edit
+            </button>
+          </div>
+        </div>
       )}
       <div className="p-4 space-y-4">
         <PreviewBlock title="Offer" onEdit={() => onJump(STEP.offer, 'offer-title')}>
@@ -434,17 +468,17 @@ function OfferPreview({
           )}
         </PreviewBlock>
 
+        {/* Gallery only: the cover is already shown once as the banner above. */}
         <PreviewBlock title="Photos" onEdit={() => onJump(STEP.review, 'offer-photos')}>
-          {offer.gallery_urls?.length ? (
+          {galleryOnly.length ? (
             <div className="grid grid-cols-3 gap-2">
-              {offer.gallery_urls.map((url) => (
+              {galleryOnly.map((url) => (
                 <img key={url} src={url} alt="" className="w-full aspect-square object-cover rounded-lg" />
               ))}
             </div>
           ) : (
-            !offer.offer_image_url && <Muted>No photos yet.</Muted>
+            <Muted>{offer.offer_image_url ? 'Cover photo only.' : 'No photos yet.'}</Muted>
           )}
-          {offer.offer_image_url && !offer.gallery_urls?.length && <Muted>Cover photo only.</Muted>}
         </PreviewBlock>
       </div>
     </div>

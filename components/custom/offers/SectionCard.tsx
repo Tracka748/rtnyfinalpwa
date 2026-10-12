@@ -4,9 +4,12 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { cardClass, sectionCard, space, text } from './styles'
 import { SECTION_COPY, type SectionKey } from './sectionCopy'
+import { useCampaignTheme } from './themes/ThemeContext'
+import { SectionHeading } from './themed/SectionHeading'
 
-// Wizard section card: mint emoji heading, intro, cyan 💡 tip, optional example
-// and note, then the fields. Copy comes from SECTION_COPY.
+// Wizard section card: themed heading (the `tag` sits on its own line below the
+// title), intro, cyan 💡 tip, optional example and note, then the fields. Copy comes
+// from SECTION_COPY.
 export function SectionCard({
   id,
   copyKey,
@@ -24,18 +27,11 @@ export function SectionCard({
   children: ReactNode
 }) {
   const copy = SECTION_COPY[copyKey]
+  const theme = useCampaignTheme()
   return (
     <section id={id} className={cn(cardClass, sectionCard.border, 'p-5', space.fields)}>
       <div className="space-y-3">
-        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
-          <h2 className={cn(text.cardHeading, sectionCard.heading, 'min-w-0 break-words')}>
-            <span aria-hidden="true" className="mr-2">
-              {copy.emoji}
-            </span>
-            {title}
-          </h2>
-          {tag}
-        </div>
+        <SectionHeading title={title} badge={tag} theme={theme} />
         <p className={text.sectionIntro}>{copy.intro}</p>
         <p className={text.sectionTip}>
           <span aria-hidden="true">💡 </span>

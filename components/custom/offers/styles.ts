@@ -25,9 +25,9 @@ export const text = {
   sectionTip: 'font-sans text-sm text-[#1AC8ED]',
 } as const
 
-// Step 3 section cards: mint heading (~13:1 on #1a1a1a) and a faint mint border.
+// Section cards: a faint mint border. The heading (SectionHeading) takes its colors
+// from the campaign theme.
 export const sectionCard = {
-  heading: 'text-[#59FFA0]',
   border: 'border-[#59FFA0]/20',
 } as const
 
@@ -63,7 +63,10 @@ export function inputClass(hasError?: boolean, extra?: string) {
 export function chipClass(selected: boolean) {
   return cn(
     'min-h-[52px] px-5 rounded-full border font-sans text-base font-medium text-left transition-all',
-    'disabled:opacity-35 disabled:cursor-not-allowed max-w-full break-words',
+    // Disabled (e.g. a min/max guest chip ruled out): ~40% opacity, but still a clearly
+    // visible dashed outline so it reads as unavailable rather than missing.
+    'disabled:opacity-40 disabled:cursor-not-allowed disabled:border-dashed disabled:border-white/80 disabled:hover:border-white/80',
+    'max-w-full break-words',
     selected
       ? 'bg-[#59FFA0]/20 border-[#59FFA0] text-[#59FFA0]'
       : 'border-white/25 text-[#F9FDFF] hover:border-white/50'
