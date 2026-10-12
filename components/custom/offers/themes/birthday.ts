@@ -18,11 +18,24 @@ export const birthdayTheme: CampaignTheme = {
   assets: {
     welcome: `${base}/welcome.webp`,
     success: `${base}/success.webp`,
-    hat: `${base}/hat.webp`,
+    cake: `${base}/cake.webp`,
     divider: `${base}/divider.webp`,
     confetti: `${base}/confetti.webp`,
     balloons: `${base}/balloons.webp`,
     headerBackdrop: `${base}/header-backdrop.webp`,
+    titleWelcome: `${base}/title-welcome.webp`,
+    titleSuccess: `${base}/title-success.webp`,
   },
   sprinkles: ['#FF6FB5', '#A8DCFF', '#59FFA0', '#F9FDFF'],
+  // Mint lettering ~15:1 on #121113.
+  graffiti: {
+    text: '#59FFA0',
+    underline: '#FF6FB5',
+    splatter: '#A8DCFF',
+  },
+  titles: {
+    welcome: 'Birthday Partner',
+    success: 'You’re in',
+    review: 'Preview',
+  },
 }

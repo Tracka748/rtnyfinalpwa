@@ -1,3 +1,5 @@
+import { CakeShapes } from './CakeIcon'
+
 // Inline SVG stand-ins for the optional campaign images, so every themed screen
 // renders with no files in public/campaigns/. All are decorative (aria-hidden),
 // contain no text, and scale to their reserved box.
@@ -9,17 +11,6 @@ interface ArtProps {
 }
 
 const svgProps = { 'aria-hidden': true, focusable: false } as const
-
-export function PartyHatSvg({ accent, accent2, className }: ArtProps) {
-  return (
-    <svg {...svgProps} viewBox="0 0 64 64" className={className}>
-      <path d="M32 6 L52 56 H12 Z" fill={accent} />
-      <path d="M22 31 L42 31 M17 44 L47 44" stroke={accent2} strokeWidth="4" strokeLinecap="round" />
-      <path d="M12 56 H52" stroke="#F9FDFF" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="32" cy="6" r="5" fill={accent2} />
-    </svg>
-  )
-}
 
 export function BalloonsSvg({ accent, accent2, className }: ArtProps) {
   return (
@@ -49,21 +40,18 @@ export function ConfettiDotsSvg({ accent, accent2, className }: ArtProps) {
   )
 }
 
-// Success illustration fallback: a party hat with confetti around it.
+// Success illustration fallback: a birthday cake with confetti around it.
 export function CelebrationSvg({ accent, accent2, className }: ArtProps) {
   return (
     <svg {...svgProps} viewBox="0 0 160 160" className={className}>
-      <g transform="translate(40 30) scale(1.25)">
-        <path d="M32 6 L52 56 H12 Z" fill={accent} />
-        <path d="M22 31 L42 31 M17 44 L47 44" stroke={accent2} strokeWidth="4" strokeLinecap="round" />
-        <path d="M12 56 H52" stroke="#F9FDFF" strokeWidth="4" strokeLinecap="round" />
-        <circle cx="32" cy="6" r="5" fill={accent2} />
+      <g transform="translate(32 28) scale(2)">
+        <CakeShapes accent={accent} accent2={accent2} />
       </g>
       <circle cx="24" cy="40" r="4" fill={accent2} />
       <circle cx="138" cy="48" r="5" fill="#59FFA0" />
       <circle cx="30" cy="124" r="4" fill="#59FFA0" />
       <circle cx="132" cy="122" r="4" fill={accent} />
-      <circle cx="80" cy="150" r="3" fill="#F9FDFF" />
+      <circle cx="80" cy="152" r="3" fill="#F9FDFF" />
     </svg>
   )
 }

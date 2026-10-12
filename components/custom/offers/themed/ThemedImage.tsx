@@ -21,6 +21,10 @@ interface ThemedImageProps {
   alt?: string
   // Art generated on pure black uses mix-blend-mode: screen so the black drops out.
   blendScreen?: boolean
+  // Fill the parent's reserved box (responsive art) instead of a fixed width × height.
+  fill?: boolean
+  // Reports whether the real image is showing (false while loading or when missing).
+  onLoadedChange?: (loaded: boolean) => void
   className?: string
 }
 
@@ -32,6 +36,8 @@ export function ThemedImage({
   priority,
   alt = '',
   blendScreen = true,
+  fill,
+  onLoadedChange,
   className,
 }: ThemedImageProps) {
   const [loaded, setLoaded] = useState(false)
@@ -39,8 +45,8 @@ export function ThemedImage({
 
   return (
     <div
-      className={cn('relative shrink-0', className)}
-      style={{ width, height }}
+      className={cn('relative shrink-0', fill && 'h-full w-full', className)}
+      style={fill ? undefined : { width, height }}
       aria-hidden={alt ? undefined : true}
     >
       <div className={cn('absolute inset-0 transition-opacity duration-300', loaded && !failed ? 'opacity-0' : 'opacity-100')}>
@@ -57,10 +63,14 @@ export function ThemedImage({
           unoptimized
           priority={priority}
           loading={priority ? undefined : 'lazy'}
-          onLoad={() => setLoaded(true)}
+          onLoad={() => {
+            setLoaded(true)
+            onLoadedChange?.(true)
+          }}
           onError={() => {
             missing.add(src)
             setFailed(true)
+            onLoadedChange?.(false)
           }}
           className={cn(
             'absolute inset-0 h-full w-full object-contain transition-opacity duration-300',

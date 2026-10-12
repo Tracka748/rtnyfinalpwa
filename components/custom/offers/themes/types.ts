@@ -8,11 +8,23 @@ export interface CampaignAssets {
   // fallback, so a theme renders correctly before any file is added.
   welcome: string
   success: string
-  hat: string
+  cake: string
   divider: string
   confetti: string
   balloons: string
   headerBackdrop: string
+  // Optional lettering art for the two hero moments (GraffitiHeader image mode).
+  titleWelcome: string
+  titleSuccess: string
+}
+
+export interface GraffitiColors {
+  // Title lettering. Must be >= 4.5:1 on #121113.
+  text: string
+  // Hand-drawn underline stroke.
+  underline: string
+  // Soft splatter glow behind the title.
+  splatter: string
 }
 
 export interface CampaignTheme {
@@ -35,4 +47,11 @@ export interface CampaignTheme {
   assets: CampaignAssets
   // Sprinkle colors, cycled in order.
   sprinkles: string[]
+  // GraffitiHeader colors and the hero/section titles it shows.
+  graffiti: GraffitiColors
+  titles: {
+    welcome: string
+    success: string
+    review: string
+  }
 }
