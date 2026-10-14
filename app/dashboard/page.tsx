@@ -47,12 +47,15 @@ export default async function DashboardPage() {
       member_count: c.crew_members?.[0]?.count ?? 0,
     }))
 
-  const { data: partnerProfile } = await supabase
+  // Every partner this user owns (any number), the same set the Partner Hub
+  // picker at /partner lists. Ordered only for stable display.
+  const { data: ownedPartners } = await supabaseAdmin
     .from('partners')
     .select('id, display_name, partner_type, verified, active, supporter_count, logo_url, tagline, category, category_id, partner_categories(name)')
     .eq('owner_id', user!.id)
-    .eq('active', true)
-    .single()
+    .order('created_at', { ascending: true })
+
+  const partners = ownedPartners ?? []
 
   return (
     <main className="min-h-screen bg-[#121113]">
@@ -186,7 +189,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* My Partner Profile */}
-        {partnerProfile && (
+        {partners.length > 0 && (
           <div className="bg-card border border-white/5 rounded-2xl p-6 mt-6">
             <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/5">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1AC8ED]/10 text-[#1AC8ED]">
@@ -196,24 +199,25 @@ export default async function DashboardPage() {
                 My Partner Profile
               </h2>
               <div className="ml-auto flex items-center gap-4">
-                <a href="/profile/partner/edit" className="text-xs text-accent hover:underline">
-                  Edit Profile →
+                <a href="/partner" className="text-xs font-semibold text-accent hover:underline">
+                  Partner Hub →
                 </a>
-                <a href="/profile/partner/offers" className="text-xs text-accent hover:underline">
-                  Birthday Offers →
-                </a>
-                <a
-                  href={`/partners/${partnerProfile.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-accent hover:underline"
-                >
-                  View Public Page →
-                </a>
+                {partners.length === 1 && (
+                  <a
+                    href={`/partners/${partners[0].id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-accent hover:underline"
+                  >
+                    View Public Page →
+                  </a>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-white/5 rounded-2xl border border-white/5 p-4">
+            <div className="space-y-3">
+            {partners.map((partnerProfile) => (
+            <div key={partnerProfile.id} className="flex items-center gap-4 bg-white/5 rounded-2xl border border-white/5 p-4">
               {/* Logo */}
               <div className="flex-shrink-0">
                 {partnerProfile.logo_url ? (
@@ -262,6 +266,8 @@ export default async function DashboardPage() {
                   <p className="text-[10px] text-foreground/40 uppercase tracking-wider font-label">Status</p>
                 </div>
               </div>
+            </div>
+            ))}
             </div>
           </div>
         )}

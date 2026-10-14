@@ -143,7 +143,7 @@ export function OfferList({ partnerId, wizardHref, mode }: OfferListProps) {
             return (
               <li key={offer.id} className={cn(cardClass, 'overflow-hidden')}>
                 <a
-                  href={`${wizardHref}?offer=${offer.id}`}
+                  href={`${wizardHref}${wizardHref.includes('?') ? '&' : '?'}offer=${offer.id}`}
                   className="flex items-center gap-4 p-4 min-h-12 hover:bg-white/[0.03] transition-colors"
                 >
                   <div className="flex-1 min-w-0 space-y-2">

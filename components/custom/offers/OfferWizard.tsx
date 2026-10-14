@@ -33,6 +33,11 @@ export interface OfferWizardProps {
   offerId?: string | null
   mode: WizardMode
   exitHref: string
+  // Overrides the "edit your profile" link (default: the admin or owner profile page).
+  profileHref?: string
+  // Extra positioning for the fixed action bars, e.g. 'md:left-64' to clear a sticky
+  // sidebar (default: that offset in admin mode, none otherwise).
+  barOffset?: string
   // Campaign skin for the welcome step, step headers, review preview and success screen.
   theme?: CampaignTheme
 }
@@ -47,7 +52,15 @@ function focusElement(id: string) {
   target.focus({ preventScroll: true })
 }
 
-export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAULT_THEME }: OfferWizardProps) {
+export function OfferWizard({
+  partnerId,
+  offerId,
+  mode,
+  exitHref,
+  profileHref: profileHrefOverride,
+  barOffset: barOffsetOverride,
+  theme = DEFAULT_THEME,
+}: OfferWizardProps) {
   const router = useRouter()
   const pathname = usePathname()
   const wizard = useOfferWizard({ partnerId, offerId: offerId ?? null })
@@ -58,9 +71,10 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAUL
   // Element to focus after jumping to another step (checklist "Fix →", preview "Edit").
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
 
-  const profileHref = mode === 'admin' ? `/admin/partners/${partnerId}/edit` : '/profile/partner/edit'
+  const profileHref =
+    profileHrefOverride ?? (mode === 'admin' ? `/admin/partners/${partnerId}/edit` : '/profile/partner/edit')
   // The admin sidebar is sticky at md+; keep the bar out from under it.
-  const barOffset = mode === 'admin' ? 'md:left-64' : undefined
+  const barOffset = barOffsetOverride ?? (mode === 'admin' ? 'md:left-64' : undefined)
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
@@ -116,7 +130,12 @@ export function OfferWizard({ partnerId, offerId, mode, exitHref, theme = DEFAUL
     const wasNew = !offer
     const saved = step === STEP.perks ? await wizard.savePerks() : await wizard.save()
     if (!saved) return
-    if (wasNew) router.replace(`${pathname}?offer=${saved.id}`, { scroll: false })
+    if (wasNew) {
+      // Keep any other query params already on the URL.
+      const params = new URLSearchParams(window.location.search)
+      params.set('offer', saved.id)
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    }
     if (intent === 'exit') router.push(exitHref)
     else wizard.goNext()
   }

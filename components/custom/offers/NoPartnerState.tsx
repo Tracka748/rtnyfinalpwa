@@ -1,6 +1,16 @@
 'use client'
 
-export function NoPartnerState({ message }: { message?: string | null }) {
+interface NoPartnerStateProps {
+  message?: string | null
+  backHref?: string
+  backLabel?: string
+}
+
+export function NoPartnerState({
+  message,
+  backHref = '/dashboard',
+  backLabel = '← Back to Dashboard',
+}: NoPartnerStateProps) {
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
       <div className="text-center space-y-2 max-w-sm">
@@ -8,8 +18,8 @@ export function NoPartnerState({ message }: { message?: string | null }) {
           {message ?? 'You don’t have a partner profile yet.'}
         </p>
         {!message && <p className="text-[#A0A0A0] text-sm font-sans">Contact RTNY admin to get set up.</p>}
-        <a href="/dashboard" className="inline-flex min-h-12 items-center text-[#59FFA0] text-sm hover:underline">
-          ← Back to Dashboard
+        <a href={backHref} className="inline-flex min-h-12 items-center text-[#59FFA0] text-sm hover:underline">
+          {backLabel}
         </a>
       </div>
     </div>
