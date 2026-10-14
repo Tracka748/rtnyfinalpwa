@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createSupabaseAdmin } from '@/lib/supabase';
+import { checkIsAdmin } from '@/lib/admin-auth';
+
+// Keeps each .in() filter (and its request URL) to a safe size.
+const PROFILE_BATCH_SIZE = 100;
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,47 +17,54 @@ export async function GET(req: NextRequest) {
 
     const db = createSupabaseAdmin();
 
-    // 1. Get promoter row
-    const { data: promoter } = await db
-      .from('promoters')
-      .select('id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .single();
+    // Admins see every group's members (read-only); allGroupIds === null means unscoped
+    const isAdmin = !(await checkIsAdmin()).error;
+    let allGroupIds: string[] | null = null;
 
-    if (!promoter) {
-      return NextResponse.json({ success: true, data: [] });
-    }
+    if (!isAdmin) {
+      // 1. Get promoter row
+      const { data: promoter } = await db
+        .from('promoters')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
 
-    // 2. Get all group_ids this organizer manages
-    const { data: orgRows } = await db
-      .from('group_organizers')
-      .select('group_id')
-      .eq('promoter_id', promoter.id);
+      if (!promoter) {
+        return NextResponse.json({ success: true, data: [] });
+      }
 
-    const allGroupIds = (orgRows ?? []).map((r) => r.group_id);
+      // 2. Get all group_ids this organizer manages
+      const { data: orgRows } = await db
+        .from('group_organizers')
+        .select('group_id')
+        .eq('promoter_id', promoter.id);
 
-    if (allGroupIds.length === 0) {
-      return NextResponse.json({ success: true, data: [] });
+      allGroupIds = (orgRows ?? []).map((r) => r.group_id);
+
+      if (allGroupIds.length === 0) {
+        return NextResponse.json({ success: true, data: [] });
+      }
     }
 
     // 3. Apply optional ?group_id= filter
     const groupIdFilter = req.nextUrl.searchParams.get('group_id');
-    let groupIds = allGroupIds;
+    let groupIds: string[] | null = allGroupIds;
 
     if (groupIdFilter) {
-      if (!allGroupIds.includes(groupIdFilter)) {
+      if (allGroupIds && !allGroupIds.includes(groupIdFilter)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       groupIds = [groupIdFilter];
     }
 
     // 4. Fetch active memberships
-    const { data: memberships, error: membershipsError } = await db
+    let membershipsQuery = db
       .from('group_memberships')
       .select('id, user_id, group_id, joined_at')
-      .in('group_id', groupIds)
       .eq('status', 'active');
+    if (groupIds) membershipsQuery = membershipsQuery.in('group_id', groupIds);
+    const { data: memberships, error: membershipsError } = await membershipsQuery;
 
     if (membershipsError) {
       console.error('[organizer/members] memberships error:', membershipsError);
@@ -69,25 +80,28 @@ export async function GET(req: NextRequest) {
     // 5. Fetch profiles for all member user_ids
     const userIds = [...new Set(allMemberships.map((m) => m.user_id))];
 
-    const { data: profiles, error: profilesError } = await db
-      .from('profiles')
-      .select('id, first_name, last_name, email')
-      .in('id', userIds);
+    const profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null }[] = [];
+    for (let i = 0; i < userIds.length; i += PROFILE_BATCH_SIZE) {
+      const { data: batch, error: profilesError } = await db
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds.slice(i, i + PROFILE_BATCH_SIZE));
 
-    if (profilesError) {
-      console.error('[organizer/members] profiles error:', profilesError);
-      return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 });
+      if (profilesError) {
+        console.error('[organizer/members] profiles error:', profilesError);
+        return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 });
+      }
+      profiles.push(...(batch ?? []));
     }
 
     // 6. Fetch group names
-    const { data: groups } = await db
-      .from('groups')
-      .select('id, name')
-      .in('id', groupIds);
+    let groupsQuery = db.from('groups').select('id, name');
+    if (groupIds) groupsQuery = groupsQuery.in('id', groupIds);
+    const { data: groups } = await groupsQuery;
 
     // 7. Build lookup maps
     const profileMap: Record<string, { first_name: string | null; last_name: string | null; email: string | null }> = {};
-    (profiles ?? []).forEach((p) => {
+    profiles.forEach((p) => {
       profileMap[p.id] = { first_name: p.first_name, last_name: p.last_name, email: p.email };
     });
 

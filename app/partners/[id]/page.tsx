@@ -252,7 +252,7 @@ export default async function PartnerProfilePage({ params }: PageProps) {
                 ✉️ Contact
               </ActionPill>
             )}
-            <PartnerSharePill name={partner.name} />
+            <PartnerSharePill name={partner.display_name} />
           </div>
         </ProfileSection>
 

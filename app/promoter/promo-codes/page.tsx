@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { promoCodesEnabled } from '@/lib/feature-flags';
 
 interface PromoCode {
   id: string;
@@ -79,6 +80,22 @@ function ActiveToggle({
 }
 
 export default function PromoterPromoCodesPage() {
+  if (!promoCodesEnabled()) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20 bg-white/5 border border-white/10 rounded-xl">
+        <span className="text-5xl mb-4 block">🏷️</span>
+        <h1 className="text-xl font-semibold text-white mb-2">Promo codes are coming soon</h1>
+        <p className="text-[#7DD8E8] text-sm max-w-sm mx-auto">
+          You&apos;ll be able to create and manage promo codes here once they launch.
+        </p>
+      </div>
+    );
+  }
+
+  return <PromoCodesManager />;
+}
+
+function PromoCodesManager() {
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [loadingCodes, setLoadingCodes] = useState(true);
 

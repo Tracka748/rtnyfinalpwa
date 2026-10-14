@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createSupabaseAdmin } from '@/lib/supabase';
+import { checkIsAdmin } from '@/lib/admin-auth';
 
 export async function GET() {
   try {
@@ -17,44 +18,51 @@ export async function GET() {
     // Use admin client for DB queries to bypass RLS
     const db = createSupabaseAdmin();
 
-    // 1. Get promoter row for this user
-    const { data: promoter } = await db
-      .from('promoters')
-      .select('id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .single();
+    // Admins see every group (read-only); groupIds === null means unscoped
+    const isAdmin = !(await checkIsAdmin()).error;
+    let groupIds: string[] | null = null;
 
-    // After promoter fetch
-    console.log('[organizer/groups] promoter:', promoter);
+    if (!isAdmin) {
+      // 1. Get promoter row for this user
+      const { data: promoter } = await db
+        .from('promoters')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
 
-    if (!promoter) {
-      return NextResponse.json({ success: true, data: [] });
-    }
+      // After promoter fetch
+      console.log('[organizer/groups] promoter:', promoter);
 
-    // 2. Get group_ids this promoter organizes
-    const { data: orgRows } = await db
-      .from('group_organizers')
-      .select('group_id')
-      .eq('promoter_id', promoter.id);
+      if (!promoter) {
+        return NextResponse.json({ success: true, data: [] });
+      }
 
-    // After orgRows fetch
-    console.log('[organizer/groups] orgRows:', orgRows);
+      // 2. Get group_ids this promoter organizes
+      const { data: orgRows } = await db
+        .from('group_organizers')
+        .select('group_id')
+        .eq('promoter_id', promoter.id);
 
-    const groupIds = (orgRows ?? []).map((r) => r.group_id);
+      // After orgRows fetch
+      console.log('[organizer/groups] orgRows:', orgRows);
 
-    // After groupIds
-    console.log('[organizer/groups] groupIds:', groupIds);
+      groupIds = (orgRows ?? []).map((r) => r.group_id);
 
-    if (groupIds.length === 0) {
-      return NextResponse.json({ success: true, data: [] });
+      // After groupIds
+      console.log('[organizer/groups] groupIds:', groupIds);
+
+      if (groupIds.length === 0) {
+        return NextResponse.json({ success: true, data: [] });
+      }
     }
 
     // 3. Fetch the groups
-    const { data: groups, error: groupsError } = await db
+    let groupsQuery = db
       .from('groups')
-      .select('id, slug, name, tagline, card_image_url, accent_color, category, member_count, is_active')
-      .in('id', groupIds);
+      .select('id, slug, name, tagline, card_image_url, accent_color, category, member_count, is_active');
+    if (groupIds) groupsQuery = groupsQuery.in('id', groupIds);
+    const { data: groups, error: groupsError } = await groupsQuery;
 
     if (groupsError) {
       console.error('[organizer/groups] groups error:', groupsError);
@@ -64,11 +72,12 @@ export async function GET() {
     const allGroups = groups ?? [];
 
     // 4. Fetch active member counts per group
-    const { data: memberships } = await db
+    let membershipsQuery = db
       .from('group_memberships')
       .select('group_id')
-      .in('group_id', groupIds)
       .eq('status', 'active');
+    if (groupIds) membershipsQuery = membershipsQuery.in('group_id', groupIds);
+    const { data: memberships } = await membershipsQuery;
 
     const countMap: Record<string, number> = {};
     (memberships ?? []).forEach((m) => {

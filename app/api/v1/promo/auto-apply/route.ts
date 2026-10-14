@@ -4,8 +4,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { promoCodesEnabled } from '@/lib/feature-flags'
 
 export async function POST(request: NextRequest) {
+  if (!promoCodesEnabled()) {
+    return NextResponse.json(
+      {
+        autoApply: false,
+        error: 'Promo codes are not available yet',
+        code: 'FEATURE_UNAVAILABLE'
+      },
+      { status: 404 }
+    )
+  }
+
   try {
     const cookieStore = cookies()
     const body = await request.json()

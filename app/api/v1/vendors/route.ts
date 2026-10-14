@@ -15,9 +15,13 @@ type PartnerThemeTagResult = Pick<PartnerThemeTagRow, 'status' | 'first_approved
   themes: Pick<ThemeRow, 'id' | 'name'> | null
 }
 
-type PartnerResult = PartnerRow & {
+// Only what the plan builder reads (id + theme tags); `active` is fetched to
+// drop inactive partners and is stripped before the response.
+type PartnerResult = Pick<PartnerRow, 'id' | 'active'> & {
   partner_theme_tags: PartnerThemeTagResult[]
 }
+
+type PublicPartner = Omit<PartnerResult, 'active'>
 
 type VendorResult = VendorRow & {
   vendor_services: VendorServiceRow[]
@@ -25,6 +29,12 @@ type VendorResult = VendorRow & {
   vendor_dynamic_pricing: VendorDynamicPricingRow[]
   vendor_blackout_dates: VendorBlackoutDateRow[]
   partners: PartnerResult | null
+}
+
+function toPublicPartner(partner: PartnerResult | null): PublicPartner | null {
+  if (!partner || partner.active !== true) return null
+  const { active: _active, ...rest } = partner
+  return rest
 }
 
 // Maps UI filter pill values → DB vendors.type enum values
@@ -106,7 +116,7 @@ export async function GET(request: NextRequest) {
         vendor_availability (*),
         vendor_dynamic_pricing (*),
         vendor_blackout_dates (*),
-        partners (*, partner_theme_tags (status, first_approved_at, themes (id, name)))
+        partners (id, active, partner_theme_tags (status, first_approved_at, themes (id, name)))
       `)
       .eq('active', true)
 
@@ -159,7 +169,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ success: true, data: results })
+    const data = results.map((v) => ({ ...v, partners: toPublicPartner(v.partners) }))
+
+    return NextResponse.json({ success: true, data })
   } catch (err) {
     console.error('Vendors route error:', err)
     return NextResponse.json(

@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PromoCodeSection, PromoDiscount } from '@/components/checkout/promo-code-section'
+import { promoCodesEnabled } from '@/lib/feature-flags'
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -136,7 +137,10 @@ export default function CheckoutPage() {
     return sum + (booster?.price || 0)
   }, 0)
   const orderSubtotal = ticketsSubtotal + boostersSubtotal
-  const discountAmount = appliedPromo?.discountAmount || 0
+  // With promo codes off, no discount is shown or subtracted, so the total
+  // matches what the server charges.
+  const promoEnabled = promoCodesEnabled()
+  const discountAmount = promoEnabled ? appliedPromo?.discountAmount || 0 : 0
   const taxAmount = 0 // Add tax calculation if needed
   const totalAmount = orderSubtotal - discountAmount + taxAmount
 
@@ -172,7 +176,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           eventId: checkoutData.eventId,
           items: stripeItems,
-          promoCode: appliedPromo?.code || '',
+          promoCode: promoEnabled ? appliedPromo?.code || '' : '',
           crewId: selectedCrewId || null,
           boosters: Array.from(selectedBoosters).map(id => {
             const booster = availableBoosters.find(b => b.id === id)
@@ -360,14 +364,16 @@ export default function CheckoutPage() {
             )}
 
             {/* Promo Code */}
-            <PromoCodeSection
-              subtotal={orderSubtotal}
-              eventId={checkoutData.eventId}
-              onApply={handlePromoApply}
-              onRemove={handlePromoRemove}
-              allowChange={true}
-              autoApply={true}
-            />
+            {promoEnabled && (
+              <PromoCodeSection
+                subtotal={orderSubtotal}
+                eventId={checkoutData.eventId}
+                onApply={handlePromoApply}
+                onRemove={handlePromoRemove}
+                allowChange={true}
+                autoApply={true}
+              />
+            )}
           </div>
 
           {/* Order Summary - Right Column */}
@@ -406,7 +412,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {appliedPromo && (
+                  {promoEnabled && appliedPromo && (
                     <div className="flex justify-between font-sans text-sm">
                       <span className="text-[#59FFA0]">
                         Discount ({appliedPromo.code})

@@ -35,7 +35,60 @@ export async function POST(
       )
     }
 
-    // Update status to approved
+    // Grant access first; if either step fails the application stays pending
+    // and the admin can retry (both steps are safe to repeat).
+
+    // (a) Create the promoters row if the user doesn't have one yet
+    const { data: existingPromoter, error: promoterFetchError } = await supabase
+      .from('promoters')
+      .select('id')
+      .eq('user_id', application.user_id)
+      .maybeSingle()
+
+    if (promoterFetchError) {
+      console.error('Promoter lookup error:', promoterFetchError)
+      return NextResponse.json(
+        { error: 'Failed to approve application' },
+        { status: 500 }
+      )
+    }
+
+    if (!existingPromoter) {
+      const { error: promoterInsertError } = await supabase
+        .from('promoters')
+        .insert({
+          user_id: application.user_id,
+          display_name: application.business_name,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+      if (promoterInsertError) {
+        console.error('Promoter insert error:', promoterInsertError)
+        return NextResponse.json(
+          { error: 'Failed to approve application' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // (b) Promote plain users only; never overwrite admin, organizer or promoter
+    const { error: roleError } = await supabase
+      .from('profiles')
+      .update({ role: 'promoter' })
+      .eq('id', application.user_id)
+      .or('role.is.null,role.eq.user')
+
+    if (roleError) {
+      console.error('Profile role update error:', roleError)
+      return NextResponse.json(
+        { error: 'Failed to approve application' },
+        { status: 500 }
+      )
+    }
+
+    // (c) Only now mark the application approved
     const { data, error } = await supabase
       .from('promoter_applications')
       .update({
@@ -48,7 +101,7 @@ export async function POST(
     if (error) {
       console.error('Database error:', error)
       return NextResponse.json(
-        { error: 'Failed to approve application', details: error.message },
+        { error: 'Failed to approve application' },
         { status: 500 }
       )
     }
@@ -57,31 +110,6 @@ export async function POST(
     // const { sendPromoterApprovalEmail } = await import('@/lib/email-notifications')
     // await sendPromoterApprovalEmail(application.contact_email, application.business_name)
     //   .catch(err => console.error('⚠️ Failed to send email:', err))
-
-    // Update user's profile role to promoter
-    await supabase
-      .from('profiles')
-      .update({ role: 'promoter' })
-      .eq('id', application.user_id);
-
-    // Create promoters row if it doesn't exist
-    const { data: existingPromoter } = await supabase
-      .from('promoters')
-      .select('id')
-      .eq('user_id', application.user_id)
-      .maybeSingle();
-
-    if (!existingPromoter) {
-      await supabase
-        .from('promoters')
-        .insert({
-          user_id: application.user_id,
-          display_name: application.business_name,
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-    }
 
     return NextResponse.json({
       success: true,

@@ -43,6 +43,17 @@ export async function GET() {
   }
 }
 
+const PROFILE_FIELDS = [
+  'first_name',
+  'last_name',
+  'phone',
+  'neighborhood',
+  'age_range',
+  'gender',
+  'relationship_status',
+  'is_parent',
+] as const
+
 export async function PATCH(request: Request) {
   try {
     const supabase = await createClient()
@@ -52,18 +63,33 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { vibe_tags, ...profileFields } = body
+    const rawBody = await request.json()
+    const body: Record<string, unknown> =
+      rawBody && typeof rawBody === 'object' && !Array.isArray(rawBody) ? rawBody : {}
+    const { vibe_tags } = body as { vibe_tags?: unknown }
+
+    // Only these columns may be written from the settings page. Everything else
+    // in the body (role, is_organizer, id, email, timestamps, ...) is ignored.
+    const profileFields: Record<string, unknown> = {}
+    for (const key of PROFILE_FIELDS) {
+      if (body[key] !== undefined) profileFields[key] = body[key]
+    }
+
+    if (Object.keys(profileFields).length === 0 && vibe_tags === undefined) {
+      return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 })
+    }
 
     // Update profiles table
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update(profileFields)
-      .eq('id', user.id)
+    if (Object.keys(profileFields).length > 0) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileFields)
+        .eq('id', user.id)
 
-    if (profileError) {
-      console.error('Profile update error:', profileError)
-      return NextResponse.json({ error: profileError.message }, { status: 500 })
+      if (profileError) {
+        console.error('Profile update error:', profileError)
+        return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 })
+      }
     }
 
     // Validate and upsert user_vibes only when the client actually sent vibe_tags
@@ -93,7 +119,7 @@ export async function PATCH(request: Request) {
 
       if (vibesError) {
         console.error('Vibes upsert error:', vibesError)
-        return NextResponse.json({ error: vibesError.message }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to save vibes' }, { status: 500 })
       }
     }
 
@@ -103,6 +129,6 @@ export async function PATCH(request: Request) {
     })
   } catch (error: any) {
     console.error('Profile PATCH error:', error)
-    return NextResponse.json({ error: error.message || 'Unexpected error' }, { status: 500 })
+    return NextResponse.json({ error: 'Unexpected error' }, { status: 500 })
   }
 }

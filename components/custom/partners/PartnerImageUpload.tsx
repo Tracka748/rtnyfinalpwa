@@ -18,11 +18,17 @@ interface Props {
   onUploadingChange?: (uploading: boolean) => void
 }
 
-function extensionFor(file: File): string {
-  const fromName = file.name.includes('.') ? file.name.split('.').pop() : ''
-  const fromType = file.type.split('/')[1]?.replace('jpeg', 'jpg').replace('svg+xml', 'svg')
-  return (fromName || fromType || 'png').toLowerCase()
+// Accepted mime types and the extension each is stored under. The extension
+// comes from the validated type, never the filename, and matches what
+// PATCH /api/v1/partners/[id] accepts for logo_url / cover_image_url.
+const EXTENSION_BY_TYPE: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
 }
+
+const ACCEPT = Object.keys(EXTENSION_BY_TYPE).join(',')
 
 export default function PartnerImageUpload({ kind, partnerId, value, onChange, onUploadingChange }: Props) {
   const { bucket, filename, label } = KIND_CONFIG[kind]
@@ -45,8 +51,9 @@ export default function PartnerImageUpload({ kind, partnerId, value, onChange, o
       input.value = ''
       return
     }
-    if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file.')
+    const extension = EXTENSION_BY_TYPE[file.type]
+    if (!extension) {
+      setError('Please upload a JPG, PNG, WebP or GIF image.')
       input.value = ''
       return
     }
@@ -59,7 +66,7 @@ export default function PartnerImageUpload({ kind, partnerId, value, onChange, o
     setUploading(true)
     try {
       const supabase = createBrowserSupabaseClient()
-      const path = `${partnerId}/${filename}.${extensionFor(file)}`
+      const path = `${partnerId}/${filename}.${extension}`
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(path, file, { upsert: true, contentType: file.type })
@@ -94,7 +101,7 @@ export default function PartnerImageUpload({ kind, partnerId, value, onChange, o
       )}
       <input
         type="file"
-        accept="image/*"
+        accept={ACCEPT}
         onChange={handleFile}
         disabled={uploading}
         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#59FFA0]/15 file:px-3 file:py-1 file:text-[#59FFA0] file:text-xs disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-[#59FFA0]/50 transition-colors"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createSupabaseAdmin } from '@/lib/supabase';
+import { checkIsAdmin } from '@/lib/admin-auth';
 
 const VALID_POST_TYPES = ['announcement', 'update', 'poll'] as const;
 
@@ -33,9 +34,13 @@ export async function GET(req: NextRequest) {
 
     const db = createSupabaseAdmin();
 
-    const { groupIds } = await getPromoterAndGroups(db, user.id);
+    // Admins see every group's posts (read-only); groupIds === null means unscoped
+    const isAdmin = !(await checkIsAdmin()).error;
+    const groupIds: string[] | null = isAdmin
+      ? null
+      : (await getPromoterAndGroups(db, user.id)).groupIds;
 
-    if (groupIds.length === 0) {
+    if (groupIds && groupIds.length === 0) {
       const isCount = req.nextUrl.searchParams.get('count') === 'true';
       return NextResponse.json(isCount ? { success: true, data: { count: 0 } } : { success: true, data: [] });
     }
@@ -43,10 +48,11 @@ export async function GET(req: NextRequest) {
     const isCount = req.nextUrl.searchParams.get('count') === 'true';
 
     if (isCount) {
-      const { count, error } = await db
+      let countQuery = db
         .from('group_posts')
-        .select('id', { count: 'exact', head: true })
-        .in('group_id', groupIds);
+        .select('id', { count: 'exact', head: true });
+      if (groupIds) countQuery = countQuery.in('group_id', groupIds);
+      const { count, error } = await countQuery;
 
       if (error) {
         console.error('[organizer/posts] count error:', error);
@@ -56,10 +62,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data: { count: count ?? 0 } });
     }
 
-    const { data: posts, error: postsError } = await db
+    let postsQuery = db
       .from('group_posts')
-      .select('id, group_id, author_id, title, body, post_type, is_pinned, created_at')
-      .in('group_id', groupIds)
+      .select('id, group_id, author_id, title, body, post_type, is_pinned, created_at');
+    if (groupIds) postsQuery = postsQuery.in('group_id', groupIds);
+    const { data: posts, error: postsError } = await postsQuery
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -69,10 +76,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch group names for enrichment
+    const nameIds = groupIds ?? [...new Set((posts ?? []).map((p) => p.group_id))];
     const { data: groups } = await db
       .from('groups')
       .select('id, name')
-      .in('id', groupIds);
+      .in('id', nameIds);
 
     const groupNameMap: Record<string, string> = {};
     (groups ?? []).forEach((g) => { groupNameMap[g.id] = g.name; });

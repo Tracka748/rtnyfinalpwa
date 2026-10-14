@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase'
+import { promoCodesEnabled } from '@/lib/feature-flags'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,6 +12,18 @@ const supabase = createClient(
 )
 
 export async function POST(request: NextRequest) {
+  if (!promoCodesEnabled()) {
+    return NextResponse.json(
+      {
+        valid: false,
+        error: 'Promo codes are not available yet',
+        code: 'FEATURE_UNAVAILABLE',
+        message: 'Promo codes are not available yet'
+      },
+      { status: 404 }
+    )
+  }
+
   try {
     // Auth check — promo validation requires a logged-in session
     const supabaseServer = await createSupabaseServer()

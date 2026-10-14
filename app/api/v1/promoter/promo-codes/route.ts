@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { promoCodesEnabled } from '@/lib/feature-flags';
 
 // promo_codes.created_by confirmed present — admin generate route sets created_by: user.id
 
@@ -31,6 +32,13 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!promoCodesEnabled()) {
+    return NextResponse.json(
+      { error: 'Promo codes are not available yet', code: 'FEATURE_UNAVAILABLE' },
+      { status: 404 }
+    );
+  }
+
   try {
     const supabase = await createClient();
 

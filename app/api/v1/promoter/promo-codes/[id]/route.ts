@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { promoCodesEnabled } from '@/lib/feature-flags';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!promoCodesEnabled()) {
+    return NextResponse.json(
+      { error: 'Promo codes are not available yet', code: 'FEATURE_UNAVAILABLE' },
+      { status: 404 }
+    );
+  }
+
   try {
     const supabase = await createClient();
 
