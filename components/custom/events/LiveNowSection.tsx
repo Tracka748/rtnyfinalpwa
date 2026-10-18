@@ -3,80 +3,115 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 interface LiveSlot {
   id: string
   title: string
   venue: string
   img: string
-  live: boolean
-  featured: boolean
+  startsAt: string
+  endsAt: string | null
+}
+
+interface ApiEvent {
+  id: string
+  name: string
+  flyer_image_url: string | null
+  event_date: string
+  event_end_date: string | null
+  venue_name: string | null
+}
+
+const TIME_ZONE = 'America/New_York'
+
+const timeFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: TIME_ZONE,
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
+const dateTimeFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: TIME_ZONE,
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
+const dayKeyFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+// Time only when the date is today (New York); weekday + date + time otherwise.
+function formatWhen(iso: string, now: Date): string {
+  const d = new Date(iso)
+  return dayKeyFormat.format(d) === dayKeyFormat.format(now)
+    ? timeFormat.format(d)
+    : dateTimeFormat.format(d)
+}
+
+function formatRange(startIso: string, endIso: string | null, now: Date): string {
+  const start = formatWhen(startIso, now)
+  if (!endIso) return start
+  const s = new Date(startIso)
+  const e = new Date(endIso)
+  const end = dayKeyFormat.format(s) === dayKeyFormat.format(e)
+    ? timeFormat.format(e)
+    : dateTimeFormat.format(e)
+  return `${start} – ${end}`
+}
+
+function toSlot(e: ApiEvent): LiveSlot {
+  return {
+    id: e.id,
+    title: e.name,
+    venue: e.venue_name ?? 'Location TBD',
+    img: e.flyer_image_url ?? '/placeholder-event.jpg',
+    startsAt: e.event_date,
+    endsAt: e.event_end_date,
+  }
 }
 
 export function LiveNowSection() {
-  const [events, setEvents] = useState<LiveSlot[]>([])
+  const [live, setLive] = useState<LiveSlot[]>([])
+  const [upcoming, setUpcoming] = useState<LiveSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  // Once per mount: the API shuffles per request, so no re-fetch on re-render.
   useEffect(() => {
-    async function fetchLiveSlots() {
+    let cancelled = false
+
+    async function fetchEvents() {
       try {
-        // Primary: paid live_now_slots from the API
-        const res = await fetch('/api/v1/live-now')
+        const res = await fetch('/api/v1/live-now', { cache: 'no-store' })
+        if (!res.ok) throw new Error(`Live now request failed: ${res.status}`)
         const json = await res.json()
-        if (json.success && json.data?.length) {
-          setEvents(
-            json.data.map((slot: any) => ({
-              id: slot.id,
-              title: slot.title,
-              venue: slot.venue,
-              img: slot.image_url ?? '/placeholder-event.jpg',
-              live: true,
-              featured: false,
-            }))
-          )
-          setLoading(false)
-          return
-        }
+        if (cancelled) return
+        setLive((json.live ?? []).map(toSlot))
+        setUpcoming((json.upcoming ?? []).map(toSlot))
       } catch (err) {
-        console.error('LiveNowSection API error:', err)
-      }
-
-      // Fallback: today's active events directly from Supabase
-      try {
-        const supabase = createBrowserSupabaseClient()
-        const today = new Date().toISOString().split('T')[0]
-        const { data } = await supabase
-          .from('events')
-          .select('id, name, flyer_image_url, event_date, status, venues(name)')
-          .eq('status', 'active')
-          .gte('event_date', `${today}T00:00:00`)
-          .lte('event_date', `${today}T23:59:59`)
-          .order('event_date', { ascending: true })
-          .limit(10)
-
-        if (data?.length) {
-          setEvents(
-            data.map((e: any) => ({
-              id: e.id,
-              title: e.name,
-              venue: e.venues?.name ?? 'Location TBD',
-              img: e.flyer_image_url ?? '/placeholder-event.jpg',
-              live: true,
-              featured: false,
-            }))
-          )
-        }
-      } catch (err) {
-        console.error('LiveNowSection fallback error:', err)
+        console.error('LiveNowSection error:', err)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
-    fetchLiveSlots()
+    fetchEvents()
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  const isLive = live.length > 0
+  const showUpcoming = !isLive && upcoming.length > 0
+  const events = isLive ? live : showUpcoming ? upcoming : []
+  const heading = showUpcoming && !loading ? 'Coming Soon' : 'Live Now'
+  const showLiveDot = !showUpcoming || loading
 
   return (
     <>
@@ -112,16 +147,18 @@ export function LiveNowSection() {
           marginBottom: 16,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              display: 'inline-block',
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: '#59FFA0',
-              boxShadow: '0 0 8px #59FFA0',
-              animation: 'pulse 1.6s ease-in-out infinite',
-              flexShrink: 0,
-            }} />
+            {showLiveDot && (
+              <span style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#59FFA0',
+                boxShadow: '0 0 8px #59FFA0',
+                animation: 'pulse 1.6s ease-in-out infinite',
+                flexShrink: 0,
+              }} />
+            )}
             <span style={{
               fontFamily: 'Rokkitt, serif',
               fontWeight: 800,
@@ -129,11 +166,11 @@ export function LiveNowSection() {
               color: '#F9FDFF',
               lineHeight: 1,
             }}>
-              Live Now
+              {heading}
             </span>
           </div>
           <Link
-            href="/events?filter=today"
+            href={showUpcoming && !loading ? '/events' : '/events?filter=today'}
             style={{
               fontFamily: 'Rubik, sans-serif',
               fontWeight: 500,
@@ -211,13 +248,30 @@ export function LiveNowSection() {
                 }}>
                   Check back soon or browse upcoming events
                 </p>
+                <Link
+                  href="/events"
+                  style={{
+                    display: 'inline-block',
+                    marginTop: 6,
+                    fontFamily: 'Rubik, sans-serif',
+                    fontWeight: 500,
+                    fontSize: 10,
+                    color: '#1AC8ED',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Browse events →
+                </Link>
               </div>
             </div>
           )}
 
-          {/* Live cards */}
+          {/* Event cards */}
           {!loading && events.map((event, i) => {
             const isExpanded = expandedId === event.id
+            const now = new Date()
+            const startLabel = formatWhen(event.startsAt, now)
+            const rangeLabel = formatRange(event.startsAt, event.endsAt, now)
             return (
               <div
                 key={event.id}
@@ -261,28 +315,30 @@ export function LiveNowSection() {
                     zIndex: 0,
                   }} />
 
-                  {/* Pulsing live dot — top-left */}
-                  <span style={{
-                    position: 'absolute',
-                    top: 5,
-                    left: 5,
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: '#59FFA0',
-                    boxShadow: '0 0 6px #59FFA0',
-                    animation: 'pulse 1.6s ease-in-out infinite',
-                    zIndex: 2,
-                  }} />
+                  {/* Pulsing live dot — top-left (live events only) */}
+                  {isLive && (
+                    <span style={{
+                      position: 'absolute',
+                      top: 5,
+                      left: 5,
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#59FFA0',
+                      boxShadow: '0 0 6px #59FFA0',
+                      animation: 'pulse 1.6s ease-in-out infinite',
+                      zIndex: 2,
+                    }} />
+                  )}
 
-                  {/* Expanded overlay: venue name */}
+                  {/* Expanded overlay: venue, time, and a link to the event page */}
                   {isExpanded && (
                     <div style={{
                       position: 'absolute',
                       bottom: 0,
                       left: 0,
                       right: 14,
-                      padding: '18px 10px 8px',
+                      padding: '24px 10px 8px',
                       background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)',
                       zIndex: 3,
                     }}>
@@ -295,8 +351,38 @@ export function LiveNowSection() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                       }}>
-                        📍 {event.venue}
+                        📍 {event.venue || 'Location TBD'}
                       </p>
+                      <p style={{
+                        fontFamily: 'Rubik, sans-serif',
+                        fontSize: 10,
+                        color: '#7DD8E8',
+                        margin: '2px 0 0',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        🕐 {rangeLabel}
+                      </p>
+                      <Link
+                        href={`/events/${event.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          display: 'block',
+                          marginTop: 6,
+                          padding: '4px 0',
+                          borderRadius: 6,
+                          background: '#59FFA0',
+                          color: '#121113',
+                          fontFamily: 'Rubik, sans-serif',
+                          fontWeight: 700,
+                          fontSize: 10,
+                          textAlign: 'center',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        View event →
+                      </Link>
                     </div>
                   )}
 
@@ -405,6 +491,18 @@ export function LiveNowSection() {
                         </span>
                       </>
                     )}
+                  </p>
+                  <p style={{
+                    fontFamily: 'Rubik, sans-serif',
+                    fontWeight: 500,
+                    fontSize: 7,
+                    color: '#7DD8E8',
+                    margin: '3px 0 0',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {startLabel}
                   </p>
                 </div>
               </div>
