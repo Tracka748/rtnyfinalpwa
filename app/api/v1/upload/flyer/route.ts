@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { checkIsAdmin } from '@/lib/admin-auth';
+import { createSupabaseAdmin } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
@@ -18,21 +18,36 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if user is a promoter
-    const { data: userData } = await supabase
-      .from('users')
-      .select('is_promoter')
-      .eq('id', user.id)
-      .single();
+    // Allow admins, or users with an active promoters row (what approval creates).
+    // Checked with the service-role client; the session client is only used above
+    // to identify the caller.
+    const admin = createSupabaseAdmin();
+    const [profileResult, promoterResult] = await Promise.all([
+      admin.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+      admin
+        .from('promoters')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .limit(1),
+    ]);
 
-    if (!userData?.is_promoter) {
-      const adminCheck = await checkIsAdmin();
-      if (adminCheck.error) {
-        return NextResponse.json(
-          { error: 'Only approved promoters can upload flyers' },
-          { status: 403 }
-        );
-      }
+    if (profileResult.error || promoterResult.error) {
+      console.error('Flyer upload permission check error:', profileResult.error ?? promoterResult.error);
+      return NextResponse.json(
+        { error: 'Failed to verify permissions' },
+        { status: 500 }
+      );
+    }
+
+    const isAdmin = profileResult.data?.role === 'admin';
+    const isActivePromoter = (promoterResult.data?.length ?? 0) > 0;
+
+    if (!isAdmin && !isActivePromoter) {
+      return NextResponse.json(
+        { error: 'Only approved promoters can upload flyers' },
+        { status: 403 }
+      );
     }
 
     // Parse multipart form data

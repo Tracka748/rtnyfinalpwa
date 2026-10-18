@@ -11,23 +11,34 @@ type PartnerRow = Database['public']['Tables']['partners']['Row']
 type PartnerThemeTagRow = Database['public']['Tables']['partner_theme_tags']['Row']
 type ThemeRow = Database['public']['Tables']['themes']['Row']
 
-type PartnerThemeTagResult = Pick<PartnerThemeTagRow, 'status' | 'first_approved_at'> & {
+type PartnerThemeTagResult = Pick<PartnerThemeTagRow, 'status'> & {
   themes: Pick<ThemeRow, 'id' | 'name'> | null
 }
 
-// Only what the plan builder reads (id + theme tags); `active` is fetched to
+// Only what the plan builder reads (approved theme tags); `active` is fetched to
 // drop inactive partners and is stripped before the response.
-type PartnerResult = Pick<PartnerRow, 'id' | 'active'> & {
+type PartnerResult = Pick<PartnerRow, 'active'> & {
   partner_theme_tags: PartnerThemeTagResult[]
 }
 
 type PublicPartner = Omit<PartnerResult, 'active'>
 
-type VendorResult = VendorRow & {
-  vendor_services: VendorServiceRow[]
-  vendor_availability: VendorAvailabilityRow[]
-  vendor_dynamic_pricing: VendorDynamicPricingRow[]
-  vendor_blackout_dates: VendorBlackoutDateRow[]
+// This route is unauthenticated and uses the service-role client, so every
+// embed below selects an explicit column list. Never use select('*') here.
+type VendorResult = Pick<
+  VendorRow,
+  | 'id' | 'name' | 'type' | 'tier' | 'rating' | 'review_count' | 'bio' | 'location'
+  | 'profile_image_url' | 'instant_book' | 'available_days' | 'base_price' | 'price_unit'
+> & {
+  vendor_services: Pick<
+    VendorServiceRow,
+    'id' | 'title' | 'category' | 'price' | 'description' | 'duration_hours' | 'active'
+  >[]
+  // Server-side filtering only; stripped before the response.
+  vendor_availability: Pick<VendorAvailabilityRow, 'start_time' | 'end_time' | 'booked'>[]
+  vendor_dynamic_pricing: Pick<VendorDynamicPricingRow, 'day_of_week' | 'price_multiplier'>[]
+  // Server-side filtering only; stripped before the response.
+  vendor_blackout_dates: Pick<VendorBlackoutDateRow, 'date'>[]
   partners: PartnerResult | null
 }
 
@@ -57,7 +68,7 @@ const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'frid
 
 function getEffectivePrice(
   basePrice: number,
-  dynamicPricing: VendorDynamicPricingRow[],
+  dynamicPricing: VendorResult['vendor_dynamic_pricing'],
   date: string
 ): number {
   const dayName = DAY_NAMES[new Date(date).getDay()]
@@ -108,17 +119,23 @@ export async function GET(request: NextRequest) {
     const categoryKey = (category ?? 'all').toLowerCase()
     const dbTypes = TYPE_MAP[categoryKey] ?? []
 
+    // Embedded filters (vendor_services.*, partner_theme_tags.status) prune the
+    // embedded rows only; vendors are still returned with an empty array.
     let query = supabase
       .from('vendors')
       .select(`
-        *,
-        vendor_services (*),
-        vendor_availability (*),
-        vendor_dynamic_pricing (*),
-        vendor_blackout_dates (*),
-        partners (id, active, partner_theme_tags (status, first_approved_at, themes (id, name)))
+        id, name, type, tier, rating, review_count, bio, location,
+        profile_image_url, instant_book, available_days, base_price, price_unit,
+        vendor_services (id, title, category, price, description, duration_hours, active),
+        vendor_availability (start_time, end_time, booked),
+        vendor_dynamic_pricing (day_of_week, price_multiplier),
+        vendor_blackout_dates (date),
+        partners (active, partner_theme_tags (status, themes (id, name)))
       `)
       .eq('active', true)
+      .eq('vendor_services.active', true)
+      .eq('vendor_services.status', 'active')
+      .eq('partners.partner_theme_tags.status', 'approved')
 
     if (dbTypes.length > 0) {
       query = query.in('type', dbTypes) as typeof query
@@ -132,7 +149,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Vendors query error:', error)
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch vendors', details: error.message },
+        { success: false, error: 'Failed to fetch vendors', details: 'Please try again later' },
         { status: 500 }
       )
     }
@@ -169,7 +186,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const data = results.map((v) => ({ ...v, partners: toPublicPartner(v.partners) }))
+    // Availability slots and blackout dates were only needed for the filters above.
+    const data = results.map(
+      ({ vendor_availability: _availability, vendor_blackout_dates: _blackouts, ...v }) => ({
+        ...v,
+        partners: toPublicPartner(v.partners),
+      })
+    )
 
     return NextResponse.json({ success: true, data })
   } catch (err) {
