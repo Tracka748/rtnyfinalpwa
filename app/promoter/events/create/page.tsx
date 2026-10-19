@@ -66,6 +66,9 @@ const CATEGORY_CONFIG: Record<EventCategory, { icon: string; label: string }> = 
   dining: { icon: '🍽️', label: 'Dining' },
   arts: { icon: '🎨', label: 'Arts' },
   sports: { icon: '⚽', label: 'Sports' },
+  music: { icon: '🎵', label: 'Music' },
+  festivals: { icon: '🎪', label: 'Festivals' },
+  workshop: { icon: '🛠️', label: 'Workshop' },
 };
 
 type TicketFormat = 'digital' | 'physical' | 'both';
@@ -1102,7 +1105,10 @@ function CreateEventForm() {
                   <div className="text-sm font-semibold text-[#7DD8E8] mb-2">EVENT BASICS</div>
                   <div className="space-y-1">
                     <div><strong>Name:</strong> {formData.name}</div>
-                    <div><strong>Category:</strong> {CATEGORY_CONFIG[formData.category].icon} {CATEGORY_CONFIG[formData.category].label}</div>
+                    <div><strong>Category:</strong> {(() => {
+                      const cat = (CATEGORY_CONFIG as Record<string, { icon: string; label: string } | undefined>)[formData.category] ?? { icon: '🎟️', label: formData.category }
+                      return `${cat.icon} ${cat.label}`
+                    })()}</div>
                     <div><strong>Date:</strong> {formData.event_date} at {formData.event_time}</div>
                   </div>
                 </div>

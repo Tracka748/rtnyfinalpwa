@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     const isSubmittingForReview = body.submit_for_review === true
     console.log('📝 Mode:', isSubmittingForReview ? 'SUBMIT FOR REVIEW' : 'SAVE DRAFT')
 
-    const validCategories = ['nightlife', 'family', 'sports', 'arts', 'dining', 'movies']
+    const validCategories = ['nightlife', 'family', 'movies', 'dining', 'arts', 'sports', 'music', 'festivals', 'workshop']
 
     if (isSubmittingForReview) {
       // STRICT VALIDATION - All fields required for submission
