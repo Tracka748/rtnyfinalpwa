@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
@@ -75,7 +75,7 @@ function getCategoryIcon(category: string, icon?: string): string {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function DayPlanCheckoutPage() {
+function DayPlanCheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const canceled = searchParams.get('canceled')
@@ -348,5 +348,17 @@ export default function DayPlanCheckoutPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DayPlanCheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#121113] flex items-center justify-center text-white">
+        Loading...
+      </div>
+    }>
+      <DayPlanCheckoutContent />
+    </Suspense>
   )
 }

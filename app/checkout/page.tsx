@@ -3,7 +3,7 @@
 // app/checkout/page.tsx
 // Complete checkout page with promo codes, boosters, and Stripe payment
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { loadStripe } from '@stripe/stripe-js'
 import { 
@@ -59,7 +59,7 @@ const availableBoosters = [
   { id: '8', name: 'Merch Bundle', description: 'Event merchandise', price: 20, icon: '👕' },
 ]
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -466,5 +466,17 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#121113] flex items-center justify-center text-white">
+        Loading...
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   )
 }
