@@ -7,3 +7,8 @@
 export function promoCodesEnabled(): boolean {
   return process.env.NEXT_PUBLIC_PROMO_CODES_ENABLED === 'true'
 }
+
+// AI Quick Build: the AI event builder entry on the promoter Create Event page.
+export function aiQuickBuildEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_AI_QUICK_BUILD_ENABLED === 'true'
+}

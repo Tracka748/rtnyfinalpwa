@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EventCategory } from '@/types/database';
 import { AIQuickBuildFlow } from '@/components/AIQuickBuildFlow';
+import { aiQuickBuildEnabled } from '@/lib/feature-flags';
 import { TimePicker } from '@/components/ui/time-picker/TimePicker';
 import { Calendar } from 'lucide-react';
 
@@ -102,7 +103,7 @@ function CreateEventForm() {
   const draftId = searchParams.get('draft');
 
   // Mode selection: null = show mode picker, 'ai' = AI builder, 'manual' = existing wizard
-  const [mode, setMode] = useState<'ai' | 'manual' | null>(draftId ? 'manual' : null);
+  const [mode, setMode] = useState<'ai' | 'manual' | null>(draftId || !aiQuickBuildEnabled() ? 'manual' : null);
 
   const [currentStep, setCurrentStep] = useState<WizardStep>('basics');
   const [loading, setLoading] = useState(false);
@@ -514,7 +515,7 @@ function CreateEventForm() {
   }
 
   // AI Quick Build mode
-  if (mode === 'ai') {
+  if (mode === 'ai' && aiQuickBuildEnabled()) {
     return <AIQuickBuildFlow onBack={() => setMode(null)} />;
   }
 
