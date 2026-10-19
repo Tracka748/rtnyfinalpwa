@@ -9,11 +9,13 @@ import { EventCategory } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { DEFAULT_EVENT_IMAGE, getEventImage } from '@/lib/image-utils';
 
-const CATEGORY_CONFIG: Record<EventCategory, {
+type CategoryConfigEntry = {
   icon: string;
   label: string;
   gradient: string;
-}> = {
+};
+
+const CATEGORY_CONFIG: Record<EventCategory, CategoryConfigEntry> & Record<string, CategoryConfigEntry | undefined> = {
   nightlife: {
     icon: '🎉',
     label: 'Nightlife',
@@ -44,6 +46,27 @@ const CATEGORY_CONFIG: Record<EventCategory, {
     label: 'Sports',
     gradient: 'from-green-500/80 to-emerald-500/80'
   },
+  music: {
+    icon: '🎵',
+    label: 'Music',
+    gradient: 'from-purple-500/80 to-pink-500/80'
+  },
+  festivals: {
+    icon: '🎪',
+    label: 'Festivals',
+    gradient: 'from-orange-500/80 to-yellow-500/80'
+  },
+  workshop: {
+    icon: '🛠️',
+    label: 'Workshop',
+    gradient: 'from-blue-500/80 to-cyan-500/80'
+  },
+};
+
+const DEFAULT_CATEGORY_CONFIG: CategoryConfigEntry = {
+  icon: '🎟️',
+  label: 'Event',
+  gradient: 'from-gray-500/80 to-gray-600/80'
 };
 
 interface EventCardProps {
@@ -71,7 +94,7 @@ interface EventCardProps {
 export function EventCard({ event, isSaved = false, onToggleSave }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
   const [pulse, setPulse] = useState(false);
-  const categoryConfig = CATEGORY_CONFIG[event.category];
+  const categoryConfig = CATEGORY_CONFIG[event.category] ?? DEFAULT_CATEGORY_CONFIG;
 
   // Calculate lowest price
   const getLowestPrice = () => {
