@@ -151,6 +151,7 @@ export function Sidebar() {
   }
 
   const isPromoter = profile?.role === "promoter" || profile?.role === "admin"
+  const isAdmin = profile?.role === "admin"
 
   return (
     <>
@@ -255,6 +256,9 @@ export function Sidebar() {
               <NavItem href="/promoter/dashboard" emoji="📊" label="Promoter Hub" onClick={handleNavClick} />
             ) : (
               <NavItem href="/apply/promoter" emoji="🤝" label="Become a Promoter" onClick={handleNavClick} />
+            )}
+            {isAdmin && (
+              <NavItem href="/admin" emoji="🛡️" label="Admin" onClick={handleNavClick} />
             )}
           </div>
 
