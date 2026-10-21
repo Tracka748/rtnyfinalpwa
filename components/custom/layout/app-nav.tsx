@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import type { User } from "@supabase/supabase-js"
 import { SidebarTrigger } from "@/components/custom/layout/sidebar-trigger"
 
@@ -16,32 +16,39 @@ export function AppNav() {
 
   // Check authentication status
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabase = createBrowserSupabaseClient()
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setUser(session?.user ?? null)
+      })
+      .catch((error) => {
+        console.error("Failed to get auth session:", error)
+        setUser(null)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !session)) {
+        setUser(null)
+      } else if (session) {
+        setUser(session.user)
+      }
+      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   const handleLogout = async () => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabase = createBrowserSupabaseClient()
     await supabase.auth.signOut()
     router.push("/login")
     router.refresh()
