@@ -7,13 +7,14 @@ import type { Group } from '@/types/groups'
 interface Props {
   group: Group
   isMember: boolean
+  memberCount: number
   onMembershipChange: () => void
 }
 
-export default function GroupHero({ group, isMember, onMembershipChange }: Props) {
-  const memberLabel = group.member_count === 1
+export default function GroupHero({ group, isMember, memberCount, onMembershipChange }: Props) {
+  const memberLabel = memberCount === 1
     ? '1 Member'
-    : `${group.member_count.toLocaleString()} Members`
+    : `${memberCount.toLocaleString()} Members`
 
   return (
     <div

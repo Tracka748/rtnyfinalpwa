@@ -29,19 +29,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'Group not found' }, { status: 404 })
     }
 
-    const { error } = await db
+    const { data: deleted, error } = await db
       .from('group_memberships')
       .delete()
       .eq('group_id', group.id)
       .eq('user_id', user.id)
+      .select('id')
 
     if (error) {
       console.error('Leave error:', error)
       return NextResponse.json({ error: 'Failed to leave group' }, { status: 500 })
     }
 
+    if (!deleted || deleted.length === 0) {
+      return NextResponse.json({ error: 'Not a member' }, { status: 404 })
+    }
+
     return NextResponse.json({ success: true, message: 'Left group' })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to leave group' }, { status: 500 })
+  } catch (error) {
+    console.error('Leave route error:', error)
+    return NextResponse.json({ error: 'Failed to leave group' }, { status: 500 })
   }
 }

@@ -50,7 +50,13 @@ export default function GroupDetailClient({
   userPitchFeedback,
 }: Props) {
   const [isMember, setIsMember] = useState(initialIsMember)
+  const [memberCount, setMemberCount] = useState(group.member_count)
   const accent = group.accent_color || MINT
+
+  const handleMembershipChange = () => {
+    setMemberCount(count => Math.max(0, count + (isMember ? -1 : 1)))
+    setIsMember(prev => !prev)
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#121113' }}>
@@ -59,7 +65,8 @@ export default function GroupDetailClient({
       <GroupHero
         group={group}
         isMember={isMember}
-        onMembershipChange={() => setIsMember(prev => !prev)}
+        memberCount={memberCount}
+        onMembershipChange={handleMembershipChange}
       />
 
       {/* 2. WHAT YOU GET */}
@@ -203,7 +210,7 @@ export default function GroupDetailClient({
             <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
               <GroupMembersPreview
                 members={members}
-                memberCount={group.member_count}
+                memberCount={memberCount}
                 accentColor={accent}
               />
             </div>
