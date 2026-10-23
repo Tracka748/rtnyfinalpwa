@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createCookieClient } from '@/lib/supabase/server'
 
 // Use admin client to bypass RLS
 const supabaseAdmin = createClient(
@@ -20,7 +21,12 @@ export async function GET(
   try {
     const { sessionId } = await params
 
-    console.log('🔍 Looking for order with session_id:', sessionId)
+    const supabase = await createCookieClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const { data: order, error } = await supabaseAdmin
       .from('orders')
@@ -50,8 +56,7 @@ export async function GET(
           ticket_number,
           ticket_type,
           base_price,
-          qr_code_data,
-          confirmation_code
+          qr_code_data
         )
       `)
       .eq('session_id', sessionId)
@@ -61,30 +66,39 @@ export async function GET(
       // If session_id column doesn't exist yet, return 404 so the
       // confirmation page keeps polling rather than hard-erroring
       if (error.code === '42703') {
-        console.warn('⚠️ session_id column missing on orders — run migration 20260329_orders_add_session_id.sql')
+        console.warn('Orders session_id column missing — run migration 20260329_orders_add_session_id.sql')
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
-      console.error('❌ Order lookup error:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
-      return NextResponse.json(
-        { error: 'Order lookup failed', code: error.code, message: error.message },
-        { status: 500 }
-      )
+      console.error('Order lookup error:', error)
+      return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
     }
 
     if (!order) {
-      console.log('❌ No order found for session_id:', sessionId)
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
-    console.log('✅ Order found:', order.id, 'for event:', (order as any)['events']['name'])
-    return NextResponse.json(order)
+    // Owner or admin only. Anything else is a 404 so order ids can't be probed.
+    if (order.user_id !== user.id) {
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error('Order access profile lookup error:', profileError)
+      }
+
+      if (profile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      }
+    }
+
+    const { user_id: _userId, ...orderResponse } = order
+    return NextResponse.json(orderResponse)
 
   } catch (error: unknown) {
-    const err = error as Error
-    console.error('❌ Error fetching order:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
-    return NextResponse.json(
-      { error: 'Internal server error', details: err.message },
-      { status: 500 }
-    )
+    console.error('Error fetching order:', error)
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 }

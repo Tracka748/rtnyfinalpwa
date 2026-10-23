@@ -1,5 +1,9 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { aiQuickBuildEnabled } from '@/lib/feature-flags';
+
+const MAX_BODY_BYTES = 10 * 1024;
 
 function getOpenAI(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -91,6 +95,31 @@ NO TEXT anywhere.`,
 };
 
 export async function POST(request: Request) {
+  if (!aiQuickBuildEnabled()) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, is_organizer')
+    .eq('id', user.id)
+    .single();
+
+  const allowed =
+    profile?.role === 'promoter' ||
+    profile?.role === 'admin' ||
+    profile?.role === 'organizer' ||
+    profile?.is_organizer === true;
+  if (!allowed) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const openai = getOpenAI();
   if (!openai) {
     return NextResponse.json(
@@ -99,8 +128,17 @@ export async function POST(request: Request) {
     );
   }
 
+  const declaredLength = Number(request.headers.get('content-length') ?? 0);
+  if (declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  }
+  const rawBody = await request.text();
+  if (Buffer.byteLength(rawBody, 'utf8') > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  }
+
   try {
-    const { style, customization } = await request.json();
+    const { style, customization } = JSON.parse(rawBody);
 
     const styleKey = style || 'urbanNeon';
     const styleTemplate = RTNYStyles[styleKey];
