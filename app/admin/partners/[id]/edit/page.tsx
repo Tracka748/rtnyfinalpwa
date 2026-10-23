@@ -116,6 +116,7 @@ function SearchDropdown<T>({
   onSelect,
   linked,
   onClear,
+  remote,
 }: {
   label: string;
   placeholder: string;
@@ -128,15 +129,19 @@ function SearchDropdown<T>({
   onSelect: (item: T) => void;
   linked: string | null;
   onClear: () => void;
+  remote?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
-  const filtered = searchValue.length > 0
-    ? items.filter(item =>
-        getPrimary(item).toLowerCase().includes(searchValue.toLowerCase())
-      ).slice(0, 5)
-    : [];
+  // remote: items are already the server's search results for searchValue
+  const filtered = remote
+    ? (searchValue.trim().length >= 2 ? items.slice(0, 5) : [])
+    : searchValue.length > 0
+      ? items.filter(item =>
+          getPrimary(item).toLowerCase().includes(searchValue.toLowerCase())
+        ).slice(0, 5)
+      : [];
 
   useEffect(() => {
     function handle(e: MouseEvent) {
@@ -258,11 +263,10 @@ export default function AdminEditPartnerPage() {
     try {
       const supabase = createBrowserSupabaseClient();
 
-      const [partnerRes, venuesRes, vendorsRes, usersRes] = await Promise.all([
+      const [partnerRes, venuesRes, vendorsRes] = await Promise.all([
         supabase.from('partners').select('*').eq('id', id).single(),
         fetch('/api/v1/venues').then(r => r.json()),
         supabase.from('vendors').select('id, name, location, type'),
-        supabase.from('profiles').select('id, first_name, last_name, email').limit(200),
       ]);
 
       if (partnerRes.error || !partnerRes.data) {
@@ -273,11 +277,9 @@ export default function AdminEditPartnerPage() {
       const p = partnerRes.data;
       const venueList: Venue[] = venuesRes.success ? venuesRes.data : [];
       const vendorList: Vendor[] = vendorsRes.data ?? [];
-      const userList: UserProfile[] = usersRes.data ?? [];
 
       setVenues(venueList);
       setVendors(vendorList);
-      setUsers(userList);
 
       // Pre-populate form fields
       setPartnerType(p.partner_type ?? '');
@@ -310,8 +312,13 @@ export default function AdminEditPartnerPage() {
 
       // Resolve owner email
       if (p.owner_id) {
-        const match = userList.find(u => u.id === p.owner_id);
-        setLinkedOwnerEmail(match?.email ?? null);
+        try {
+          const ownerRes = await fetch(`/api/v1/admin/users/search?id=${encodeURIComponent(p.owner_id)}`).then(r => r.json());
+          setLinkedOwnerEmail(ownerRes.success ? ownerRes.data.users[0]?.email ?? null : null);
+        } catch (err) {
+          console.error('Owner lookup error:', err);
+          setLinkedOwnerEmail(null);
+        }
       }
 
       // Merge visible_modules with defaults
@@ -326,6 +333,26 @@ export default function AdminEditPartnerPage() {
   }
 
   useEffect(() => { loadAll(); }, [id]);
+
+  // Owner search: debounced server-side lookup (min 2 chars)
+  useEffect(() => {
+    const q = userSearch.trim();
+    if (q.length < 2) {
+      setUsers([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(`/api/v1/admin/users/search?q=${encodeURIComponent(q)}&limit=5`, { signal: controller.signal })
+        .then(r => r.json())
+        .then(d => { if (d.success) setUsers(d.data.users); })
+        .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [userSearch]);
 
   useEffect(() => {
     if (!partnerType) {
@@ -795,8 +822,9 @@ export default function AdminEditPartnerPage() {
               </div>
               <SearchDropdown<UserProfile>
                 label="Owner"
-                placeholder="Search by email…"
+                placeholder="Search by email or name…"
                 items={users}
+                remote
                 searchValue={userSearch}
                 onSearchChange={setUserSearch}
                 getKey={u => u.id}

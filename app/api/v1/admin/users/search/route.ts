@@ -10,16 +10,54 @@ function getSupabaseAdmin() {
   );
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // GET /api/v1/admin/users/search?q={query}&limit={n}
-// Search profiles by email, first name, or last name.
-// Returns up to `limit` results (default 8, max 20).
+// GET /api/v1/admin/users/search?id={uuid}
+// Search profiles by email, first name, or last name, or look up one profile by id.
+// Search returns up to `limit` results (default 8, max 20).
 export async function GET(request: Request) {
   const adminCheck = await checkIsAdmin();
   if (adminCheck.error) return adminCheck.response;
 
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get('q')?.trim() ?? '';
-  const limit = Math.min(Number(searchParams.get('limit') ?? '8'), 20);
+  const id = searchParams.get('id');
+
+  if (id !== null) {
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: 'Invalid id', success: false }, { status: 400 });
+    }
+
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .eq('id', id)
+        .limit(1);
+
+      if (error) {
+        console.error('User lookup error:', error);
+        return NextResponse.json(
+          { error: 'Search failed', success: false },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, data: { users: data ?? [] } });
+    } catch (error) {
+      console.error('User lookup unexpected error:', error);
+      return NextResponse.json(
+        { error: 'Internal server error', success: false },
+        { status: 500 }
+      );
+    }
+  }
+
+  // Strip characters that have meaning in a PostgREST .or() filter string
+  // (clause separators, grouping, wildcards, escapes) so the term stays a plain value.
+  const q = (searchParams.get('q') ?? '').replace(/[,()%*\\]/g, '').trim();
+  const limit = Math.min(Math.max(Number(searchParams.get('limit') ?? '8') || 8, 1), 20);
 
   if (q.length < 2) {
     return NextResponse.json({ success: true, data: { users: [] } });
