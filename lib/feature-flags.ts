@@ -12,3 +12,11 @@ export function promoCodesEnabled(): boolean {
 export function aiQuickBuildEnabled(): boolean {
   return process.env.NEXT_PUBLIC_AI_QUICK_BUILD_ENABLED === 'true'
 }
+
+export function checkoutBoostersEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_CHECKOUT_BOOSTERS_ENABLED === 'true'
+}
+
+export function checkoutPromoEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_CHECKOUT_PROMO_ENABLED === 'true'
+}

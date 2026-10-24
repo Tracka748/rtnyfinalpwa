@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PromoCodeSection, PromoDiscount } from '@/components/checkout/promo-code-section'
-import { promoCodesEnabled } from '@/lib/feature-flags'
+import { checkoutBoostersEnabled, checkoutPromoEnabled } from '@/lib/feature-flags'
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -132,14 +132,13 @@ function CheckoutContent() {
 
   // Calculate totals
   const ticketsSubtotal = checkoutData.subtotal
-  const boostersSubtotal = Array.from(selectedBoosters).reduce((sum, id) => {
+  const boostersEnabled = checkoutBoostersEnabled()
+  const boostersSubtotal = boostersEnabled ? Array.from(selectedBoosters).reduce((sum, id) => {
     const booster = availableBoosters.find(b => b.id === id)
     return sum + (booster?.price || 0)
-  }, 0)
+  }, 0) : 0
   const orderSubtotal = ticketsSubtotal + boostersSubtotal
-  // With promo codes off, no discount is shown or subtracted, so the total
-  // matches what the server charges.
-  const promoEnabled = promoCodesEnabled()
+  const promoEnabled = checkoutPromoEnabled()
   const discountAmount = promoEnabled ? appliedPromo?.discountAmount || 0 : 0
   const taxAmount = 0 // Add tax calculation if needed
   const totalAmount = orderSubtotal - discountAmount + taxAmount
@@ -176,16 +175,16 @@ function CheckoutContent() {
         body: JSON.stringify({
           eventId: checkoutData.eventId,
           items: stripeItems,
-          promoCode: promoEnabled ? appliedPromo?.code || '' : '',
           crewId: selectedCrewId || null,
-          boosters: Array.from(selectedBoosters).map(id => {
+          ...(promoEnabled ? { promoCode: appliedPromo?.code || '' } : {}),
+          boosters: boostersEnabled ? Array.from(selectedBoosters).map(id => {
             const booster = availableBoosters.find(b => b.id === id)
             return {
               id: booster?.id,
               name: booster?.name,
               price: booster?.price
             }
-          })
+          }) : []
         }),
       })
 
@@ -268,6 +267,7 @@ function CheckoutContent() {
             </Card>
 
             {/* Boosters/Add-ons */}
+            {boostersEnabled && (
             <Card className="bg-gradient-to-br from-[#59FFA0]/5 via-[#1AC8ED]/5 to-transparent border-2 border-[#59FFA0]/20">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -334,6 +334,7 @@ function CheckoutContent() {
                 )}
               </CardContent>
             </Card>
+            )}
 
             {/* Crew Attribution */}
             {myCrews.length > 0 && (

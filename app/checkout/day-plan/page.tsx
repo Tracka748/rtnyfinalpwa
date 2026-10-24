@@ -81,7 +81,6 @@ function DayPlanCheckoutContent() {
   const canceled = searchParams.get('canceled')
 
   const [plan, setPlan] = useState<PendingDayPlan | null>(null)
-  const [selectedBoosters, setSelectedBoosters] = useState<Set<string>>(new Set())
   const [processing, setProcessing] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
 
@@ -104,14 +103,6 @@ function DayPlanCheckoutContent() {
     }
   }, [canceled])
 
-  function toggleBooster(id: string) {
-    setSelectedBoosters(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
   if (!plan) {
     return (
       <div className="min-h-screen bg-[#121113] flex items-center justify-center">
@@ -123,11 +114,7 @@ function DayPlanCheckoutContent() {
     )
   }
 
-  const boostersTotal = Array.from(selectedBoosters).reduce((sum, id) => {
-    const b = BOOSTERS.find(b => b.id === id)
-    return sum + (b?.price ?? 0)
-  }, 0)
-  const orderTotal = plan.totalSpend + boostersTotal
+  const orderTotal = plan.totalSpend
 
   async function handlePay() {
     setProcessing(true)
@@ -140,10 +127,6 @@ function DayPlanCheckoutContent() {
           planTitle: plan.title,
           planDate:  plan.date,
           stops:     plan.stops,
-          boosters:  Array.from(selectedBoosters).map(id => {
-            const b = BOOSTERS.find(b => b.id === id)!
-            return { id: b.id, name: b.name, price: b.price }
-          }),
         }),
       })
       const data = await res.json()
@@ -217,56 +200,6 @@ function DayPlanCheckoutContent() {
               </div>
             </div>
 
-            {/* Boosters */}
-            <div className="rounded-2xl border border-[#59ffa0]/15 bg-gradient-to-br from-[#59ffa0]/4 via-[#1ac8ed]/3 to-transparent overflow-hidden">
-              <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[#59ffa0]/10">
-                <div>
-                  <h2 className="font-header text-lg font-bold text-[#f9fdff] mb-0.5">🎁 Enhance Your Day</h2>
-                  <p className="font-sans text-xs text-[#7DD8E8]/60">Add extras to make it unforgettable</p>
-                </div>
-                {selectedBoosters.size > 0 && (
-                  <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#59ffa0]/15 border border-[#59ffa0]/25 text-[#59ffa0] font-label text-[10px] tracking-widest">
-                    {selectedBoosters.size} ADDED
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4">
-                {BOOSTERS.map(booster => {
-                  const selected = selectedBoosters.has(booster.id)
-                  return (
-                    <button
-                      key={booster.id}
-                      type="button"
-                      onClick={() => toggleBooster(booster.id)}
-                      className={cn(
-                        'relative p-4 rounded-xl border-2 text-left transition-all duration-200',
-                        selected
-                          ? 'border-[#59ffa0] bg-[#59ffa0]/8 shadow-lg shadow-[#59ffa0]/10'
-                          : 'border-[#2a2829] bg-[#121113] hover:border-[#59ffa0]/30'
-                      )}
-                    >
-                      {selected && (
-                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#59ffa0] flex items-center justify-center">
-                          <svg className="w-3 h-3 text-[#121113]" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                      )}
-                      <span className="text-2xl block mb-2">{booster.icon}</span>
-                      <p className="font-sans font-semibold text-xs text-[#f9fdff] mb-0.5">{booster.name}</p>
-                      <p className="font-sans text-[10px] text-[#7DD8E8]/50 mb-2 leading-snug">{booster.description}</p>
-                      <p className="font-slab-serif font-bold text-[#59ffa0] text-sm">+${booster.price}</p>
-                    </button>
-                  )
-                })}
-              </div>
-              {boostersTotal > 0 && (
-                <div className="flex items-center justify-between px-5 py-3 border-t border-[#59ffa0]/10">
-                  <span className="font-sans text-xs text-[#7DD8E8]/60">Boosters total</span>
-                  <span className="font-slab-serif font-bold text-[#59ffa0]">+${boostersTotal}</span>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* ── Order summary ────────────────────────────────────────────── */}
@@ -292,12 +225,6 @@ function DayPlanCheckoutContent() {
                     <span className="text-[#7DD8E8]/60">Estimated spend</span>
                     <span className="text-[#f9fdff]">${plan.totalSpend}</span>
                   </div>
-                  {boostersTotal > 0 && (
-                    <div className="flex justify-between font-sans text-sm">
-                      <span className="text-[#7DD8E8]/60">Boosters ({selectedBoosters.size})</span>
-                      <span className="text-[#f9fdff]">+${boostersTotal}</span>
-                    </div>
-                  )}
                   <div className="h-px bg-[#2a2829]" />
                   <div className="flex justify-between items-baseline pt-1">
                     <span className="font-sans text-[#7DD8E8]/60 text-sm">Total</span>

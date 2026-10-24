@@ -14,12 +14,6 @@ interface PlanStop {
   category?: string
 }
 
-interface Booster {
-  id: string
-  name: string
-  price: number
-}
-
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
@@ -29,11 +23,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { planTitle, planDate, stops, boosters } = body as {
+    const { planTitle, planDate, stops } = body as {
       planTitle: string
       planDate: string
       stops: PlanStop[]
-      boosters?: Booster[]
+    }
+
+    if (Array.isArray(body.boosters) && body.boosters.length > 0) {
+      return NextResponse.json({ error: 'Add-ons are not available' }, { status: 400 })
     }
 
     if (!stops || stops.length === 0) {
@@ -58,25 +55,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Boosters as add-ons
-    if (boosters && boosters.length > 0) {
-      for (const booster of boosters) {
-        if (booster.price > 0) {
-          lineItems.push({
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: `${booster.name} (Add-on)`,
-                description: 'Day plan booster',
-              },
-              unit_amount: Math.round(booster.price * 100),
-            },
-            quantity: 1,
-          })
-        }
-      }
-    }
-
     if (lineItems.length === 0) {
       return NextResponse.json({ error: 'All stops have $0 estimated spend' }, { status: 400 })
     }
@@ -96,7 +74,6 @@ export async function POST(req: NextRequest) {
         planDate:  planDate  || '',
         type:      'day-plan',
         stops:     JSON.stringify(stops.map(s => ({ name: s.name, spend: s.estimatedSpend }))),
-        boosters:  boosters ? JSON.stringify(boosters) : '',
       },
     })
 

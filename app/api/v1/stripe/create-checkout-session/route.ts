@@ -18,7 +18,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { eventId, items, promoCode, boosters, crewId } = body
+    const { eventId, items, crewId } = body
+
+    if (Array.isArray(body.boosters) && body.boosters.length > 0) {
+      return NextResponse.json({ error: 'Add-ons are not available' }, { status: 400 })
+    }
 
     // Validate required fields
     if (!eventId || !items || items.length === 0) {
@@ -85,25 +89,6 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Add boosters to line items if any
-    if (boosters && boosters.length > 0) {
-      boosters.forEach((booster: any) => {
-        if (booster && booster.name && booster.price) {
-          lineItems.push({
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: `${booster.name} (Add-on)`,
-                description: 'Event booster',
-              },
-              unit_amount: Math.round(booster.price * 100),
-            },
-            quantity: 1,
-          })
-        }
-      })
-    }
-
     // Build enriched items for metadata — include name and price so the
     // webhook can insert tickets without needing a second DB lookup
     const enrichedItems = items.map((item: any) => {
@@ -128,8 +113,6 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         eventId: eventId,
         items: JSON.stringify(enrichedItems),
-        promoCode: promoCode || '',
-        boosters: boosters ? JSON.stringify(boosters) : '',
         crewId: verifiedCrewId || '',
       },
     })
