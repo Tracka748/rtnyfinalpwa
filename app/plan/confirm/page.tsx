@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { cn } from '@/lib/utils'
+import { dayPlanCheckoutEnabled } from '@/lib/feature-flags'
 
 export const PLAN_STORAGE_KEY = 'rtny_pending_day_plan'
 
@@ -410,18 +411,20 @@ export default function PlanConfirmPage() {
 
         {/* CTAs */}
         <div className="space-y-3">
-          {/* Primary — go to checkout */}
-          <button
-            type="button"
-            onClick={() => router.push('/checkout/day-plan')}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#59ffa0] text-[#121113] font-sans font-bold text-sm hover:bg-[#59ffa0]/90 hover:shadow-lg hover:shadow-[#59ffa0]/20 active:scale-[0.98] transition-all duration-200"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-              <rect x="1" y="4" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M1 7h14" stroke="currentColor" strokeWidth="1.3" />
-            </svg>
-            Proceed to Checkout
-          </button>
+          {/* Primary — go to checkout (paid checkout is behind a feature flag) */}
+          {dayPlanCheckoutEnabled() && (
+            <button
+              type="button"
+              onClick={() => router.push('/checkout/day-plan')}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#59ffa0] text-[#121113] font-sans font-bold text-sm hover:bg-[#59ffa0]/90 hover:shadow-lg hover:shadow-[#59ffa0]/20 active:scale-[0.98] transition-all duration-200"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="4" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M1 7h14" stroke="currentColor" strokeWidth="1.3" />
+              </svg>
+              Proceed to Checkout
+            </button>
+          )}
 
           {/* Secondary — save without paying */}
           {saveError && (

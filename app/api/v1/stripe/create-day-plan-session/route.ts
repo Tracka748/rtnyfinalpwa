@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { dayPlanCheckoutEnabled } from '@/lib/feature-flags'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-11-20.acacia',
@@ -15,6 +16,10 @@ interface PlanStop {
 }
 
 export async function POST(req: NextRequest) {
+  if (!dayPlanCheckoutEnabled()) {
+    return NextResponse.json({ error: 'Not available', code: 'FEATURE_DISABLED' }, { status: 404 })
+  }
+
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { dayPlanCheckoutEnabled } from '@/lib/feature-flags'
 
 const PLAN_STORAGE_KEY = 'rtny_pending_day_plan'
 
@@ -102,6 +103,23 @@ function DayPlanCheckoutContent() {
       setPaymentError('Payment was canceled. You can try again below.')
     }
   }, [canceled])
+
+  if (!dayPlanCheckoutEnabled()) {
+    return (
+      <div className="min-h-screen bg-[#121113] flex items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <p className="text-[#F9FDFF] font-sans text-base">Day plan checkout isn't available yet.</p>
+          <button
+            type="button"
+            onClick={() => router.push('/plan')}
+            className="px-5 py-2.5 rounded-xl border border-[#2a2829] text-[#7DD8E8] font-sans text-sm hover:border-[#59ffa0]/40 transition-colors"
+          >
+            Back to Plan My Day
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!plan) {
     return (

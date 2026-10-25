@@ -20,3 +20,10 @@ export function checkoutBoostersEnabled(): boolean {
 export function checkoutPromoEnabled(): boolean {
   return process.env.NEXT_PUBLIC_CHECKOUT_PROMO_ENABLED === 'true'
 }
+
+// Paid Plan My Day checkout: the /checkout/day-plan page, its entry button on the
+// plan confirm page, and the create-day-plan-session route. Plan My Day itself
+// (building and saving a plan) is not gated.
+export function dayPlanCheckoutEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_DAY_PLAN_CHECKOUT === 'true'
+}
