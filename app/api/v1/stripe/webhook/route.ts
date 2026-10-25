@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import QRCode from 'qrcode'
+import { randomBytes, randomUUID } from 'crypto'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-12-15.clover',
@@ -18,6 +19,34 @@ const resend = new Resend(process.env.RESEND_API_KEY!)
 // CRITICAL: Disable body parsing for Stripe webhooks
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30
+
+// Unambiguous alphabet (no 0/O, 1/I/L): 31 chars.
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+const CODE_LENGTH = 8
+
+// Rejection sampling (accept bytes < 31*8) keeps the distribution unbiased.
+function generateConfirmationCode(): string {
+  const limit = 256 - (256 % CODE_ALPHABET.length)
+  let code = ''
+  while (code.length < CODE_LENGTH) {
+    for (const b of randomBytes(CODE_LENGTH * 2)) {
+      if (b < limit && code.length < CODE_LENGTH) code += CODE_ALPHABET[b % CODE_ALPHABET.length]
+    }
+  }
+  return code
+}
+
+// Thrown for failures a retry can never fix (bad metadata, price mismatch, unpaid session).
+// The webhook logs these and returns 200 so Stripe stops retrying. Anything else → 500 → retry.
+class PermanentError extends Error {
+  quiet: boolean
+  constructor(message: string, opts?: { quiet?: boolean }) {
+    super(message)
+    this.name = 'PermanentError'
+    this.quiet = opts?.quiet ?? false
+  }
+}
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   console.log('🔵 PROCESSING SESSION:', session.id)
@@ -60,219 +89,189 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return
   }
 
+  if (session.payment_status !== 'paid') {
+    throw new PermanentError(`payment_status is "${session.payment_status}", not "paid"`, { quiet: true })
+  }
+
   const { userId, eventId, items, crewId } = session.metadata || {}
 
-    if (!userId || !eventId || !items) {
-      console.error('❌ Missing metadata:', session.metadata)
-      return
-    }
+  if (!userId || !eventId || !items) {
+    throw new PermanentError('Missing metadata (userId, eventId or items)')
+  }
 
-    const parsedItems: { ticketTypeId: string; name: string; price: number; quantity: number }[] = JSON.parse(items)
-    console.log('📦 Items to process:', parsedItems.length)
+  let parsedItems: { ticketTypeId: string; name: string; price: number; quantity: number }[]
+  try {
+    parsedItems = JSON.parse(items)
+  } catch {
+    throw new PermanentError('Unparseable items JSON in session metadata')
+  }
 
-    // Server-side price verification — reject if metadata prices don't match the DB
-    await Promise.all(
-      parsedItems.map(async (item) => {
-        if (!item.ticketTypeId) return
-        const { data: tt, error: ttError } = await supabaseAdmin
-          .from('ticket_types')
-          .select('price')
-          .eq('id', item.ticketTypeId)
-          .single()
-        if (ttError || !tt) {
-          throw new Error(`Ticket type ${item.ticketTypeId} not found during price verification`)
-        }
-        if (Math.abs(tt.price - item.price) > 0.01) {
-          throw new Error(`Price mismatch detected on ticket type ${item.ticketTypeId}`)
-        }
-      })
-    )
+  if (
+    !Array.isArray(parsedItems) ||
+    parsedItems.length === 0 ||
+    parsedItems.some((item) => !item || !Number.isInteger(item.quantity) || item.quantity < 1)
+  ) {
+    throw new PermanentError('Items metadata is not a non-empty array of positive integer quantities')
+  }
+  console.log('📦 Items to process:', parsedItems.length)
 
-    const orderNumber = `RTNY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+  // Server-side price verification — reject if metadata prices don't match the DB
+  await Promise.all(
+    parsedItems.map(async (item) => {
+      if (!item.ticketTypeId) return
+      const { data: tt, error: ttError } = await supabaseAdmin
+        .from('ticket_types')
+        .select('price')
+        .eq('id', item.ticketTypeId)
+        .single()
+      // PGRST116 = no row found. Any other error is a transient DB failure → retryable.
+      if (ttError && ttError.code !== 'PGRST116') {
+        throw new Error(`Ticket type lookup failed during price verification: ${ttError.message}`)
+      }
+      if (!tt) {
+        throw new PermanentError(`Ticket type ${item.ticketTypeId} not found during price verification`)
+      }
+      if (Math.abs(tt.price - item.price) > 0.01) {
+        throw new PermanentError(`Price mismatch detected on ticket type ${item.ticketTypeId}`)
+      }
+    })
+  )
 
-    const { data: order, error: orderError } = await supabaseAdmin
-      .from('orders')
-      .insert({
-        user_id: userId,
+  const orderId = randomUUID()
+  const orderNumber = `RTNY-${Date.now()}-${randomBytes(5).toString('hex').toUpperCase()}`
+
+  const pOrder = {
+    id: orderId,
+    user_id: userId,
+    event_id: eventId,
+    order_number: orderNumber,
+    subtotal: (session.amount_subtotal || 0) / 100,
+    total_amount: (session.amount_total || 0) / 100,
+    fees: ((session.amount_total || 0) - (session.amount_subtotal || 0)) / 100,
+    discount_amount: 0,
+    tax_amount: 0,
+    customer_email: session.customer_email || '',
+    payment_intent_id: session.payment_intent as string,
+    transaction_id: session.id,
+    session_id: session.id,
+    payment_status: 'captured',
+    payment_method: 'card',
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    promo_code_id: null,
+    crew_id: crewId || null,
+  }
+
+  // Build ticket rows
+  const ticketStubs: {
+    event_id: string
+    order_id: string
+    ticket_type: string
+    ticket_number: string
+    base_price: number
+    purchase_price: number
+    purchased_by: string
+    purchase_date: string
+    payment_intent_id: string | null
+    confirmation_code: string
+    qr_code_data: string
+    status: string
+  }[] = []
+
+  let ticketIndex = 0
+  for (const item of parsedItems) {
+    for (let i = 0; i < item.quantity; i++) {
+      ticketIndex++
+      const ticketNumber = `${orderId}-T${String(ticketIndex).padStart(3, '0')}`
+      ticketStubs.push({
         event_id: eventId,
-        order_number: orderNumber,
-        subtotal: (session.amount_subtotal || 0) / 100,
-        total_amount: (session.amount_total || 0) / 100,
-        fees: ((session.amount_total || 0) - (session.amount_subtotal || 0)) / 100,
-        discount_amount: 0,
-        tax_amount: 0,
-        customer_email: session.customer_email || '',
-        payment_intent_id: session.payment_intent as string,
-        transaction_id: session.id,
-        session_id: session.id,
-        payment_status: 'captured',
-        payment_method: 'card',
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        promo_code_id: null,
-        crew_id: crewId || null,
-      })
-      .select()
-      .single()
-
-    if (orderError) {
-      console.error('❌ Order creation error:', JSON.stringify(orderError, Object.getOwnPropertyNames(orderError)))
-      throw new Error(`Order creation failed: ${orderError.message}`)
-    }
-
-    console.log('✅ Order created:', order.id)
-
-    // Reset the crew's sticker attempts on a qualifying purchase — non-blocking,
-    // capped once a crew hits its lifetime sticker limit.
-    if (crewId) {
-      (async () => {
-        const { data: crewRow, error: crewFetchError } = await supabaseAdmin
-          .from('crews')
-          .select('lifetime_sticker_count')
-          .eq('id', crewId)
-          .single()
-
-        if (crewFetchError || !crewRow) {
-          console.error('⚠️ Sticker attempts reset — failed to fetch crew', crewId, crewFetchError)
-          return
-        }
-
-        if (crewRow.lifetime_sticker_count < 16) {
-          const { error: resetError } = await supabaseAdmin
-            .from('crews')
-            .update({ sticker_attempts_remaining: 6 })
-            .eq('id', crewId)
-
-          if (resetError) {
-            console.error('⚠️ Sticker attempts reset failed for crew', crewId, resetError)
-          } else {
-            console.log('✅ Sticker attempts reset to 6 for crew', crewId)
-          }
-        }
-      })().catch((err) => {
-        console.error('⚠️ Sticker attempts reset error for crew', crewId, err)
+        order_id: orderId,
+        ticket_type: item.name || 'General Admission',
+        ticket_number: ticketNumber,
+        base_price: item.price,
+        purchase_price: item.price,
+        purchased_by: userId,
+        purchase_date: new Date().toISOString(),
+        payment_intent_id: (session.payment_intent as string) ?? null,
+        confirmation_code: generateConfirmationCode(),
+        qr_code_data: ticketNumber, // placeholder; overwritten below
+        status: 'purchased',
       })
     }
+  }
 
-    // Build ticket stubs (no QR yet)
-    const ticketStubs: {
-      event_id: string
-      order_id: string
-      ticket_type: string
-      ticket_number: string
-      base_price: number
-      purchase_price: number
-      purchased_by: string
-      purchase_date: string
-      payment_intent_id: string | null
-      confirmation_code: string
-      qr_code_data: string
-      status: string
-    }[] = []
-
-    let ticketIndex = 0
-    for (const item of parsedItems) {
-      for (let i = 0; i < item.quantity; i++) {
-        ticketIndex++
-        const ticketNumber = `${order.id}-T${String(ticketIndex).padStart(3, '0')}`
-        ticketStubs.push({
-          event_id: eventId,
-          order_id: order.id,
-          ticket_type: item.name || 'General Admission',
-          ticket_number: ticketNumber,
-          base_price: item.price,
-          purchase_price: item.price,
-          purchased_by: userId,
-          purchase_date: new Date().toISOString(),
-          payment_intent_id: (session.payment_intent as string) ?? null,
-          confirmation_code: 'RTNY-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-          qr_code_data: ticketNumber, // placeholder; overwritten below
-          status: 'purchased',
+  // Generate QR codes non-blocking — failures fall back to ticket number
+  await Promise.allSettled(
+    ticketStubs.map(async (stub) => {
+      try {
+        const qrData = JSON.stringify({
+          ticketNumber: stub.ticket_number,
+          eventId,
+          orderId,
+          timestamp: new Date().toISOString(),
         })
+        stub.qr_code_data = await QRCode.toDataURL(qrData, {
+          width: 300,
+          margin: 2,
+          color: { dark: '#000000', light: '#FFFFFF' },
+        })
+        console.log('✅ QR generated for', stub.ticket_number)
+      } catch (qrErr) {
+        console.error('⚠️ QR generation failed for', stub.ticket_number, qrErr)
+        // qr_code_data stays as ticketNumber fallback
       }
-    }
+    })
+  )
 
-    // Generate QR codes non-blocking — failures fall back to ticket number
-    await Promise.allSettled(
-      ticketStubs.map(async (stub) => {
-        try {
-          const qrData = JSON.stringify({
-            ticketNumber: stub.ticket_number,
-            eventId,
-            orderId: order.id,
-            timestamp: new Date().toISOString(),
-          })
-          stub.qr_code_data = await QRCode.toDataURL(qrData, {
-            width: 300,
-            margin: 2,
-            color: { dark: '#000000', light: '#FFFFFF' },
-          })
-          console.log('✅ QR generated for', stub.ticket_number)
-        } catch (qrErr) {
-          console.error('⚠️ QR generation failed for', stub.ticket_number, qrErr)
-          // qr_code_data stays as ticketNumber fallback
-        }
-      })
+  // Order, tickets and inventory decrement happen in one transaction, idempotent on session_id.
+  const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('process_checkout_completed', {
+    p_order: pOrder,
+    p_tickets: ticketStubs,
+    p_items: parsedItems,
+  })
+
+  if (rpcError) {
+    console.error('❌ process_checkout_completed error:', session.id, rpcError)
+    throw new Error(`process_checkout_completed failed: ${rpcError.message}`)
+  }
+
+  const result = rpcData as {
+    order_id: string
+    duplicate: boolean
+    needs_review: boolean
+    reasons: string[] | null
+  } | null
+
+  if (!result || !result.order_id) {
+    throw new Error(`process_checkout_completed returned no result for session ${session.id}`)
+  }
+
+  if (result.duplicate) {
+    console.log(`ℹ️ Duplicate delivery for session ${session.id} (order ${result.order_id}) — already processed, skipping`)
+    return
+  }
+
+  console.log(`✅ Order ${result.order_id} created via process_checkout_completed (${ticketStubs.length} tickets)`)
+
+  if (result.needs_review) {
+    console.error(
+      `🚨 NEEDS REVIEW: order_id=${result.order_id} session=${session.id} reasons=${JSON.stringify(result.reasons)}`
     )
+  }
 
-    const { data: createdTickets, error: ticketsError } = await supabaseAdmin
+  // Confirmation email — awaited, but a failure here must never fail the order.
+  try {
+    const { data: createdTickets, error: createdTicketsError } = await supabaseAdmin
       .from('tickets')
-      .insert(ticketStubs)
       .select()
+      .eq('order_id', result.order_id)
 
-    if (ticketsError) {
-      console.error('❌ Tickets creation error:', JSON.stringify(ticketsError, Object.getOwnPropertyNames(ticketsError)))
-      throw new Error(`Ticket creation failed: ${ticketsError.message}`)
+    if (createdTicketsError || !createdTickets || createdTickets.length === 0) {
+      throw new Error(`Could not fetch tickets for order ${result.order_id}: ${createdTicketsError?.message ?? 'none found'}`)
     }
 
-    console.log(`✅ Created ${createdTickets.length} tickets for order ${order.id}`)
-
-    // Decrement ticket_types.remaining now that payment is confirmed and tickets exist.
-    // Non-blocking: an oversell or inventory-update failure must never undo tickets
-    // that have already been paid for and issued — it's a signal to handle manually.
-    try {
-      for (const item of parsedItems) {
-        if (!item.ticketTypeId) continue
-
-        // Fetch fresh — don't trust the price-verification lookup above, which only
-        // selected `price` and ran before payment was confirmed.
-        const { data: ticketType, error: ticketTypeError } = await supabaseAdmin
-          .from('ticket_types')
-          .select('id, remaining, name')
-          .eq('id', item.ticketTypeId)
-          .single()
-
-        if (ticketTypeError || !ticketType) {
-          console.error(`⚠️ Failed to fetch ticket_type ${item.ticketTypeId} for inventory decrement:`, ticketTypeError)
-          continue
-        }
-
-        const currentRemaining = Number(ticketType.remaining)
-        const quantityPurchased = Number(item.quantity)
-
-        if (currentRemaining < quantityPurchased) {
-          console.error(`Oversold: ticket_type ${ticketType.id} had ${currentRemaining} remaining, order requested ${quantityPurchased}`)
-        }
-
-        const newRemaining = currentRemaining - quantityPurchased
-
-        const { error: updateError } = await supabaseAdmin
-          .from('ticket_types')
-          .update({
-            remaining: newRemaining,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', ticketType.id)
-
-        if (updateError) {
-          console.error(`❌ Failed to decrement remaining for ticket_type ${ticketType.id}:`, updateError)
-        } else {
-          console.log(`📊 Decremented ${ticketType.name}: ${currentRemaining} → ${newRemaining}`)
-        }
-      }
-    } catch (inventoryError) {
-      console.error('⚠️ Ticket inventory decrement failed:', inventoryError)
-    }
+    // Shape the email template reads from
+    const order = { id: result.order_id, total_amount: pOrder.total_amount }
 
     // Fetch event and venue for email
     const { data: eventData } = await supabaseAdmin
@@ -294,7 +293,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         }
       })
 
-      resend.emails.send({
+      const emailResult = await resend.emails.send({
         from: 'RTNY <onboarding@resend.dev>',
         to: session.customer_email,
         subject: `Order Confirmed - ${eventData.name}`,
@@ -384,12 +383,47 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           </html>
         `,
         attachments,
-      }).then(() => {
-        console.log('✅ Confirmation email sent to', session.customer_email)
-      }).catch((err) => {
-        console.error('❌ Email send failed:', err)
       })
+
+      // Resend's SDK returns { data, error } rather than throwing on API errors
+      if (emailResult.error) {
+        console.error('❌ Email send failed:', emailResult.error)
+      } else {
+        console.log('✅ Confirmation email sent to', session.customer_email)
+      }
     }
+  } catch (emailErr) {
+    console.error('❌ Confirmation email step failed (order is unaffected):', result.order_id, emailErr)
+  }
+
+  // Reset the crew's sticker attempts on a qualifying purchase — awaited, non-fatal,
+  // capped once a crew hits its lifetime sticker limit.
+  if (crewId) {
+    try {
+      const { data: crewRow, error: crewFetchError } = await supabaseAdmin
+        .from('crews')
+        .select('lifetime_sticker_count')
+        .eq('id', crewId)
+        .single()
+
+      if (crewFetchError || !crewRow) {
+        console.error('⚠️ Sticker attempts reset — failed to fetch crew', crewId, crewFetchError)
+      } else if (crewRow.lifetime_sticker_count < 16) {
+        const { error: resetError } = await supabaseAdmin
+          .from('crews')
+          .update({ sticker_attempts_remaining: 6 })
+          .eq('id', crewId)
+
+        if (resetError) {
+          console.error('⚠️ Sticker attempts reset failed for crew', crewId, resetError)
+        } else {
+          console.log('✅ Sticker attempts reset to 6 for crew', crewId)
+        }
+      }
+    } catch (err) {
+      console.error('⚠️ Sticker attempts reset error for crew', crewId, err)
+    }
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -419,7 +453,22 @@ export async function POST(req: NextRequest) {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
-      handleCheckoutComplete(session).catch(console.error)
+      try {
+        await handleCheckoutComplete(session)
+      } catch (err) {
+        if (err instanceof PermanentError) {
+          if (err.quiet) {
+            console.log(`ℹ️ Skipping session ${session.id}: ${err.message}`)
+          } else {
+            console.error(
+              `🚨 PERMANENT WEBHOOK FAILURE (not retrying) session=${session.id} eventId=${session.metadata?.eventId ?? 'n/a'} customer_email=${session.customer_email ?? 'n/a'} reason=${err.message}`
+            )
+          }
+          return NextResponse.json({ received: true }, { status: 200 })
+        }
+        console.error('❌ Webhook processing failed — returning 500 so Stripe retries. session=', session.id, err)
+        return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ received: true }, { status: 200 })

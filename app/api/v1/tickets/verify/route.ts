@@ -2,6 +2,68 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
 import { checkIsAdmin } from '@/lib/admin-auth'
 
+const MAX_CODE_LENGTH = 500
+const BRAND_PREFIX = 'RTNY-'
+const TICKET_COLUMNS =
+  'id, event_id, ticket_type, ticket_number, confirmation_code, status, purchased_by, used_at, updated_at'
+
+// Scanners send either a typed code or the raw QR text, which is a JSON string like
+// {"ticketNumber":"...","eventId":"...",...}. Only ticketNumber is used for lookup;
+// eventId (if present) is used for the wrong-event check.
+function normalizeScan(raw: string): { value: string; eventId: string | null } {
+  const trimmed = raw.trim()
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (parsed && typeof parsed.ticketNumber === 'string' && parsed.ticketNumber.trim()) {
+        const eventId =
+          typeof parsed.eventId === 'string' && parsed.eventId.trim() ? parsed.eventId.trim() : null
+        return { value: parsed.ticketNumber.trim(), eventId }
+      }
+    } catch {
+      // Not valid JSON — treat the raw string as the code
+    }
+  }
+  return { value: trimmed, eventId: null }
+}
+
+// Confirmation codes are uppercase. The RTNY- prefix is branding: accept the code
+// with or without it so typed entry works for both stored formats.
+function confirmationCandidates(value: string): string[] {
+  const upper = value.toUpperCase()
+  const candidates = [upper]
+  if (upper.startsWith(BRAND_PREFIX)) {
+    const bare = upper.slice(BRAND_PREFIX.length)
+    if (bare) candidates.push(bare)
+  } else {
+    candidates.push(BRAND_PREFIX + upper)
+  }
+  return candidates
+}
+
+function alreadyUsedResponse(t: { used_at?: string | null; updated_at?: string | null }) {
+  return NextResponse.json(
+    {
+      error: 'Ticket already scanned',
+      code: 'ALREADY_USED',
+      // Old rows were marked used before used_at existed on this path
+      scanned_at: t.used_at ?? t.updated_at ?? null,
+    },
+    { status: 409 }
+  )
+}
+
+function invalidStatusResponse(status: string | null) {
+  return NextResponse.json(
+    {
+      error: `Ticket cannot be admitted: status is "${status ?? 'unknown'}"`,
+      code: 'INVALID_STATUS',
+      status,
+    },
+    { status: 410 }
+  )
+}
+
 export async function POST(request: NextRequest) {
   try {
     const adminCheck = await checkIsAdmin()
@@ -10,22 +72,43 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { code } = body
 
-    if (!code || typeof code !== 'string' || !code.trim()) {
+    if (code === undefined || code === null || (typeof code === 'string' && !code.trim())) {
       return NextResponse.json(
         { error: 'code is required', code: 'MISSING_CODE' },
         { status: 400 }
       )
     }
 
-    const supabase = createSupabaseAdmin()
-    const trimmedCode = code.trim()
+    if (typeof code !== 'string' || code.length > MAX_CODE_LENGTH) {
+      return NextResponse.json(
+        { error: `code must be a string of at most ${MAX_CODE_LENGTH} characters`, code: 'INVALID_CODE' },
+        { status: 400 }
+      )
+    }
 
-    // Step 1: Find ticket by confirmation_code OR ticket_number
-    const { data: ticket, error: ticketError } = await supabase
+    const supabase = createSupabaseAdmin()
+    const { value, eventId: scannedEventId } = normalizeScan(code)
+
+    // Step 1: Find ticket by ticket_number, then by confirmation_code.
+    // Separate .eq() lookups — user input is never interpolated into a filter string.
+    let lookup = await supabase
       .from('tickets')
-      .select('id, event_id, ticket_type, ticket_number, confirmation_code, status, purchased_by, updated_at')
-      .or(`confirmation_code.eq.${trimmedCode},ticket_number.eq.${trimmedCode}`)
+      .select(TICKET_COLUMNS)
+      .eq('ticket_number', value)
       .maybeSingle()
+
+    if (!lookup.error && !lookup.data) {
+      for (const candidate of confirmationCandidates(value)) {
+        lookup = await supabase
+          .from('tickets')
+          .select(TICKET_COLUMNS)
+          .eq('confirmation_code', candidate)
+          .maybeSingle()
+        if (lookup.error || lookup.data) break
+      }
+    }
+
+    const { data: ticket, error: ticketError } = lookup
 
     if (ticketError) {
       console.error('[verify] ticket query error:', ticketError)
@@ -42,22 +125,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 2: Check status before doing anything else
-    if (ticket.status === 'used') {
+    // Step 2: The QR payload names its event — reject tickets scanned at the wrong one
+    if (scannedEventId && scannedEventId !== ticket.event_id) {
       return NextResponse.json(
-        { error: 'Ticket already scanned', code: 'ALREADY_USED', scanned_at: ticket.updated_at },
+        { error: 'Ticket is for a different event', code: 'WRONG_EVENT' },
         { status: 409 }
       )
     }
 
-    if (ticket.status === 'cancelled' || ticket.status === 'refunded') {
-      return NextResponse.json(
-        { error: 'Ticket is not valid', code: 'INVALID_STATUS', status: ticket.status },
-        { status: 410 }
-      )
+    // Step 3: Only 'purchased' tickets may be admitted
+    if (ticket.status === 'used') {
+      return alreadyUsedResponse(ticket)
     }
 
-    // Step 3: Fetch event and profile separately (parallel)
+    if (ticket.status !== 'purchased') {
+      return invalidStatusResponse(ticket.status)
+    }
+
+    // Step 4: Fetch event and profile separately (parallel)
     const [eventResult, profileResult] = await Promise.all([
       supabase
         .from('events')
@@ -74,11 +159,15 @@ export async function POST(request: NextRequest) {
         : Promise.resolve({ data: null, error: null }),
     ])
 
-    // Step 4: Mark ticket as used
-    const { error: updateError } = await supabase
+    // Step 5: Atomically mark as used — only succeeds if still 'purchased'
+    const now = new Date().toISOString()
+    const { data: updated, error: updateError } = await supabase
       .from('tickets')
-      .update({ status: 'used', updated_at: new Date().toISOString() })
+      .update({ status: 'used', used_at: now, updated_at: now })
       .eq('id', ticket.id)
+      .eq('status', 'purchased')
+      .select()
+      .maybeSingle()
 
     if (updateError) {
       console.error('[verify] update error:', updateError)
@@ -86,6 +175,36 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to mark ticket as used', code: 'UPDATE_ERROR' },
         { status: 500 }
       )
+    }
+
+    if (!updated) {
+      // Lost a race (or status changed since we read it) — re-read to report why
+      const { data: current, error: rereadError } = await supabase
+        .from('tickets')
+        .select('id, status, used_at, updated_at')
+        .eq('id', ticket.id)
+        .maybeSingle()
+
+      if (rereadError) {
+        console.error('[verify] re-read error:', rereadError)
+        return NextResponse.json(
+          { error: 'Failed to query ticket', code: 'DB_ERROR' },
+          { status: 500 }
+        )
+      }
+
+      if (!current) {
+        return NextResponse.json(
+          { error: 'Ticket not found', code: 'NOT_FOUND' },
+          { status: 404 }
+        )
+      }
+
+      if (current.status === 'used') {
+        return alreadyUsedResponse(current)
+      }
+
+      return invalidStatusResponse(current.status)
     }
 
     const event = eventResult.data
