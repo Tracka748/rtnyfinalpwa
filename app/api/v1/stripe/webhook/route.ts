@@ -223,6 +223,18 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     })
   )
 
+  // Compare what Stripe actually charged against what the checkout route computed.
+  // Alert only — never block fulfillment of a payment that has already been captured.
+  // Sessions created before this check shipped have no expectedTotalCents; skip those.
+  const expectedTotalCents = session.metadata?.expectedTotalCents
+  if (expectedTotalCents !== undefined && expectedTotalCents !== '') {
+    if (Number(expectedTotalCents) !== session.amount_total) {
+      console.error(
+        `🚨 AMOUNT MISMATCH session=${session.id} expected=${expectedTotalCents} actual=${session.amount_total}`
+      )
+    }
+  }
+
   // Order, tickets and inventory decrement happen in one transaction, idempotent on session_id.
   const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('process_checkout_completed', {
     p_order: pOrder,
