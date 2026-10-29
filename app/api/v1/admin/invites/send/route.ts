@@ -381,17 +381,29 @@ export async function POST(request: Request) {
 
     // Send emails individually with 100ms delay
     let sentCount = 0;
+    const failed: { email: string; error: string }[] = [];
     for (const recipient of recipients) {
       try {
-        await resend.emails.send({
+        const { error: sendError } = await resend.emails.send({
           from: `RTNY <${fromEmail}>`,
           to: recipient.email,
           subject: emailSubject,
           html: htmlBody,
         });
-        sentCount++;
+        if (sendError) {
+          console.error(
+            `Failed to send invite to ${recipient.email}: ${sendError.message}`
+          );
+          failed.push({ email: recipient.email, error: sendError.message });
+        } else {
+          sentCount++;
+        }
       } catch (emailErr) {
         console.error(`Failed to send invite to ${recipient.email}:`, emailErr);
+        failed.push({
+          email: recipient.email,
+          error: emailErr instanceof Error ? emailErr.message : 'Send threw an error',
+        });
       }
       await sleep(100);
     }
@@ -409,7 +421,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: { sent_count: sentCount, matched_users: recipients.length },
+      data: { sent_count: sentCount, matched_users: recipients.length, failed },
     });
   } catch (error) {
     console.error('Invite send error:', error);
