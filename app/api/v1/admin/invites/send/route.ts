@@ -364,12 +364,27 @@ export async function POST(request: Request) {
       previewText: preview_text,
     });
 
+    // No sandbox fallback: without a configured from address, send nothing.
+    const fromEmail = process.env.RESEND_FROM_EMAIL?.trim();
+    if (!fromEmail) {
+      console.error(
+        `🚨 RESEND_FROM_EMAIL not set — invites NOT sent. event_id=${event_id} recipients=${recipients.length}`
+      );
+      return NextResponse.json(
+        {
+          error: 'Invites not sent: RESEND_FROM_EMAIL is not configured on the server',
+          success: false,
+        },
+        { status: 500 }
+      );
+    }
+
     // Send emails individually with 100ms delay
     let sentCount = 0;
     for (const recipient of recipients) {
       try {
         await resend.emails.send({
-          from: 'RTNY <onboarding@resend.dev>',
+          from: `RTNY <${fromEmail}>`,
           to: recipient.email,
           subject: emailSubject,
           html: htmlBody,

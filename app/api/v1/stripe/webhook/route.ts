@@ -286,13 +286,29 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     const order = { id: result.order_id, total_amount: pOrder.total_amount }
 
     // Fetch event and venue for email
-    const { data: eventData } = await supabaseAdmin
+    const { data: eventData, error: eventError } = await supabaseAdmin
       .from('events')
       .select(`name, event_date, venues!inner (name, address)`)
       .eq('id', eventId)
       .single()
 
-    if (eventData && session.customer_email) {
+    if (!eventData && session.customer_email) {
+      console.error(
+        `🚨 Event/venue lookup returned nothing — confirmation email NOT sent. order_id=${result.order_id} eventId=${eventId} customer_email=${session.customer_email}`,
+        eventError
+      )
+    }
+
+    // No fallback to the Resend sandbox sender: if the from address isn't configured,
+    // skip the email entirely. The order and tickets are already committed.
+    const fromEmail = process.env.RESEND_FROM_EMAIL?.trim()
+    if (!fromEmail && session.customer_email) {
+      console.error(
+        `🚨 RESEND_FROM_EMAIL not set — confirmation email NOT sent. order_id=${result.order_id} customer_email=${session.customer_email}`
+      )
+    }
+
+    if (eventData && session.customer_email && fromEmail) {
       const attachments = createdTickets.map((ticket, index) => {
         const base64Data = ticket.qr_code_data.includes(',')
           ? ticket.qr_code_data.split(',')[1]
@@ -306,7 +322,8 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       })
 
       const emailResult = await resend.emails.send({
-        from: 'RTNY <onboarding@resend.dev>',
+        from: `RTNY <${fromEmail}>`,
+        replyTo: 'tickets@rocticketny.com',
         to: session.customer_email,
         subject: `Order Confirmed - ${eventData.name}`,
         html: `

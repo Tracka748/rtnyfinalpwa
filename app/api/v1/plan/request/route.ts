@@ -31,12 +31,20 @@ async function sendPlanRequestEmail(params: {
   notes: string | null
   contactEmail: string | null
 }) {
+  // No sandbox fallback: if the from address isn't configured, skip the send.
+  // The plan request is already saved, so the caller still succeeds.
+  const fromEmail = process.env.RESEND_FROM_EMAIL?.trim()
+  if (!fromEmail) {
+    console.error(
+      `🚨 RESEND_FROM_EMAIL not set — plan request notification NOT sent. request_id=${params.requestId}`
+    )
+    return
+  }
+
   const { Resend } = await import('resend')
   const resend = new Resend(process.env.RESEND_API_KEY)
 
-  const from = process.env.RESEND_FROM_EMAIL
-    ? `RTNY Planning <${process.env.RESEND_FROM_EMAIL}>`
-    : 'RTNY Planning <onboarding@resend.dev>'
+  const from = `RTNY Planning <${fromEmail}>`
 
   const { data, error } = await resend.emails.send({
     from,
