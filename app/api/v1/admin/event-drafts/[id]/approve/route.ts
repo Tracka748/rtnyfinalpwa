@@ -84,6 +84,7 @@ export async function POST(
         age_restriction: draft.age_restriction || '18+',
         parking_info: draft.parking_info || null,
         refund_policy: draft.refund_policy || 'No refunds',
+        promoter_id: draft.promoter_id ?? null,
       })
       .select()
       .single()
@@ -182,6 +183,7 @@ export async function POST(
       .from('event_drafts')
       .update({
         status: 'approved',
+        published_event_id: publishedEvent.id,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
