@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import type { User } from "@supabase/supabase-js"
 import { SidebarTrigger } from "@/components/custom/layout/sidebar-trigger"
+import { LogoutButton } from "@/components/custom/auth/logout-button"
 
 export function AppNav() {
   const pathname = usePathname()
-  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -46,13 +46,6 @@ export function AppNav() {
 
     return () => subscription.unsubscribe()
   }, [])
-
-  const handleLogout = async () => {
-    const supabase = createBrowserSupabaseClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-  }
 
   const isActive = (path: string) => pathname === path
 
@@ -180,12 +173,7 @@ export function AppNav() {
                         </svg>
                         {user.email}
                       </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-2 font-sans text-sm text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10"
-                      >
-                        Logout
-                      </button>
+                      <LogoutButton className="rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-4 py-2 font-sans text-sm text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10 disabled:cursor-not-allowed disabled:opacity-50" />
                     </div>
                   </>
                 ) : (
@@ -310,15 +298,10 @@ export function AppNav() {
                       <p className="px-3 font-sans text-sm text-[#A0A0A0]">
                         {user.email}
                       </p>
-                      <button
-                        onClick={() => {
-                          handleLogout()
-                          setMobileMenuOpen(false)
-                        }}
-                        className="mt-2 w-full rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-left font-sans text-base font-medium text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10"
-                      >
-                        Logout
-                      </button>
+                      <LogoutButton
+                        onDone={() => setMobileMenuOpen(false)}
+                        className="mt-2 w-full rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-3 py-2 text-left font-sans text-base font-medium text-[#F9FDFF] transition-all hover:border-[#59FFA0] hover:bg-[#59FFA0]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
                     </div>
                   </>
                 ) : (

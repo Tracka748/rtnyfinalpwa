@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
+import { usePathname } from "next/navigation"
+import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
+import { LogoutButton } from "@/components/custom/auth/logout-button"
 import { useSidebar } from "@/contexts/sidebar-context"
 import type { User } from "@supabase/supabase-js"
 
@@ -77,16 +78,12 @@ function SectionLabel({ label }: { label: string }) {
 
 export function Sidebar() {
   const { isOpen, close } = useSidebar()
-  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loadingAuth, setLoadingAuth] = useState(true)
   const sidebarRef = useRef<HTMLDivElement>(null)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = useMemo(() => createBrowserSupabaseClient(), [])
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -142,13 +139,6 @@ export function Sidebar() {
   }, [isOpen])
 
   const handleNavClick = () => close()
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    close()
-    router.push("/")
-    router.refresh()
-  }
 
   const isPromoter = profile?.role === "promoter" || profile?.role === "admin"
   const isAdmin = profile?.role === "admin"
@@ -274,12 +264,10 @@ export function Sidebar() {
         {/* Footer */}
         <div className="border-t border-white/10 px-4 py-4">
           {user && (
-            <button
-              onClick={handleSignOut}
-              className="mb-3 font-sans text-sm text-red-400 transition-colors hover:text-red-300"
-            >
-              Sign Out
-            </button>
+            <LogoutButton
+              onDone={close}
+              className="mb-3 font-sans text-sm text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+            />
           )}
           <p className="font-sans text-xs text-[#F9FDFF]/30">RTNY v1.0 · Rochester, NY</p>
         </div>
