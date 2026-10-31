@@ -11,6 +11,7 @@ interface Profile {
   first_name: string | null
   last_name: string | null
   role: string | null
+  is_organizer: boolean | null
 }
 
 function getInitials(profile: Profile | null, user: User): string {
@@ -70,7 +71,7 @@ export function DesktopNav() {
       if (u) {
         const { data } = await supabase
           .from("profiles")
-          .select("first_name, last_name, role")
+          .select("first_name, last_name, role, is_organizer")
           .eq("id", u.id)
           .single()
         setProfile(data ?? null)
@@ -84,7 +85,7 @@ export function DesktopNav() {
       if (u) {
         const { data } = await supabase
           .from("profiles")
-          .select("first_name, last_name, role")
+          .select("first_name, last_name, role, is_organizer")
           .eq("id", u.id)
           .single()
         setProfile(data ?? null)
@@ -133,7 +134,8 @@ export function DesktopNav() {
       ? pathname === "/"
       : pathname === href || pathname.startsWith(href.split("?")[0] + "/") || pathname === href.split("?")[0]
 
-  const isPromoter = profile?.role === "promoter"
+  const isPromoter =
+    profile?.role === "promoter" || profile?.role === "admin" || profile?.is_organizer === true
 
   return (
     <nav className="sticky top-0 z-40 hidden w-full border-b border-white/10 bg-[#121113]/95 backdrop-blur-md md:block">
@@ -247,7 +249,7 @@ export function DesktopNav() {
                         </Link>
                       ) : (
                         <Link
-                          href="/promoter/apply"
+                          href="/apply/promoter"
                           onClick={() => setAvatarOpen(false)}
                           className="flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-sm text-[#F9FDFF]/80 transition-colors hover:bg-white/5 hover:text-[#F9FDFF]"
                         >

@@ -21,7 +21,8 @@ interface EventData {
 }
 
 interface HolderData {
-  display_name: string;
+  name?: string;
+  display_name?: string;
   email: string | null;
 }
 
@@ -35,6 +36,7 @@ interface VerifySuccess {
 type ScanResult =
   | { status: 'success'; data: VerifySuccess }
   | { status: 'already_used'; scanned_at: string | null; error: string }
+  | { status: 'wrong_event'; error: string }
   | { status: 'not_found'; error: string }
   | { status: 'invalid'; ticketStatus: string | null; error: string }
   | { status: 'error'; error: string };
@@ -96,7 +98,7 @@ function ResultPanel({
           {/* Holder */}
           <div className="rounded-xl bg-black/30 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-[#7DD8E8]/60 mb-1">Ticket Holder</p>
-            <p className="text-base font-semibold text-white">{holder.display_name}</p>
+            <p className="text-base font-semibold text-white">{holder.name ?? holder.display_name ?? 'Unknown'}</p>
             {holder.email && (
               <p className="text-sm text-[#7DD8E8]">{holder.email}</p>
             )}
@@ -156,6 +158,31 @@ function ResultPanel({
             </p>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (result.status === 'wrong_event') {
+    return (
+      <div className="rounded-2xl border border-red-500/40 bg-red-500/8 p-5 space-y-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🚫</span>
+            <div>
+              <p className="text-xl font-bold text-red-400 font-['Rokkitt',serif]">
+                WRONG EVENT
+              </p>
+              <p className="text-sm text-red-400/70">{result.error}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClear}
+            className="shrink-0 px-3 py-1.5 text-xs bg-white/10 text-[#7DD8E8] rounded-lg hover:bg-white/20 transition-colors"
+          >
+            Clear
+          </button>
+        </div>
       </div>
     );
   }
@@ -273,6 +300,11 @@ export default function ScanPage() {
 
       if (res.status === 200 && json.success) {
         setScanResult({ status: 'success', data: json as VerifySuccess });
+      } else if (res.status === 409 && json.code === 'WRONG_EVENT') {
+        setScanResult({
+          status: 'wrong_event',
+          error: json.error ?? 'Ticket is for a different event',
+        });
       } else if (res.status === 409) {
         setScanResult({
           status: 'already_used',
