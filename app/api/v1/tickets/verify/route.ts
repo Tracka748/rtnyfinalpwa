@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
-import { checkIsAdmin } from '@/lib/admin-auth'
+import { checkCanScan } from '@/lib/admin-auth'
 
 const MAX_CODE_LENGTH = 500
 const BRAND_PREFIX = 'RTNY-'
@@ -66,8 +66,8 @@ function invalidStatusResponse(status: string | null) {
 
 export async function POST(request: NextRequest) {
   try {
-    const adminCheck = await checkIsAdmin()
-    if (adminCheck.error) return adminCheck.response
+    const scanCheck = await checkCanScan()
+    if (scanCheck.error) return scanCheck.response
 
     const body = await request.json()
     const { code } = body
@@ -123,6 +123,41 @@ export async function POST(request: NextRequest) {
         { error: 'Ticket not found', code: 'NOT_FOUND' },
         { status: 404 }
       )
+    }
+
+    // Non-admins may only scan tickets for events they manage: either
+    // events.promoter_id is theirs, or an approved draft of theirs was published as it.
+    if (!scanCheck.isAdmin) {
+      const [ownedEvent, ownedDraft] = await Promise.all([
+        supabase
+          .from('events')
+          .select('id')
+          .eq('id', ticket.event_id)
+          .eq('promoter_id', scanCheck.user.id)
+          .maybeSingle(),
+        supabase
+          .from('event_drafts')
+          .select('id')
+          .eq('promoter_id', scanCheck.user.id)
+          .eq('status', 'approved')
+          .eq('published_event_id', ticket.event_id)
+          .limit(1),
+      ])
+
+      if (ownedEvent.error || ownedDraft.error) {
+        console.error('[verify] ownership query error:', ownedEvent.error ?? ownedDraft.error)
+        return NextResponse.json(
+          { error: 'Failed to verify event ownership', code: 'DB_ERROR' },
+          { status: 500 }
+        )
+      }
+
+      if (!ownedEvent.data && !(ownedDraft.data && ownedDraft.data.length > 0)) {
+        return NextResponse.json(
+          { error: "This ticket is for an event you don't manage", code: 'NOT_YOUR_EVENT' },
+          { status: 403 }
+        )
+      }
     }
 
     // Step 2: The QR payload names its event — reject tickets scanned at the wrong one

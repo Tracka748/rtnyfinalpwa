@@ -14,6 +14,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import type { User } from '@supabase/supabase-js';
 
 /**
  * Create Supabase client for server components
@@ -72,6 +73,57 @@ export async function checkIsAdmin(): Promise<
   }
 
   return { error: false, response: null };
+}
+
+/**
+ * Used in API routes that admins and promoters/organizers may call (ticket scanning).
+ * Allowed set matches app/promoter/layout.tsx. Callers must still verify event
+ * ownership for non-admins (isAdmin === false).
+ */
+export async function checkCanScan(): Promise<
+  | { error: false; response: null; user: User; isAdmin: boolean }
+  | { error: true; response: NextResponse; user: null; isAdmin: false }
+> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      error: true,
+      response: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }),
+      user: null,
+      isAdmin: false,
+    };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, is_organizer')
+    .eq('id', user.id)
+    .single();
+
+  const isAdmin = !profileError && profile?.role === 'admin';
+  const canScan =
+    isAdmin ||
+    (!profileError &&
+      (profile?.role === 'promoter' ||
+        profile?.role === 'organizer' ||
+        profile?.is_organizer === true));
+
+  if (!canScan) {
+    return {
+      error: true,
+      response: NextResponse.json({ error: 'Scanner access required' }, { status: 403 }),
+      user: null,
+      isAdmin: false,
+    };
+  }
+
+  return { error: false, response: null, user, isAdmin };
 }
 
 /**

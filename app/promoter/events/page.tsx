@@ -141,7 +141,13 @@ function EventsContent() {
           <h1 className="text-3xl font-header font-bold text-white">My Events</h1>
           <p className="text-[#7DD8E8] mt-1">Manage your event listings and submissions</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link
+            href="/promoter/scan"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-[#7DD8E8]/15 text-[#7DD8E8] border border-[#7DD8E8]/30 font-semibold rounded-xl hover:bg-[#7DD8E8]/25 transition-colors"
+          >
+            <span>📷</span> Scan tickets
+          </Link>
           <Link
             href="/promoter/events/create?mode=ai"
             className="inline-flex items-center gap-2 px-5 py-3 bg-[#7DD8E8]/15 text-[#7DD8E8] border border-[#7DD8E8]/30 font-semibold rounded-xl hover:bg-[#7DD8E8]/25 transition-colors"
