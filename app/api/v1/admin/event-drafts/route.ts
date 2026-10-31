@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServer } from '@/lib/supabase'
+import { createSupabaseAdmin } from '@/lib/supabase'
 import { checkIsAdmin } from '@/lib/admin-auth'
 
 // GET /api/v1/admin/event-drafts - List all event drafts
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServer()
+    const supabase = createSupabaseAdmin()
 
     const adminCheck = await checkIsAdmin()
     if (adminCheck.error) return adminCheck.response

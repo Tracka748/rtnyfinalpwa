@@ -48,6 +48,7 @@ export default function AdminEventDraftsPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'pending_review' | 'approved' | 'rejected'>('pending_review')
   const [processing, setProcessing] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDrafts()
@@ -60,7 +61,11 @@ export default function AdminEventDraftsPage() {
       const response = await fetch(`/api/v1/admin/event-drafts${params}`)
       const data = await response.json()
 
-      if (data.success) {
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to load event drafts')
+        setDrafts([])
+      } else {
+        setError(null)
         setDrafts(data.data)
       }
     } catch (error) {
@@ -156,6 +161,10 @@ export default function AdminEventDraftsPage() {
 
       {loading ? (
         <div className="text-center py-12">Loading event drafts...</div>
+      ) : error ? (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+          {error}
+        </div>
       ) : drafts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-[#7DD8E8]">
