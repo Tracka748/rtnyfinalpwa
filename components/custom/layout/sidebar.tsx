@@ -148,7 +148,7 @@ export function Sidebar() {
       {/* Backdrop */}
       <div
         aria-hidden="true"
-        className={`fixed inset-0 z-40 bg-black/60 transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[60] bg-black/60 transition-opacity duration-300 ${
           isOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={close}
@@ -160,7 +160,7 @@ export function Sidebar() {
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
-        className={`fixed left-0 top-0 z-50 flex h-full w-[85vw] max-w-[320px] flex-col bg-[#121113] shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 top-0 z-[70] flex h-full w-[85vw] max-w-[320px] flex-col bg-[#121113] shadow-2xl transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

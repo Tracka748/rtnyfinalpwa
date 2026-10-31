@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
@@ -13,6 +13,7 @@ export function AppNav() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const navRef = useRef<HTMLElement>(null)
 
   // Check authentication status
   useEffect(() => {
@@ -47,12 +48,50 @@ export function AppNav() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Close the mobile menu on outside pointerdown or Escape (only while open).
+  // The toggle button is inside navRef, so its own click isn't treated as outside.
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false)
+    }
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [mobileMenuOpen])
+
   const isActive = (path: string) => pathname === path
 
+  // Taps on the nav's own blank background (not on a link/button) close the menu.
+  const closeOnBlankTap = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) setMobileMenuOpen(false)
+  }
+
   return (
-    <nav className="fixed top-0 z-50 w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+    <>
+    {/* Backdrop: sibling of <nav> (nav's backdrop-blur would trap a fixed child). Below nav z-50. */}
+    {mobileMenuOpen && (
+      <div
+        className="fixed inset-0 z-40 md:hidden"
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+    )}
+    <nav
+      ref={navRef}
+      onClick={closeOnBlankTap}
+      className="fixed top-0 z-50 w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg"
+    >
+      <div className="w-full px-4 sm:px-6 lg:px-8" onClick={closeOnBlankTap}>
+        <div className="flex h-16 items-center justify-between" onClick={closeOnBlankTap}>
           {/* Left group: RTNY + RocTicketNy */}
           <div className="flex items-center">
             {/* Desktop: plain link to home */}
@@ -319,5 +358,6 @@ export function AppNav() {
         </div>
       )}
     </nav>
+    </>
   )
 }
