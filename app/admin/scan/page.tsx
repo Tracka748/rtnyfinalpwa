@@ -282,6 +282,10 @@ export default function ScanPage() {
   const pausedRef = useRef(false);
   const scannerDivId = 'rtny-qr-reader';
 
+  // Refs for scrolling the result / scanner area into view
+  const resultRef = useRef<HTMLDivElement>(null);
+  const scannerAreaRef = useRef<HTMLDivElement>(null);
+
   // ── Verify API call ─────────────────────────────────────────────────────
 
   async function callVerify(code: string): Promise<void> {
@@ -395,6 +399,23 @@ export default function ScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Scroll the result panel into view once it has rendered
+  useEffect(() => {
+    if (!scanResult || isLoading) return;
+    const id = requestAnimationFrame(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [scanResult, isLoading]);
+
+  // Clear the result and bring the scanner back into view for the next ticket
+  function handleClear() {
+    setScanResult(null);
+    requestAnimationFrame(() => {
+      scannerAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+
   // ── Manual submit ───────────────────────────────────────────────────────
 
   function handleManualSubmit(e: React.FormEvent) {
@@ -453,7 +474,7 @@ export default function ScanPage() {
 
         {/* ── Camera tab ── */}
         {activeTab === 'camera' && (
-          <div className="space-y-4">
+          <div ref={scannerAreaRef} className="space-y-4">
             {cameraError ? (
               <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/8 p-6 text-center space-y-3">
                 <span className="text-4xl block">⚠️</span>
@@ -499,7 +520,7 @@ export default function ScanPage() {
 
         {/* ── Manual tab ── */}
         {activeTab === 'manual' && (
-          <div className="space-y-4">
+          <div ref={scannerAreaRef} className="space-y-4">
             <form onSubmit={handleManualSubmit} className="space-y-3">
               <div>
                 <label
@@ -541,7 +562,9 @@ export default function ScanPage() {
 
         {/* ── Result ── */}
         {scanResult && !isLoading && (
-          <ResultPanel result={scanResult} onClear={() => setScanResult(null)} />
+          <div ref={resultRef}>
+            <ResultPanel result={scanResult} onClear={handleClear} />
+          </div>
         )}
       </div>
     </div>
