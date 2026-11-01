@@ -1,3 +1,15 @@
+-- MIGRATION HISTORY NOTE (added 2026-11-01)
+-- This file was marked applied via `supabase migration repair`, but it never ran as a file.
+-- Its sections were handled separately:
+--   A (RLS on 8 config tables + public_read / theme_suggestions policies): verified present in the live DB.
+--   B, C, D (privileged-column guard triggers): applied by hand in 20261031070000.
+--   E (live_now_slots) and F (group_memberships): deliberately NOT applied. The app has no
+--     user-session inserts on these tables (all writes use the service role), and RLS is on with
+--     no member or promoter write policies, so only admins and the service role can write.
+--     Applying E or F would add direct-insert access nothing uses.
+--   G (promo_code_usage): verified; the permissive insert policy is absent in the live DB.
+-- Do NOT run `supabase db push` expecting this file to execute. Apply any future change as a new migration.
+
 -- A. RLS on the eight tables
 do $$
 declare t text;
