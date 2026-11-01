@@ -198,7 +198,7 @@ function EventsContent() {
       <DateHeader selectedDate={selectedDate} eventCount={todayEvents.length} isAllDates={isAllDates} />
 
       {/* 3. Search + Category Tabs — sticky */}
-      <div className="sticky top-0 z-50 bg-[#121113]/95 backdrop-blur border-b border-white/10">
+      <div className="sticky top-16 z-50 bg-[#121113]/95 backdrop-blur border-b border-white/10">
         <div className="mx-auto max-w-[1200px] px-4 py-3 space-y-3">
 
           {/* Search */}

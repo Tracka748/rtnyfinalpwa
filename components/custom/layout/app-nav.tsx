@@ -77,10 +77,10 @@ export function AppNav() {
 
   return (
     <>
-    {/* Backdrop: sibling of <nav> (nav's backdrop-blur would trap a fixed child). Below nav z-50. */}
+    {/* Backdrop: sibling of <nav> (nav's backdrop-blur would trap a fixed child). Below nav z-[55], above sticky page bars (z-50). */}
     {mobileMenuOpen && (
       <div
-        className="fixed inset-0 z-40 md:hidden"
+        className="fixed inset-0 z-[54] md:hidden"
         onClick={() => setMobileMenuOpen(false)}
         aria-hidden="true"
       />
@@ -88,7 +88,7 @@ export function AppNav() {
     <nav
       ref={navRef}
       onClick={closeOnBlankTap}
-      className="fixed top-0 z-50 w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg"
+      className="fixed top-0 z-[55] w-full border-b border-[#2A2A2A] bg-[#121113]/95 backdrop-blur-lg"
     >
       <div className="w-full px-4 sm:px-6 lg:px-8" onClick={closeOnBlankTap}>
         <div className="flex h-16 items-center justify-between" onClick={closeOnBlankTap}>
