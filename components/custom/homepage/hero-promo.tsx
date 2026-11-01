@@ -47,11 +47,9 @@ export function HeroPromo({ promos }: HeroPromoProps) {
   // Image slides advance after 5s; video slides wait for `ended` (see
   // handleVideoEnded) and fall back to the safety cap.
   useEffect(() => {
-    console.log('[hero-timer] effect start', { activeIndex, slideTick, activeVideoUrl, promosLength: promos.length, t: Date.now() })
     slideStartedAtRef.current = Date.now()
     const ms = activeVideoUrl ? HERO_VIDEO_MAX_MS : SLIDE_DEFAULT_SECONDS * 1000
     slideTimerRef.current = setTimeout(() => {
-      console.log('[hero-timer] advance', { from: activeIndex, sinceSlideStartMs: Date.now() - slideStartedAtRef.current })
       goToIndex((activeIndex + 1) % promos.length)
     }, ms)
     return () => {
@@ -63,8 +61,7 @@ export function HeroPromo({ promos }: HeroPromoProps) {
 
   // Video finished: hold the last frame until the tier's minimum seconds have
   // passed since the slide became active, then advance.
-  const handleVideoEnded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    console.log('[hero-debug]', { duration: e.currentTarget.duration, currentTime: e.currentTarget.currentTime, sinceSlideStartMs: Date.now() - slideStartedAtRef.current, minSeconds: promos[activeIndex]?.minSeconds });
+  const handleVideoEnded = () => {
     const holdMs = Math.min(
       (promos[activeIndex]?.minSeconds ?? SLIDE_DEFAULT_SECONDS) * 1000,
       HERO_VIDEO_MAX_MS
