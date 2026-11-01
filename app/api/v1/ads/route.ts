@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const { data: ads, error } = await supabase
       .from('ads')
-      .select('id, image_url, video_url, ad_type, link_url, title, weight')
+      .select('id, image_url, video_url, ad_type, link_url, title, weight, reel_duration_key')
       .eq('placement_key', placementKey)
       .eq('is_active', true)
       .or(`start_date.is.null,start_date.lte.${now}`)
@@ -44,6 +44,23 @@ export async function GET(request: NextRequest) {
       roll -= ad.weight
     }
 
+    // Reel tier -> minimum on-screen seconds. Separate query, mapped in JS (no joins).
+    let minSeconds: number | null = null
+    if (chosen.ad_type === 'reel' && chosen.reel_duration_key) {
+      const { data: tiers, error: tiersError } = await supabase
+        .from('ad_reel_duration_options')
+        .select('key, min_seconds')
+
+      if (tiersError) {
+        console.error('ads GET reel duration options error:', tiersError)
+      } else {
+        const minSecondsByKey = new Map<string, number | null>(
+          (tiers ?? []).map((t) => [t.key as string, (t.min_seconds as number | null) ?? null])
+        )
+        minSeconds = minSecondsByKey.get(chosen.reel_duration_key) ?? null
+      }
+    }
+
     return NextResponse.json({
       ad: {
         id: chosen.id,
@@ -52,6 +69,7 @@ export async function GET(request: NextRequest) {
         ad_type: chosen.ad_type,
         link_url: chosen.link_url,
         title: chosen.title,
+        minSeconds,
       },
     })
   } catch (err) {

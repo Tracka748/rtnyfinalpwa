@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ChangeEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import { Pencil, Trash2, Plus, Loader2, ImageOff, Film } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,7 +64,25 @@ interface AdPlacementOption extends PriceOption {
   allowed_ad_types: AdType[]
 }
 
-type AdReelDurationOption = PriceOption
+interface AdReelDurationOption extends PriceOption {
+  min_seconds: number
+  max_seconds: number
+}
+
+// Grace over the tier's max (encoder padding) before a video is rejected as too long.
+const REEL_MAX_TOLERANCE_SECONDS = 0.5
+
+// A video picked this session that passed validation and was uploaded to `url`.
+interface ChosenVideo {
+  file: File
+  duration: number
+  url: string
+}
+
+const VIDEO_PROBE_TIMEOUT_MS = 10_000
+const VIDEO_UNVERIFIABLE_MESSAGE =
+  "Couldn't verify the existing video's length, so this ad can't be saved yet. Re-upload the video or try again."
+const PREVIOUS_VIDEO_KEPT_NOTE = " Your previous video was kept."
 
 interface AdFormState {
   title: string
@@ -109,6 +127,88 @@ function formatPriceOption(option: PriceOption): string {
   return `${option.label} — $${(option.price_cents / 100).toFixed(2)}/${period}`
 }
 
+function formatSeconds(n: number): string {
+  return String(Number(n))
+}
+
+function formatTierRange(tier: AdReelDurationOption): string {
+  return `${formatSeconds(tier.min_seconds)}–${formatSeconds(tier.max_seconds)}s`
+}
+
+function durationFitsTier(duration: number, tier: AdReelDurationOption): boolean {
+  return (
+    duration <= Number(tier.max_seconds) + REEL_MAX_TOLERANCE_SECONDS &&
+    duration >= Number(tier.min_seconds) / 2
+  )
+}
+
+// Returns an error message when the video's length doesn't fit the tier, else null.
+function checkVideoDuration(
+  duration: number,
+  tier: AdReelDurationOption,
+  allTiers: AdReelDurationOption[]
+): string | null {
+  if (durationFitsTier(duration, tier)) return null
+  let message = `Your video is ${duration.toFixed(1)}s. The ${tier.label} tier allows ${formatTierRange(tier)}.`
+  const suggestion = allTiers.find((t) => t.key !== tier.key && durationFitsTier(duration, t))
+  if (suggestion) message += ` It fits the ${suggestion.label} tier — pick that tier instead.`
+  return message
+}
+
+// Reads a video file's real duration in the browser via a detached <video>.
+function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const video = document.createElement("video")
+    const cleanup = () => {
+      URL.revokeObjectURL(url)
+      video.removeAttribute("src")
+      video.load()
+    }
+    video.preload = "metadata"
+    video.muted = true
+    video.onloadedmetadata = () => {
+      const duration = video.duration
+      cleanup()
+      if (Number.isFinite(duration) && duration > 0) resolve(duration)
+      else reject(new Error("Couldn't read the video's length."))
+    }
+    video.onerror = () => {
+      cleanup()
+      reject(new Error("Couldn't read the video's length."))
+    }
+    video.src = url
+  })
+}
+
+// Probes an already-uploaded video's real duration from its URL. Rejects (fail closed)
+// on CORS/network errors, unsupported formats, a non-finite duration, or timeout.
+function probeVideoDuration(url: string, timeoutMs: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video")
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const finish = (fn: () => void) => {
+      if (timer) clearTimeout(timer)
+      video.onloadedmetadata = null
+      video.onerror = null
+      video.removeAttribute("src")
+      video.load()
+      fn()
+    }
+    video.preload = "metadata"
+    video.crossOrigin = "anonymous"
+    video.muted = true
+    video.onloadedmetadata = () => {
+      const duration = video.duration
+      if (Number.isFinite(duration) && duration > 0) finish(() => resolve(duration))
+      else finish(() => reject(new Error("Invalid video duration")))
+    }
+    video.onerror = () => finish(() => reject(new Error("Video failed to load")))
+    timer = setTimeout(() => finish(() => reject(new Error("Video probe timed out"))), timeoutMs)
+    video.src = url
+  })
+}
+
 export function AdsManager() {
   const [ads, setAds] = useState<Ad[]>([])
   const [loading, setLoading] = useState(true)
@@ -123,6 +223,14 @@ export function AdsManager() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  // Last video file picked this session plus its real length, kept so a tier change can re-validate it.
+  const [chosenVideo, setChosenVideo] = useState<ChosenVideo | null>(null)
+  // True while the saved video's length is being probed on submit.
+  const [verifying, setVerifying] = useState(false)
+  // The ad's video as saved when the dialog opened; session uploads fall back to it.
+  const savedVideoUrlRef = useRef("")
+  // "url|tierKey" pairs whose length has been verified this session.
+  const verifiedVideosRef = useRef<Set<string>>(new Set())
 
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -176,6 +284,8 @@ export function AdsManager() {
     setEditingAd(null)
     setForm(EMPTY_FORM)
     setFormErrors({})
+    setChosenVideo(null)
+    savedVideoUrlRef.current = ""
     setDialogOpen(true)
   }
 
@@ -195,6 +305,8 @@ export function AdsManager() {
       is_active: ad.is_active,
     })
     setFormErrors({})
+    setChosenVideo(null)
+    savedVideoUrlRef.current = ad.video_url ?? ""
     setDialogOpen(true)
   }
 
@@ -222,10 +334,9 @@ export function AdsManager() {
     }
   }
 
-  async function handleVideoFileSelect(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
+  // Uploads a video that has already passed validation. Returns its URL, or null on
+  // failure (the form's existing video is left untouched in that case).
+  async function uploadVideo(file: File): Promise<string | null> {
     try {
       setUploading(true)
       const body = new FormData()
@@ -235,14 +346,88 @@ export function AdsManager() {
       if (!res.ok) throw new Error(data.error || "Upload failed")
       setForm((prev) => ({ ...prev, video_url: data.video_url }))
       setFormErrors((prev) => ({ ...prev, video_url: "" }))
+      return data.video_url as string
     } catch (err) {
       setFormErrors((prev) => ({
         ...prev,
         video_url: err instanceof Error ? err.message : "Upload failed",
       }))
+      return null
     } finally {
       setUploading(false)
-      e.target.value = ""
+    }
+  }
+
+  // A rejected replacement never touches the form's current video; say so when one exists.
+  function rejectionMessage(message: string): string {
+    return form.video_url ? message + PREVIOUS_VIDEO_KEPT_NOTE : message
+  }
+
+  async function handleVideoFileSelect(e: ChangeEvent<HTMLInputElement>) {
+    const input = e.target
+    const file = input.files?.[0]
+    if (!file) return
+
+    const reject = (message: string) => {
+      setFormErrors((prev) => ({ ...prev, video_url: rejectionMessage(message) }))
+      input.value = ""
+    }
+
+    const tier = reelDurationOptions.find((o) => o.key === form.reel_duration_key)
+    if (!tier) {
+      reject("Select a duration before choosing a video.")
+      return
+    }
+
+    // Nothing is uploaded and no form state is written until the checks below pass.
+    setUploading(true)
+    let duration: number
+    try {
+      duration = await readVideoDuration(file)
+    } catch (err) {
+      reject(err instanceof Error ? err.message : "Couldn't read the video's length.")
+      setUploading(false)
+      return
+    }
+
+    const problem = checkVideoDuration(duration, tier, reelDurationOptions)
+    if (problem) {
+      reject(problem)
+      setUploading(false)
+      return
+    }
+
+    input.value = ""
+    const url = await uploadVideo(file)
+    if (url) {
+      setChosenVideo({ file, duration, url })
+      verifiedVideosRef.current.add(`${url}|${tier.key}`)
+    }
+  }
+
+  // Changing the tier re-checks this session's picked video against the new tier's limits.
+  function handleReelDurationChange(key: string) {
+    setFormErrors((prev) => ({ ...prev, reel_duration_key: "" }))
+    const tier = reelDurationOptions.find((o) => o.key === key)
+    const problem =
+      chosenVideo && tier ? checkVideoDuration(chosenVideo.duration, tier, reelDurationOptions) : null
+
+    if (chosenVideo && problem) {
+      // Discard only the picked file: fall back to the video the ad had when the dialog opened.
+      const saved = savedVideoUrlRef.current
+      setChosenVideo(null)
+      setForm((prev) => ({ ...prev, reel_duration_key: key, video_url: saved }))
+      setFormErrors((prev) => ({
+        ...prev,
+        video_url: saved ? problem + PREVIOUS_VIDEO_KEPT_NOTE : problem,
+      }))
+      return
+    }
+
+    setForm((prev) => ({ ...prev, reel_duration_key: key }))
+    if (chosenVideo && tier) {
+      verifiedVideosRef.current.add(`${chosenVideo.url}|${tier.key}`)
+      setFormErrors((prev) => ({ ...prev, video_url: "" }))
     }
   }
 
@@ -264,8 +449,41 @@ export function AdsManager() {
     return Object.keys(errors).length === 0
   }
 
+  // Verifies a reel's saved video against the selected tier before it can be saved.
+  // Fails closed: any problem loading metadata blocks the save. Returns an error or null.
+  async function verifyReelVideo(): Promise<string | null> {
+    const tier = reelDurationOptions.find((o) => o.key === form.reel_duration_key)
+    if (!tier) return VIDEO_UNVERIFIABLE_MESSAGE
+
+    const cacheKey = `${form.video_url}|${tier.key}`
+    if (verifiedVideosRef.current.has(cacheKey)) return null
+
+    let duration: number
+    try {
+      duration = await probeVideoDuration(form.video_url, VIDEO_PROBE_TIMEOUT_MS)
+    } catch (err) {
+      console.error("Reel video probe failed:", err)
+      return VIDEO_UNVERIFIABLE_MESSAGE
+    }
+
+    const problem = checkVideoDuration(duration, tier, reelDurationOptions)
+    if (problem) return problem
+    verifiedVideosRef.current.add(cacheKey)
+    return null
+  }
+
   async function handleSubmit() {
     if (!validateForm()) return
+
+    if (form.ad_type === "reel") {
+      setVerifying(true)
+      const videoProblem = await verifyReelVideo()
+      setVerifying(false)
+      if (videoProblem) {
+        setFormErrors((prev) => ({ ...prev, video_url: videoProblem }))
+        return
+      }
+    }
 
     const payload: Record<string, unknown> = {
       title: form.title.trim(),
@@ -554,7 +772,7 @@ export function AdsManager() {
                 <Label htmlFor="ad-reel-duration">Duration</Label>
                 <Select
                   value={form.reel_duration_key || undefined}
-                  onValueChange={(value) => setForm((p) => ({ ...p, reel_duration_key: value }))}
+                  onValueChange={handleReelDurationChange}
                 >
                   <SelectTrigger id="ad-reel-duration" className="w-full">
                     <SelectValue placeholder="Select a duration…" />
@@ -567,6 +785,9 @@ export function AdsManager() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-[#7DD8E8]">
+                  Each tier has a hard length limit. Videos outside it are rejected. Longer reels will cost more once paid spots launch.
+                </p>
                 {formErrors.reel_duration_key && (
                   <p className="text-xs text-red-400">{formErrors.reel_duration_key}</p>
                 )}
@@ -674,10 +895,10 @@ export function AdsManager() {
 
             <Button
               className="w-full"
-              disabled={(form.ad_type === "reel" ? !form.video_url : !form.image_url) || uploading || submitting}
+              disabled={(form.ad_type === "reel" ? !form.video_url : !form.image_url) || uploading || submitting || verifying}
               onClick={handleSubmit}
             >
-              {submitting ? "Saving…" : editingAd ? "Save Changes" : "Create Ad"}
+              {verifying ? "Checking video…" : submitting ? "Saving…" : editingAd ? "Save Changes" : "Create Ad"}
             </Button>
           </div>
         </DialogContent>

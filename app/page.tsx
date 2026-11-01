@@ -125,6 +125,7 @@ export default function HomePage() {
             subtitle: '',
             image: result.ad.ad_type === 'reel' ? undefined : result.ad.image_url,
             videoUrl: result.ad.ad_type === 'reel' ? result.ad.video_url : undefined,
+            minSeconds: result.ad.ad_type === 'reel' ? result.ad.minSeconds ?? null : null,
             points: 0,
             cta: 'Learn More',
             link: result.ad.link_url || '#',

@@ -23,6 +23,7 @@ export interface PromoCard {
   isAd?: boolean
   adId?: string
   videoUrl?: string
+  minSeconds?: number | null
 }
 
 export interface UserBadge {

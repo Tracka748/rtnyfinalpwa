@@ -11,7 +11,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('ad_reel_duration_options')
-      .select('key, label, price_cents, billing_period')
+      .select('key, label, price_cents, billing_period, min_seconds, max_seconds')
       .eq('is_active', true)
       .order('price_cents', { ascending: true })
 

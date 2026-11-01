@@ -21,26 +21,59 @@ interface HeroPromoProps {
   promos: PromoCard[]
 }
 
+const SLIDE_DEFAULT_SECONDS = 5
+// Hard stop for video slides, covers stalled or failed loads. Applies regardless of
+// the ad's tier or any data attached to it.
+const HERO_VIDEO_MAX_MS = 18_000
+
 export function HeroPromo({ promos }: HeroPromoProps) {
   const [activeIndex, setActiveIndex] = useState(0)
+  // Bumped on every slide change so the timer restarts even when the index doesn't change.
+  const [slideTick, setSlideTick] = useState(0)
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const slideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const slideStartedAtRef = useRef(Date.now())
   const lastTrackedAdId = useRef<string | null>(null)
 
-  const startInterval = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    intervalRef.current = setInterval(() => {
-      setActiveIndex((i) => (i + 1) % promos.length)
-    }, 5000)
-  }, [promos.length])
+  const activeVideoUrl = promos[activeIndex]?.videoUrl
 
+  const goToIndex = useCallback((index: number) => {
+    setActiveIndex(index)
+    setSlideTick((t) => t + 1)
+  }, [])
+
+  // Per-slide timer, reset on every slide change (auto or manual).
+  // Image slides advance after 5s; video slides wait for `ended` (see
+  // handleVideoEnded) and fall back to the safety cap.
   useEffect(() => {
-    startInterval()
+    slideStartedAtRef.current = Date.now()
+    const ms = activeVideoUrl ? HERO_VIDEO_MAX_MS : SLIDE_DEFAULT_SECONDS * 1000
+    slideTimerRef.current = setTimeout(() => {
+      goToIndex((activeIndex + 1) % promos.length)
+    }, ms)
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (slideTimerRef.current) clearTimeout(slideTimerRef.current)
     }
-  }, [startInterval])
+    // promos is read only for its length; its identity changes on every parent render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, slideTick, activeVideoUrl, promos.length, goToIndex])
+
+  // Video finished: hold the last frame until the tier's minimum seconds have
+  // passed since the slide became active, then advance.
+  const handleVideoEnded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    console.log('[hero-debug]', { duration: e.currentTarget.duration, currentTime: e.currentTarget.currentTime, sinceSlideStartMs: Date.now() - slideStartedAtRef.current, minSeconds: promos[activeIndex]?.minSeconds });
+    const holdMs = Math.min(
+      (promos[activeIndex]?.minSeconds ?? SLIDE_DEFAULT_SECONDS) * 1000,
+      HERO_VIDEO_MAX_MS
+    )
+    const elapsedMs = Date.now() - slideStartedAtRef.current
+    const waitMs = Math.max(0, holdMs - elapsedMs)
+    if (slideTimerRef.current) clearTimeout(slideTimerRef.current)
+    slideTimerRef.current = setTimeout(() => {
+      goToIndex((activeIndex + 1) % promos.length)
+    }, waitMs)
+  }
 
   useEffect(() => {
     const activePromo = promos[activeIndex]
@@ -49,11 +82,6 @@ export function HeroPromo({ promos }: HeroPromoProps) {
       trackAdEvent(activePromo.adId, "impression")
     }
   }, [activeIndex, promos])
-
-  const goToIndex = (index: number) => {
-    setActiveIndex(index)
-    startInterval()
-  }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
@@ -95,8 +123,8 @@ export function HeroPromo({ promos }: HeroPromoProps) {
               src={promos[activeIndex].videoUrl}
               autoPlay
               muted
-              loop
               playsInline
+              onEnded={handleVideoEnded}
               className="absolute inset-0 h-full w-full object-cover"
               style={{ zIndex: 0 }}
             />
