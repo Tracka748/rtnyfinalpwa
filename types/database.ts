@@ -96,6 +96,8 @@ export type Database = {
           is_active: boolean
           key: string
           label: string
+          max_seconds: number
+          min_seconds: number
           price_cents: number
         }
         Insert: {
@@ -104,6 +106,8 @@ export type Database = {
           is_active?: boolean
           key: string
           label: string
+          max_seconds: number
+          min_seconds: number
           price_cents?: number
         }
         Update: {
@@ -112,6 +116,8 @@ export type Database = {
           is_active?: boolean
           key?: string
           label?: string
+          max_seconds?: number
+          min_seconds?: number
           price_cents?: number
         }
         Relationships: []
@@ -2303,6 +2309,7 @@ export type Database = {
           fees: number | null
           id: string
           ip_address: unknown
+          needs_review: boolean
           notes: string | null
           order_number: string
           payment_intent_id: string | null
@@ -2311,6 +2318,7 @@ export type Database = {
           promo_code: string | null
           promo_code_id: string | null
           promo_code_used: string | null
+          review_reason: string | null
           session_id: string | null
           status: Database["public"]["Enums"]["order_status"] | null
           subtotal: number
@@ -2334,6 +2342,7 @@ export type Database = {
           fees?: number | null
           id?: string
           ip_address?: unknown
+          needs_review?: boolean
           notes?: string | null
           order_number: string
           payment_intent_id?: string | null
@@ -2342,6 +2351,7 @@ export type Database = {
           promo_code?: string | null
           promo_code_id?: string | null
           promo_code_used?: string | null
+          review_reason?: string | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           subtotal: number
@@ -2365,6 +2375,7 @@ export type Database = {
           fees?: number | null
           id?: string
           ip_address?: unknown
+          needs_review?: boolean
           notes?: string | null
           order_number?: string
           payment_intent_id?: string | null
@@ -2373,6 +2384,7 @@ export type Database = {
           promo_code?: string | null
           promo_code_id?: string | null
           promo_code_used?: string | null
+          review_reason?: string | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           subtotal?: number
@@ -4836,6 +4848,10 @@ export type Database = {
         Returns: number
       }
       is_valid_email: { Args: { email: string }; Returns: boolean }
+      process_checkout_completed: {
+        Args: { p_items: Json; p_order: Json; p_tickets: Json }
+        Returns: Json
+      }
       purchase_tickets: {
         Args: {
           p_event_id: string

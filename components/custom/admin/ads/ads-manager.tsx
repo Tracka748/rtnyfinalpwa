@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import { Pencil, Trash2, Plus, Loader2, ImageOff, Film } from "lucide-react"
+import type { Database } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -64,10 +65,10 @@ interface AdPlacementOption extends PriceOption {
   allowed_ad_types: AdType[]
 }
 
-interface AdReelDurationOption extends PriceOption {
-  min_seconds: number
-  max_seconds: number
-}
+type AdReelDurationOption = Pick<
+  Database["public"]["Tables"]["ad_reel_duration_options"]["Row"],
+  "key" | "label" | "price_cents" | "billing_period" | "min_seconds" | "max_seconds"
+>
 
 // Grace over the tier's max (encoder padding) before a video is rejected as too long.
 const REEL_MAX_TOLERANCE_SECONDS = 0.5
