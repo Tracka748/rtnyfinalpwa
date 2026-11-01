@@ -1,6 +1,12 @@
 // app/api/v1/events/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import {
+  getEventDateStr,
+  getEventDayWindow,
+  isValidDateStr,
+  notEndedOrFilter,
+} from '@/lib/event-time'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -23,12 +29,19 @@ export async function GET(req: NextRequest) {
       `)
       .eq('status', 'active')
 
-    // Filter by date
+    // Filter by date: the day window is computed in America/New_York.
     if (date) {
-      // Use date string directly to avoid timezone shift
-      query = query
-        .gte('event_date', `${date}T00:00:00`)
-        .lte('event_date', `${date}T23:59:59`)
+      if (!isValidDateStr(date)) {
+        return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
+      }
+      const now = new Date()
+      const { startIso, endIso } = getEventDayWindow(date)
+      query = query.gte('event_date', startIso).lt('event_date', endIso)
+
+      // Today only: hide events that have already ended.
+      if (date === getEventDateStr(now)) {
+        query = query.or(notEndedOrFilter(now))
+      }
     }
 
     // Filter by category

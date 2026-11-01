@@ -17,6 +17,7 @@ import { MoreInCategory } from '@/components/custom/events/more-in-category'
 import { ThisWeekend } from '@/components/custom/events/this-weekend'
 import { ExploreCategoriesGrid } from '@/components/custom/homepage/ExploreCategoriesGrid'
 import { getEventImage } from '@/lib/image-utils'
+import { getEventDateStr } from '@/lib/event-time'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ function EventsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = getEventDateStr()
   const selectedDate = searchParams.get('date') || todayStr
   const selectedCategory = searchParams.get('category') || 'all'
   const isAllDates = selectedCategory === 'all-dates'
