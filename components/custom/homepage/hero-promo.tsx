@@ -27,8 +27,10 @@ const SLIDE_DEFAULT_SECONDS = 5
 const HERO_VIDEO_MAX_MS = 18_000
 
 export function HeroPromo({ promos }: HeroPromoProps) {
-  const [activeIndex, setActiveIndex] = useState(0)
-  // Bumped on every slide change so the timer restarts even when the index doesn't change.
+  // The active slide is tracked by PromoCard id, so inserting or reordering slides
+  // (e.g. the sponsored slide arriving after the ad fetch) never changes which one is shown.
+  const [activeId, setActiveId] = useState<string | null>(() => promos[0]?.id ?? null)
+  // Bumped on every slide change so the timer restarts even when the active slide doesn't change.
   const [slideTick, setSlideTick] = useState(0)
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
@@ -36,28 +38,43 @@ export function HeroPromo({ promos }: HeroPromoProps) {
   const slideStartedAtRef = useRef(Date.now())
   const lastTrackedAdId = useRef<string | null>(null)
 
+  // Falls back to the first slide if the active one is no longer present.
+  const foundIndex = activeId === null ? -1 : promos.findIndex((p) => p.id === activeId)
+  const activeIndex = foundIndex >= 0 ? foundIndex : 0
+  const activeSlideId = promos[activeIndex]?.id
   const activeVideoUrl = promos[activeIndex]?.videoUrl
 
+  // Latest values for timer callbacks, which can fire after promos has changed.
+  const promosRef = useRef(promos)
+  promosRef.current = promos
+  const activeSlideIdRef = useRef(activeSlideId)
+  activeSlideIdRef.current = activeSlideId
+
   const goToIndex = useCallback((index: number) => {
-    setActiveIndex(index)
+    const id = promosRef.current[index]?.id
+    if (id !== undefined) setActiveId(id)
     setSlideTick((t) => t + 1)
   }, [])
 
-  // Per-slide timer, reset on every slide change (auto or manual).
+  // Moves to the slide after the current one, resolved at call time.
+  const advance = useCallback(() => {
+    const list = promosRef.current
+    const current = list.findIndex((p) => p.id === activeSlideIdRef.current)
+    goToIndex(((current >= 0 ? current : 0) + 1) % list.length)
+  }, [goToIndex])
+
+  // Per-slide timer, reset on every slide change (auto or manual) but not when
+  // slides are added around the active one.
   // Image slides advance after 5s; video slides wait for `ended` (see
   // handleVideoEnded) and fall back to the safety cap.
   useEffect(() => {
     slideStartedAtRef.current = Date.now()
     const ms = activeVideoUrl ? HERO_VIDEO_MAX_MS : SLIDE_DEFAULT_SECONDS * 1000
-    slideTimerRef.current = setTimeout(() => {
-      goToIndex((activeIndex + 1) % promos.length)
-    }, ms)
+    slideTimerRef.current = setTimeout(advance, ms)
     return () => {
       if (slideTimerRef.current) clearTimeout(slideTimerRef.current)
     }
-    // promos is read only for its length; its identity changes on every parent render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex, slideTick, activeVideoUrl, promos.length, goToIndex])
+  }, [activeSlideId, slideTick, activeVideoUrl, advance])
 
   // Video finished: hold the last frame until the tier's minimum seconds have
   // passed since the slide became active, then advance.
@@ -69,9 +86,7 @@ export function HeroPromo({ promos }: HeroPromoProps) {
     const elapsedMs = Date.now() - slideStartedAtRef.current
     const waitMs = Math.max(0, holdMs - elapsedMs)
     if (slideTimerRef.current) clearTimeout(slideTimerRef.current)
-    slideTimerRef.current = setTimeout(() => {
-      goToIndex((activeIndex + 1) % promos.length)
-    }, waitMs)
+    slideTimerRef.current = setTimeout(advance, waitMs)
   }
 
   useEffect(() => {
@@ -176,7 +191,9 @@ export function HeroPromo({ promos }: HeroPromoProps) {
             {promos.map((_, index) => (
               <button
                 key={index}
-                onClick={() => goToIndex(index)}
+                onClick={() => {
+                  if (index !== activeIndex) goToIndex(index)
+                }}
                 className={`h-2 rounded-full transition-all ${
                   index === activeIndex ? "w-8 bg-[#59FFA0]" : "w-2 bg-white/30"
                 }`}

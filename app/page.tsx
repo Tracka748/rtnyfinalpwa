@@ -114,10 +114,14 @@ export default function HomePage() {
   const [heroAdPosition, setHeroAdPosition] = useState<number | null>(null)
 
   useEffect(() => {
+    // Ignore a stale response (e.g. Strict Mode's second effect run) so the ad and its
+    // random slot are chosen exactly once.
+    let cancelled = false
     async function fetchHeroAd() {
       try {
         const response = await fetch('/api/v1/ads?placement=hero_carousel')
         const result = await response.json()
+        if (cancelled) return
         if (result.ad) {
           setHeroAd({
             id: result.ad.id,
@@ -139,6 +143,9 @@ export default function HomePage() {
       }
     }
     fetchHeroAd()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const heroPromos =
