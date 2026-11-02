@@ -14,7 +14,6 @@ interface RequestBody {
   guest_count: string | null
   has_venue: boolean | null
   selected_service_ids: string[]
-  selected_package_id: string | null
   estimated_total: number | null
   needs: string[]
   notes: string | null
@@ -86,7 +85,6 @@ export async function POST(request: NextRequest) {
       guest_count,
       has_venue,
       selected_service_ids,
-      selected_package_id,
       estimated_total,
       needs,
       notes,
@@ -121,7 +119,8 @@ export async function POST(request: NextRequest) {
       guest_count: guest_count ?? null,
       has_venue: has_venue ?? null,
       selected_service_ids: Array.isArray(selected_service_ids) ? selected_service_ids : [],
-      selected_package_id: selected_package_id ?? null,
+      // Package requests are created only by public.theme_package_create_request
+      selected_package_id: null,
       estimated_total: estimated_total ?? null,
       needs: Array.isArray(needs) ? needs : [],
       notes: notes ?? null,

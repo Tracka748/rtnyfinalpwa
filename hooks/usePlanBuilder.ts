@@ -407,7 +407,6 @@ export function usePlanBuilder() {
         guest_count: state.eventDetails.guestCount || null,
         has_venue: state.eventDetails.hasVenue,
         selected_service_ids: [...state.selectedServiceIds],
-        selected_package_id: null,
         estimated_total: estimatedTotal || null,
         needs,
         notes: state.notes || null,
