@@ -603,6 +603,7 @@ export type Database = {
           catalog_item_id: string
           created_at: string
           id: string
+          price_treatment: string
           proposed_by: string | null
           service_id: string
           status: string
@@ -613,6 +614,7 @@ export type Database = {
           catalog_item_id: string
           created_at?: string
           id?: string
+          price_treatment?: string
           proposed_by?: string | null
           service_id: string
           status?: string
@@ -623,6 +625,7 @@ export type Database = {
           catalog_item_id?: string
           created_at?: string
           id?: string
+          price_treatment?: string
           proposed_by?: string | null
           service_id?: string
           status?: string
