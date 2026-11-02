@@ -596,6 +596,161 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_item_services: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          catalog_item_id: string
+          created_at: string
+          id: string
+          proposed_by: string | null
+          service_id: string
+          status: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          catalog_item_id: string
+          created_at?: string
+          id?: string
+          proposed_by?: string | null
+          service_id: string
+          status?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          catalog_item_id?: string
+          created_at?: string
+          id?: string
+          proposed_by?: string | null
+          service_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_item_services_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_item_services_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_item_services_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_item_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_item_themes: {
+        Row: {
+          catalog_item_id: string
+          theme_id: string
+        }
+        Insert: {
+          catalog_item_id: string
+          theme_id: string
+        }
+        Update: {
+          catalog_item_id?: string
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_item_themes_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_item_themes_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_items: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          item_type: string
+          key: string
+          name: string
+          occasions: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          item_type: string
+          key: string
+          name: string
+          occasions?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          item_type?: string
+          key?: string
+          name?: string
+          occasions?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_items_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crew_members: {
         Row: {
           crew_id: string
@@ -1592,6 +1747,7 @@ export type Database = {
           promo_code: string | null
           starts_at: string | null
           sub: string | null
+          theme_package_id: string | null
           type: string
           updated_at: string
         }
@@ -1610,6 +1766,7 @@ export type Database = {
           promo_code?: string | null
           starts_at?: string | null
           sub?: string | null
+          theme_package_id?: string | null
           type: string
           updated_at?: string
         }
@@ -1628,6 +1785,7 @@ export type Database = {
           promo_code?: string | null
           starts_at?: string | null
           sub?: string | null
+          theme_package_id?: string | null
           type?: string
           updated_at?: string
         }
@@ -1644,6 +1802,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feed_cards_theme_package_id_fkey"
+            columns: ["theme_package_id"]
+            isOneToOne: false
+            referencedRelation: "theme_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -2950,20 +3115,155 @@ export type Database = {
           },
         ]
       }
+      plan_request_quotes: {
+        Row: {
+          amount_cents: number | null
+          created_at: string
+          currency: string
+          entered_by: string
+          entered_on_behalf: boolean
+          id: string
+          notes: string | null
+          recipient_id: string
+          request_id: string
+          revision_number: number
+          status: string
+          valid_until: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string
+          entered_by: string
+          entered_on_behalf?: boolean
+          id?: string
+          notes?: string | null
+          recipient_id: string
+          request_id: string
+          revision_number: number
+          status: string
+          valid_until?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string
+          entered_by?: string
+          entered_on_behalf?: boolean
+          id?: string
+          notes?: string | null
+          recipient_id?: string
+          request_id?: string
+          revision_number?: number
+          status?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_request_quotes_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_request_quotes_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "plan_request_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_request_quotes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "plan_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_request_recipients: {
+        Row: {
+          created_at: string
+          id: string
+          notified_at: string | null
+          partner_id: string | null
+          request_id: string
+          responded_at: string | null
+          service_ids: string[]
+          status: string
+          updated_at: string
+          vendor_id: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notified_at?: string | null
+          partner_id?: string | null
+          request_id: string
+          responded_at?: string | null
+          service_ids?: string[]
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notified_at?: string | null
+          partner_id?: string | null
+          request_id?: string
+          responded_at?: string | null
+          service_ids?: string[]
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_request_recipients_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_request_recipients_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "plan_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_request_recipients_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_requests: {
         Row: {
           budget_range: string | null
           contact_email: string | null
+          coordinator_id: string | null
           created_at: string | null
           estimated_total: number | null
           event_date: string | null
           event_subtype: string | null
           event_type: string
+          fulfillment_mode: string | null
           guest_count: string | null
           has_venue: boolean | null
           id: string
           needs: Json | null
           notes: string | null
+          package_snapshot: Json | null
+          request_source: string
           selected_package_id: string | null
           selected_service_ids: string[] | null
           status: string | null
@@ -2975,16 +3275,20 @@ export type Database = {
         Insert: {
           budget_range?: string | null
           contact_email?: string | null
+          coordinator_id?: string | null
           created_at?: string | null
           estimated_total?: number | null
           event_date?: string | null
           event_subtype?: string | null
           event_type: string
+          fulfillment_mode?: string | null
           guest_count?: string | null
           has_venue?: boolean | null
           id?: string
           needs?: Json | null
           notes?: string | null
+          package_snapshot?: Json | null
+          request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
           status?: string | null
@@ -2996,16 +3300,20 @@ export type Database = {
         Update: {
           budget_range?: string | null
           contact_email?: string | null
+          coordinator_id?: string | null
           created_at?: string | null
           estimated_total?: number | null
           event_date?: string | null
           event_subtype?: string | null
           event_type?: string
+          fulfillment_mode?: string | null
           guest_count?: string | null
           has_venue?: boolean | null
           id?: string
           needs?: Json | null
           notes?: string | null
+          package_snapshot?: Json | null
+          request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
           status?: string | null
@@ -3015,6 +3323,20 @@ export type Database = {
           vendor_snapshot?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "plan_requests_coordinator_id_fkey"
+            columns: ["coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_requests_selected_package_fk"
+            columns: ["selected_package_id"]
+            isOneToOne: false
+            referencedRelation: "theme_package_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "plan_requests_user_id_fkey"
             columns: ["user_id"]
@@ -3636,6 +3958,65 @@ export type Database = {
           },
         ]
       }
+      specialist_permissions: {
+        Row: {
+          access: string
+          capability: string
+          created_at: string
+          id: string
+          specialist_type_id: string
+        }
+        Insert: {
+          access: string
+          capability: string
+          created_at?: string
+          id?: string
+          specialist_type_id: string
+        }
+        Update: {
+          access?: string
+          capability?: string
+          created_at?: string
+          id?: string
+          specialist_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specialist_permissions_specialist_type_id_fkey"
+            columns: ["specialist_type_id"]
+            isOneToOne: false
+            referencedRelation: "specialist_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      specialist_types: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          label: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          label: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
       stub_transactions: {
         Row: {
           amount: number
@@ -3718,6 +4099,251 @@ export type Database = {
             columns: ["sweepstakes_id"]
             isOneToOne: false
             referencedRelation: "sweepstakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theme_package_component_options: {
+        Row: {
+          catalog_item_id: string
+          component_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          service_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          catalog_item_id: string
+          component_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          service_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          catalog_item_id?: string
+          component_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          service_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_package_component_options_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_package_component_options_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "theme_package_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_package_component_options_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theme_package_components: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          quantity: number
+          requirement: string
+          slot_label: string
+          sort_order: number
+          version_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          requirement?: string
+          slot_label: string
+          sort_order?: number
+          version_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          requirement?: string
+          slot_label?: string
+          sort_order?: number
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_package_components_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "theme_package_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theme_package_versions: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          magazine_url: string | null
+          max_guests: number | null
+          min_guests: number | null
+          package_id: string
+          price_note: string | null
+          published_at: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string | null
+          subtitle: string | null
+          superseded_at: string | null
+          title: string
+          updated_at: string
+          version_number: number
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          magazine_url?: string | null
+          max_guests?: number | null
+          min_guests?: number | null
+          package_id: string
+          price_note?: string | null
+          published_at?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          subtitle?: string | null
+          superseded_at?: string | null
+          title: string
+          updated_at?: string
+          version_number: number
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          magazine_url?: string | null
+          max_guests?: number | null
+          min_guests?: number | null
+          package_id?: string
+          price_note?: string | null
+          published_at?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          subtitle?: string | null
+          superseded_at?: string | null
+          title?: string
+          updated_at?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_package_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_package_versions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "theme_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_package_versions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theme_packages: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          key: string
+          live_version_id: string | null
+          occasion: string
+          status: string
+          theme_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key: string
+          live_version_id?: string | null
+          occasion: string
+          status?: string
+          theme_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key?: string
+          live_version_id?: string | null
+          occasion?: string
+          status?: string
+          theme_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_packages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_packages_live_version_fk"
+            columns: ["live_version_id"]
+            isOneToOne: false
+            referencedRelation: "theme_package_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_packages_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
         ]
@@ -4133,6 +4759,67 @@ export type Database = {
           },
           {
             foreignKeyName: "user_rewards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_specialist_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          notes: string | null
+          specialist_type_id: string
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          specialist_type_id: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          specialist_type_id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_specialist_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_specialist_assignments_specialist_type_id_fkey"
+            columns: ["specialist_type_id"]
+            isOneToOne: false
+            referencedRelation: "specialist_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_specialist_assignments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -4871,6 +5558,18 @@ export type Database = {
         }
         Returns: string
       }
+      specialist_access: {
+        Args: { p_capability: string; p_user_id: string }
+        Returns: string
+      }
+      specialist_can: {
+        Args: { p_capability: string; p_required?: string; p_user_id: string }
+        Returns: boolean
+      }
+      specialist_resolve_levels: {
+        Args: { p_levels: string[] }
+        Returns: string
+      }
       spend_points: {
         Args: {
           p_amount: number
@@ -4895,6 +5594,41 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      theme_package_build_snapshot: {
+        Args: {
+          p_event_date: string
+          p_guest_count: number
+          p_selection: Json
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      theme_package_create_draft: {
+        Args: { p_created_by: string; p_package_id: string }
+        Returns: string
+      }
+      theme_package_create_request: {
+        Args: {
+          p_budget_range: string
+          p_contact_email: string
+          p_event_date: string
+          p_guest_count: number
+          p_notes: string
+          p_selection: Json
+          p_user_id: string
+          p_version_id: string
+        }
+        Returns: string
+      }
+      tp_check_option_fulfillable: {
+        Args: { p_item: string; p_service: string }
+        Returns: undefined
+      }
+      tp_is_admin: { Args: { p_user_id: string }; Returns: boolean }
+      tpv_validate: {
+        Args: { p_publishing: boolean; p_version_id: string }
+        Returns: undefined
       }
       validate_promo_code: {
         Args: {
