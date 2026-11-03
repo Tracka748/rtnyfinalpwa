@@ -4199,6 +4199,56 @@ export type Database = {
           },
         ]
       }
+      theme_package_version_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          note: string | null
+          package_id: string
+          revision: number | null
+          to_status: string | null
+          version_id: string
+          version_number: number | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          package_id: string
+          revision?: number | null
+          to_status?: string | null
+          version_id: string
+          version_number?: number | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          package_id?: string
+          revision?: number | null
+          to_status?: string | null
+          version_id?: string
+          version_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_package_version_events_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "theme_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theme_package_versions: {
         Row: {
           cover_image_url: string | null
@@ -4215,12 +4265,14 @@ export type Database = {
           review_note: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          revision: number
           status: string
           submitted_at: string | null
           subtitle: string | null
           superseded_at: string | null
           title: string
           updated_at: string
+          updated_by: string | null
           version_number: number
         }
         Insert: {
@@ -4238,12 +4290,14 @@ export type Database = {
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          revision?: number
           status?: string
           submitted_at?: string | null
           subtitle?: string | null
           superseded_at?: string | null
           title: string
           updated_at?: string
+          updated_by?: string | null
           version_number: number
         }
         Update: {
@@ -4261,12 +4315,14 @@ export type Database = {
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          revision?: number
           status?: string
           submitted_at?: string | null
           subtitle?: string | null
           superseded_at?: string | null
           title?: string
           updated_at?: string
+          updated_by?: string | null
           version_number?: number
         }
         Relationships: [
@@ -4287,6 +4343,13 @@ export type Database = {
           {
             foreignKeyName: "theme_package_versions_reviewed_by_fkey"
             columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_package_versions_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -5623,6 +5686,16 @@ export type Database = {
           p_version_id: string
         }
         Returns: string
+      }
+      theme_package_save_draft: {
+        Args: {
+          p_actor: string
+          p_components: Json
+          p_expected_revision: number
+          p_meta: Json
+          p_version_id: string
+        }
+        Returns: number
       }
       tp_check_option_fulfillable: {
         Args: { p_item: string; p_service: string }
