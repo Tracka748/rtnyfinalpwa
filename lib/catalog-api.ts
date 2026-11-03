@@ -16,6 +16,8 @@ export function mapDbError(err: unknown, scope: string): NextResponse {
   switch (e.code) {
     case 'P0001': // our trigger / function `raise exception` messages
       return fail(400, (typeof e.message === 'string' && e.message.slice(0, 200)) || 'Request rejected')
+    case 'RT409': // theme_package_save_draft: stale revision (our own message)
+      return fail(409, (typeof e.message === 'string' && e.message.slice(0, 200)) || 'This draft was changed by someone else; reload it and try again')
     case '42501':
       return fail(403, 'Forbidden')
     case '23505':
