@@ -8,7 +8,7 @@ export const BUDGET_RANGES = ['Under $500', '$500–$1,000', '$1,000–$2,500', 
 export type BudgetRange = (typeof BUDGET_RANGES)[number]
 
 export const PUBLIC_LIMITS = {
-  key: 64, occasion: 60, notes: 2000, selection: 30, guestsMin: 1, guestsMax: 10000, maxOffset: 10000,
+  key: 64, occasion: 60, eventType: 80, notes: 2000, selection: 30, guestsMin: 1, guestsMax: 10000, maxOffset: 10000,
 } as const
 const L = PUBLIC_LIMITS
 
@@ -57,6 +57,29 @@ function parseOffset(raw: string | null): Validated<number> {
   if (!/^\d+$/.test(raw)) return fail(msg)
   const n = Number(raw)
   return n > L.maxOffset ? fail(msg) : pass(n)
+}
+
+// C0 controls (including tab and newline), DEL and C1 controls.
+const CONTROL_CHARS_RE = /[\u0000-\u001F\u007F-\u009F]/
+
+/** Optional. Absent, null, '' or whitespace-only -> null; otherwise an exact BUDGET_RANGES value. */
+function parseOptionalBudget(v: unknown): Validated<BudgetRange | null> {
+  if (v === undefined || v === null) return pass(null)
+  const msg = `budget_range must be one of: ${BUDGET_RANGES.join(', ')}`
+  if (typeof v !== 'string') return fail(msg)
+  if (v.trim() === '') return pass(null)
+  return (BUDGET_RANGES as readonly string[]).includes(v) ? pass(v as BudgetRange) : fail(msg)
+}
+
+/** Optional. Absent, null or blank -> null (the route then keeps the package occasion). */
+function parseOptionalEventType(v: unknown): Validated<string | null> {
+  if (v === undefined || v === null) return pass(null)
+  if (typeof v !== 'string') return fail('event_type must be a string')
+  if (CONTROL_CHARS_RE.test(v)) return fail('event_type cannot contain control characters')
+  const s = v.trim()
+  if (s === '') return pass(null)
+  if (Array.from(s).length > L.eventType) return fail(`event_type must be at most ${L.eventType} characters`)
+  return pass(s)
 }
 
 // ---- selection ----
@@ -136,7 +159,8 @@ export interface CreateRequestInput {
   selection: SelectionInput
   event_date: string
   guest_count: number
-  budget_range: BudgetRange
+  budget_range: BudgetRange | null // null when the customer left it out
+  event_type: string | null // null = use the package occasion
   notes: string | null
 }
 
@@ -145,7 +169,7 @@ export function validateCreateRequestBody(raw: unknown, today: string = todayUtc
   if (!o.ok) return o
   // No user id, email, price, service, partner or snapshot is ever read from the body:
   // any such key is simply an unknown field.
-  const extra = unknownKeys(o.value, ['version_id', 'selection', 'event_date', 'guest_count', 'budget_range', 'notes'])
+  const extra = unknownKeys(o.value, ['version_id', 'selection', 'event_date', 'guest_count', 'budget_range', 'event_type', 'notes'])
   if (extra) return fail(extra)
 
   if (!isUuid(o.value.version_id)) return fail('version_id must be a valid uuid')
@@ -156,10 +180,10 @@ export function validateCreateRequestBody(raw: unknown, today: string = todayUtc
   if (date.value < today) return fail('event_date cannot be in the past')
   const guests = parseGuests(o.value.guest_count)
   if (!guests.ok) return guests
-  const budget = o.value.budget_range
-  if (typeof budget !== 'string' || !(BUDGET_RANGES as readonly string[]).includes(budget)) {
-    return fail(`budget_range must be one of: ${BUDGET_RANGES.join(', ')}`)
-  }
+  const budget = parseOptionalBudget(o.value.budget_range)
+  if (!budget.ok) return budget
+  const eventType = parseOptionalEventType(o.value.event_type)
+  if (!eventType.ok) return eventType
   let notes: string | null = null
   if (o.value.notes !== undefined && o.value.notes !== null) {
     if (typeof o.value.notes !== 'string') return fail('notes must be a string or null')
@@ -172,7 +196,8 @@ export function validateCreateRequestBody(raw: unknown, today: string = todayUtc
     selection: selection.value,
     event_date: date.value,
     guest_count: guests.value,
-    budget_range: budget as BudgetRange,
+    budget_range: budget.value,
+    event_type: eventType.value,
     notes,
   })
 }

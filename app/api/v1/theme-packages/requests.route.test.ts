@@ -35,6 +35,7 @@ interface Opts {
   dup?: unknown[]
   rpc?: FakeResult
   user?: unknown
+  eventTypeUpdate?: FakeResult
 }
 
 function setup(o: Opts = {}) {
@@ -42,6 +43,7 @@ function setup(o: Opts = {}) {
     respond: (q: Recorded) => {
       if (q.table === 'theme_packages') return { data: 'pkg' in o ? o.pkg : PKG, error: null }
       if (q.table === 'theme_package_versions') return { data: 'version' in o ? o.version : VERSION, error: null }
+      if (q.table === 'plan_requests' && q.op === 'update') return o.eventTypeUpdate ?? { data: [{ id: NEW_ID }], error: null }
       if (q.table === 'plan_requests') return { data: 'selected_package_id' in q.eq ? o.dup ?? [] : o.recent ?? [], error: null }
       return { data: null, error: null }
     },
@@ -174,4 +176,98 @@ describe('POST /theme-packages/[key]/requests', () => {
     expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
     expect(f.rpcCalls).toHaveLength(0)
   })
+})
+
+describe('POST /theme-packages/[key]/requests: optional budget and event type', () => {
+  const RPC_KEYS = ['p_budget_range', 'p_contact_email', 'p_event_date', 'p_guest_count', 'p_notes', 'p_selection', 'p_user_id', 'p_version_id']
+  const updates = (f: ReturnType<typeof setup>) => f.calls.filter(c => c.table === 'plan_requests' && c.op === 'update')
+
+  it('accepts a request without a budget and passes null to the function', async () => {
+    const { budget_range: _b, ...noBudget } = BODY
+    const f = setup()
+    const res = await send(noBudget)
+    expect(res.status).toBe(201)
+    expect(f.rpcCalls[0].args.p_budget_range).toBeNull()
+  })
+  it('treats an empty or blank budget as null', async () => {
+    for (const b of ['', '   ', null]) {
+      const f = setup()
+      expect((await send({ ...BODY, budget_range: b })).status).toBe(201)
+      expect(f.rpcCalls[0].args.p_budget_range).toBeNull()
+    }
+  })
+  it('an invalid budget is a 400 before any DB work', async () => {
+    const f = setup()
+    expect((await send({ ...BODY, budget_range: 'cheap' })).status).toBe(400)
+    expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
+    expect(f.rpcCalls).toHaveLength(0)
+  })
+  it('without an event_type (or a blank one) keeps the package occasion: no update is made', async () => {
+    for (const body of [BODY, { ...BODY, event_type: '' }, { ...BODY, event_type: '   ' }, { ...BODY, event_type: null }]) {
+      const f = setup()
+      expect((await send(body)).status).toBe(201)
+      expect(updates(f)).toHaveLength(0)
+    }
+  })
+  it('a custom event_type is stored with one scoped update that writes only event_type', async () => {
+    const f = setup()
+    const res = await send({ ...BODY, event_type: '  Baby shower  ' })
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ success: true, data: { request_id: NEW_ID } })
+    expect(updates(f)).toHaveLength(1)
+    expect(updates(f)[0]).toMatchObject({
+      payload: { event_type: 'Baby shower' },
+      eq: { id: NEW_ID, user_id: SESSION, request_source: 'theme_package' },
+    })
+  })
+  it('the function call is unchanged: exactly the same eight server-controlled arguments', async () => {
+    const f = setup()
+    await send({ ...BODY, event_type: 'Baby shower' })
+    expect(Object.keys(f.rpcCalls[0].args).sort()).toEqual(RPC_KEYS)
+    expect(f.rpcCalls[0].args).toMatchObject({ p_user_id: SESSION, p_version_id: VERSION_ID, p_contact_email: 'real@user.com' })
+  })
+  it('a custom event_type does not influence which package is resolved', async () => {
+    const f = setup()
+    await send({ ...BODY, event_type: 'other_package' })
+    expect(f.calls.find(c => c.table === 'theme_packages')!.eq).toEqual({ key: 'spooky_birthday' })
+  })
+  it('an event_type equal to the package occasion needs no update', async () => {
+    const f = setup()
+    await send({ ...BODY, event_type: 'Birthday' })
+    expect(updates(f)).toHaveLength(0)
+  })
+  it('81 characters or control characters are rejected before any DB work', async () => {
+    const f = setup()
+    expect((await send({ ...BODY, event_type: 'x'.repeat(81) })).status).toBe(400)
+    expect((await send({ ...BODY, event_type: 'bad\nvalue' })).status).toBe(400)
+    expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
+    expect(f.rpcCalls).toHaveLength(0)
+  })
+  it('if the event_type write fails the request still succeeds and the failure is logged', async () => {
+    for (const eventTypeUpdate of [{ data: null, error: { code: 'XX000', message: 'boom' } }, { data: [], error: null }]) {
+      const f = setup({ eventTypeUpdate })
+      const res = await send({ ...BODY, event_type: 'Baby shower' })
+      expect(res.status).toBe(201)
+      expect((await res.json()).data.request_id).toBe(NEW_ID)
+      expect(updates(f)).toHaveLength(1)
+      expect(console.error).toHaveBeenCalled()
+    }
+  })
+  it('a duplicate within 2 minutes is still a duplicate when only the budget or event_type differ', async () => {
+    const f = setup({ dup: [{ id: DUP_ID }] })
+    for (const patch of [{ budget_range: '$5,000+' }, { budget_range: '' }, { event_type: 'Something else' }]) {
+      const res = await send({ ...BODY, ...patch })
+      expect(res.status).toBe(409)
+      expect((await res.json()).request_id).toBe(DUP_ID)
+    }
+    expect(f.rpcCalls).toHaveLength(0)
+    expect(updates(f)).toHaveLength(0)
+  })
+  it.each(['occasion', 'package_id', 'package_key', 'event_subtype', 'eventType', 'snapshot', 'user_id', 'email'])(
+    'still rejects a body "%s" key before any DB work', async key => {
+      setup()
+      expect((await send({ ...BODY, [key]: 'x' })).status).toBe(400)
+      expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
+    }
+  )
 })

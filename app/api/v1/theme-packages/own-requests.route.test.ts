@@ -110,6 +110,11 @@ describe('GET /theme-package-requests/[id]', () => {
     expect(malformed.status).toBe(404)
     expect(JSON.stringify(await malformed.json())).toBe(missing)
   })
+  it('returns budget_range: null for a request made without a budget', async () => {
+    withRows({ ...ROW, budget_range: null })
+    const { data } = await (await detailGet(req(), idParams(REQ_ID))).json()
+    expect(data.request.budget_range).toBeNull()
+  })
   it('a malformed id never reaches the database', async () => {
     const f = withRows(ROW)
     await detailGet(req(), idParams('../../x'))

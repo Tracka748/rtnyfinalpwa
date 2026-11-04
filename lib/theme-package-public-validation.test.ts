@@ -95,11 +95,11 @@ describe('validateCreateRequestBody', () => {
   it('accepts a full body and normalises it', () => {
     expect(create({ notes: '  hello  ', version_id: U1.toUpperCase() })).toEqual({
       ok: true,
-      value: { version_id: U1, selection: { components: [] }, event_date: '2026-12-25', guest_count: 20, budget_range: '$500–$1,000', notes: 'hello' },
+      value: { version_id: U1, selection: { components: [] }, event_date: '2026-12-25', guest_count: 20, budget_range: '$500–$1,000', event_type: null, notes: 'hello' },
     })
   })
-  it('requires version_id, event_date, guest_count and budget_range', () => {
-    for (const k of ['version_id', 'event_date', 'guest_count', 'budget_range']) {
+  it('requires version_id, event_date and guest_count (budget_range is optional)', () => {
+    for (const k of ['version_id', 'event_date', 'guest_count']) {
       const body: Record<string, unknown> = { ...base }
       delete body[k]
       expect(validateCreateRequestBody(body, TODAY).ok).toBe(false)
@@ -121,9 +121,9 @@ describe('validateCreateRequestBody', () => {
     for (const g of [1, 10000]) expect(create({ guest_count: g }).ok).toBe(true)
     for (const g of [0, 10001, 1.5, '20', null, NaN, -3]) expect(create({ guest_count: g }).ok).toBe(false)
   })
-  it('budget_range must be one of the Plan My Event values', () => {
+  it('budget_range, when given, must be one of the Plan My Event values (exact match)', () => {
     for (const b of BUDGET_RANGES) expect(create({ budget_range: b }).ok).toBe(true)
-    for (const b of ['$500-$1,000', 'cheap', '', null, 500, 'under $500', '$50–$100']) expect(create({ budget_range: b }).ok).toBe(false)
+    for (const b of ['$500-$1,000', 'cheap', 500, true, [], {}, 'under $500', '$50–$100', ' Under $500 ']) expect(create({ budget_range: b }).ok).toBe(false)
   })
   it('notes: blank -> null, at most 2000, string only', () => {
     expect(create({ notes: '   ' })).toMatchObject({ ok: true, value: { notes: null } })
@@ -133,7 +133,7 @@ describe('validateCreateRequestBody', () => {
     expect(create({ notes: 5 }).ok).toBe(false)
   })
   it('rejects user, email, price, vendor, service and snapshot keys', () => {
-    for (const k of ['user_id', 'p_user_id', 'email', 'contact_email', 'price', 'listed_price', 'line_total', 'service_id', 'partner_id', 'vendor_id', 'snapshot', 'package_snapshot', 'status']) {
+    for (const k of ['user_id', 'p_user_id', 'email', 'contact_email', 'price', 'listed_price', 'line_total', 'service_id', 'partner_id', 'vendor_id', 'snapshot', 'package_snapshot', 'status', 'event_subtype', 'eventType', 'occasion', 'package_id', 'package_key']) {
       const r = create({ [k]: 'x' })
       expect(r.ok).toBe(false)
       expect(err(r)).toContain('Unknown field')
@@ -146,6 +146,60 @@ describe('validateCreateRequestBody', () => {
   })
   it.each([null, [], 'x', 5, undefined])('rejects non-object body %j', body => {
     expect(validateCreateRequestBody(body, TODAY).ok).toBe(false)
+  })
+})
+
+describe('validateCreateRequestBody: optional budget_range', () => {
+  it('is accepted when absent, null, empty or blank, and stored as null', () => {
+    const body: Record<string, unknown> = { ...base }
+    delete body.budget_range
+    expect(validateCreateRequestBody(body, TODAY)).toMatchObject({ ok: true, value: { budget_range: null } })
+    for (const b of [null, '', '   ']) expect(create({ budget_range: b })).toMatchObject({ ok: true, value: { budget_range: null } })
+  })
+  it('an invalid value is still rejected with the allowed list in the message', () => {
+    const r = create({ budget_range: 'cheap' })
+    expect(r.ok).toBe(false)
+    expect(err(r)).toContain('Under $500')
+  })
+})
+
+describe('validateCreateRequestBody: optional event_type', () => {
+  const et = (v: unknown) => create({ event_type: v })
+  it('absent, null, empty or blank -> null (the package occasion is kept)', () => {
+    expect(create()).toMatchObject({ ok: true, value: { event_type: null } })
+    for (const v of [null, '', '   ']) expect(et(v)).toMatchObject({ ok: true, value: { event_type: null } })
+  })
+  it('a custom value is trimmed and kept', () => {
+    expect(et('  Baby shower  ')).toMatchObject({ ok: true, value: { event_type: 'Baby shower' } })
+    expect(et("Zoë's 30th — fête 🎉")).toMatchObject({ ok: true, value: { event_type: "Zoë's 30th — fête 🎉" } })
+  })
+  it('allows up to 80 characters (counted as characters, not UTF-16 units) and rejects 81', () => {
+    expect(et('x'.repeat(80)).ok).toBe(true)
+    expect(et('😀'.repeat(80)).ok).toBe(true)
+    const r = et('x'.repeat(81))
+    expect(r.ok).toBe(false)
+    expect(err(r)).toContain('at most 80')
+    expect(et('😀'.repeat(81)).ok).toBe(false)
+  })
+  it('rejects control characters anywhere, including leading/trailing ones that trim would hide', () => {
+    for (const v of ['a\u0000b', 'a\nb', 'a\tb', 'a\u007Fb', 'a\u0085b', 'a\u001Fb', '\nParty', 'Party\r\n', '  \n  ']) {
+      const r = et(v)
+      expect(r.ok).toBe(false)
+      expect(err(r)).toContain('control characters')
+    }
+  })
+  it('rejects non-strings', () => {
+    for (const v of [5, true, [], {}]) expect(et(v).ok).toBe(false)
+  })
+  it('does not change any other field', () => {
+    const a = create()
+    const b = et('Baby shower')
+    expect(a.ok && b.ok && { ...a.value, event_type: null }).toEqual(b.ok && { ...b.value, event_type: null })
+  })
+  it('stays out of the way of unknown-key rejection', () => {
+    for (const k of ['eventType', 'event_subtype', 'occasion', 'package_id', 'package_key', 'snapshot', 'user_id', 'email']) {
+      expect(create({ [k]: 'x' }).ok).toBe(false)
+    }
   })
 })
 

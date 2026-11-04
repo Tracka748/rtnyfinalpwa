@@ -48,11 +48,30 @@ export async function POST(
       p_selection: v.value.selection,
       p_event_date: v.value.event_date,
       p_guest_count: v.value.guest_count,
-      p_budget_range: v.value.budget_range,
+      p_budget_range: v.value.budget_range, // null when the form left it out
       p_notes: v.value.notes,
       p_contact_email: email,
     })
     if (error) return mapDbError(error, 'theme-packages/[key]/requests POST')
+
+    // The function takes event_type from the package occasion. When the customer typed their own,
+    // set it on the row just created: scoped to this request id, this user and package requests, and
+    // writing event_type only. Package, version, pricing and snapshot are untouched. If this write
+    // fails the request still exists with the occasion as its event type, so log and still succeed.
+    const eventType = v.value.event_type
+    if (typeof data === 'string' && eventType && eventType !== live.pkg.occasion) {
+      const { data: updated, error: eventTypeErr } = await supabase
+        .from('plan_requests')
+        .update({ event_type: eventType })
+        .eq('id', data)
+        .eq('user_id', auth.userId)
+        .eq('request_source', 'theme_package')
+        .select('id')
+      if (eventTypeErr || (updated ?? []).length !== 1) {
+        console.error('[theme-packages] request created but event_type was not saved',
+          data, eventTypeErr?.code ?? '', eventTypeErr?.message ?? 'no row updated')
+      }
+    }
 
     return ok({ request_id: data }, 201)
   } catch (err) {
