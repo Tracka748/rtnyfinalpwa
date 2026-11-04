@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { RETURN_TO_KEY, safeReturnPath, safeSessionStorage } from "@/lib/return-to"
 
 export function VerifyForm() {
   const router = useRouter()
@@ -42,12 +43,19 @@ export function VerifyForm() {
       // Clear stored email
       sessionStorage.removeItem('verifyEmail')
 
-      // Redirect to dashboard and force refresh to update nav
-      router.push('/dashboard')
+      // Go back to the page that sent the user to sign in (set by that page; same-origin paths only),
+      // otherwise the dashboard as before.
+      const storage = safeSessionStorage()
+      const returnTo = safeReturnPath(storage?.getItem(RETURN_TO_KEY))
+      try { storage?.removeItem(RETURN_TO_KEY) } catch { /* ignore */ }
+      const destination = returnTo ?? '/dashboard'
+
+      // Redirect and force refresh to update nav
+      router.push(destination)
       router.refresh()
-      
+
       // Force full page reload to ensure auth state updates
-      window.location.href = '/dashboard'
+      window.location.href = destination
 
     } catch (err: any) {
       setError(err.message)
