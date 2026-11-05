@@ -3266,6 +3266,7 @@ export type Database = {
           needs: Json | null
           notes: string | null
           package_snapshot: Json | null
+          request_kind: string | null
           request_source: string
           selected_package_id: string | null
           selected_service_ids: string[] | null
@@ -3291,6 +3292,7 @@ export type Database = {
           needs?: Json | null
           notes?: string | null
           package_snapshot?: Json | null
+          request_kind?: string | null
           request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
@@ -3316,6 +3318,7 @@ export type Database = {
           needs?: Json | null
           notes?: string | null
           package_snapshot?: Json | null
+          request_kind?: string | null
           request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
@@ -4261,6 +4264,7 @@ export type Database = {
           min_guests: number | null
           package_id: string
           price_note: string | null
+          pricing_terms: Json | null
           published_at: string | null
           review_note: string | null
           reviewed_at: string | null
@@ -4286,6 +4290,7 @@ export type Database = {
           min_guests?: number | null
           package_id: string
           price_note?: string | null
+          pricing_terms?: Json | null
           published_at?: string | null
           review_note?: string | null
           reviewed_at?: string | null
@@ -4311,6 +4316,7 @@ export type Database = {
           min_guests?: number | null
           package_id?: string
           price_note?: string | null
+          pricing_terms?: Json | null
           published_at?: string | null
           review_note?: string | null
           reviewed_at?: string | null
@@ -5679,7 +5685,9 @@ export type Database = {
           p_budget_range: string
           p_contact_email: string
           p_event_date: string
+          p_event_type?: string
           p_guest_count: number
+          p_intent?: string
           p_notes: string
           p_selection: Json
           p_user_id: string
@@ -5702,6 +5710,11 @@ export type Database = {
         Returns: undefined
       }
       tp_is_admin: { Args: { p_user_id: string }; Returns: boolean }
+      tp_normalize_pricing_terms: { Args: { p: Json }; Returns: Json }
+      tp_reservation_math: {
+        Args: { p_event_date: string; p_guests: number; p_terms: Json }
+        Returns: Json
+      }
       tpv_validate: {
         Args: { p_publishing: boolean; p_version_id: string }
         Returns: undefined
