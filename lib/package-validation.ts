@@ -172,6 +172,104 @@ export function validateRequestChanges(raw: unknown): Validated<{ expected_revis
   return pass({ expected_revision: rev.value, note: note.value })
 }
 
+// ---- pricing terms ----
+// Early, friendly mirror of tp_normalize_pricing_terms (migration 20261104100008). The DB stays the authority.
+
+export interface StructuredTermsInput {
+  mode: 'structured'; base_price: number; included_guests: number; extra_guest_price: number
+  service_charge_pct: number; service_charge_label: string | null; deposit_amount: number
+  balance_due_days: number; notes: string[]
+}
+export interface FreeTextTermsInput { mode: 'free_text'; free_text: string; notes: string[] }
+export type PricingTermsInput = StructuredTermsInput | FreeTextTermsInput
+
+const PRICING_KEYS = [
+  'mode', 'base_price', 'included_guests', 'extra_guest_price', 'service_charge_pct',
+  'service_charge_label', 'deposit_amount', 'balance_due_days', 'free_text', 'notes',
+] as const
+const STRUCTURED_ONLY = [
+  'base_price', 'included_guests', 'extra_guest_price', 'service_charge_pct',
+  'service_charge_label', 'deposit_amount', 'balance_due_days',
+] as const
+const PRICING_NOTES_MAX = 12
+const PRICING_NOTE_LEN = 200
+const FREE_TEXT_MAX = 2000
+const SERVICE_LABEL_MAX = 80
+
+function parseMoney(field: string, v: unknown, max: number): Validated<number> {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return fail(`${field} must be a number`)
+  if (v < 0 || v > max) return fail(`${field} must be between 0 and ${max.toLocaleString('en-US')}`)
+  const cents = Math.round(v * 100)
+  if (Math.abs(v * 100 - cents) > 1e-7) return fail(`${field} can have at most two decimal places`)
+  return pass(cents / 100)
+}
+
+function optionalOr<T>(v: unknown, dflt: T, f: (x: unknown) => Validated<T>): Validated<T> {
+  return v === undefined || v === null ? pass(dflt) : f(v)
+}
+
+function parsePricingNotes(v: unknown): Validated<string[]> {
+  if (v === undefined || v === null) return pass([])
+  if (!Array.isArray(v)) return fail('notes must be a list')
+  if (v.length > PRICING_NOTES_MAX) return fail(`a package can have at most ${PRICING_NOTES_MAX} pricing notes`)
+  const out: string[] = []
+  for (const n of v) {
+    if (typeof n !== 'string' || n.trim() === '' || n.trim().length > PRICING_NOTE_LEN) {
+      return fail(`each pricing note must be 1 to ${PRICING_NOTE_LEN} characters`)
+    }
+    out.push(n.trim())
+  }
+  return pass(out)
+}
+
+/** object -> normalized terms, null -> clears. (Absence is handled by the caller.) */
+function validatePricingTerms(v: unknown): Validated<PricingTermsInput | null> {
+  if (v === null) return pass(null)
+  const o = asObject(v, 'pricing_terms')
+  if (!o.ok) return o
+  const extra = unknownKeys(o.value, PRICING_KEYS)
+  if (extra) return fail(extra)
+  const b = o.value
+  const notes = parsePricingNotes(b.notes)
+  if (!notes.ok) return notes
+
+  if (b.mode === 'free_text') {
+    const stray = STRUCTURED_ONLY.find(k => b[k] !== undefined)
+    if (stray) return fail(`${stray} is not allowed in free-text pricing`)
+    const t = parseText('free_text', b.free_text, FREE_TEXT_MAX)
+    if (!t.ok) return t
+    return pass({ mode: 'free_text', free_text: t.value, notes: notes.value })
+  }
+  if (b.mode !== 'structured') return fail('pricing mode must be structured or free_text')
+  if (b.free_text !== undefined) return fail('free_text is not allowed in structured pricing')
+
+  const base = parseMoney('base_price', b.base_price, 1_000_000)
+  if (!base.ok) return base
+  const incl = parseIntIn('included_guests', b.included_guests, 1, 10000)
+  if (!incl.ok) return incl
+  const extraPrice = optionalOr(b.extra_guest_price, 0, x => parseMoney('extra_guest_price', x, 100_000))
+  if (!extraPrice.ok) return extraPrice
+  const pct = optionalOr(b.service_charge_pct, 0, x => parseMoney('service_charge_pct', x, 100))
+  if (!pct.ok) return pct
+  const label = optionalOr<string | null>(b.service_charge_label, null, x => parseNullableText('service_charge_label', x, SERVICE_LABEL_MAX))
+  if (!label.ok) return label
+  const dep = parseMoney('deposit_amount', b.deposit_amount, 2_000_000)
+  if (!dep.ok) return dep
+
+  // Package total = base + service charge, the charge rounded half up to the cent (integer cents, like the DB's numeric math).
+  const baseC = Math.round(base.value * 100)
+  const svcC = Math.floor((baseC * Math.round(pct.value * 100) + 5000) / 10000)
+  if (Math.round(dep.value * 100) > baseC + svcC) return fail('deposit cannot be more than the package total')
+
+  const days = optionalOr(b.balance_due_days, 0, x => parseIntIn('balance_due_days', x, 0, 365))
+  if (!days.ok) return days
+  return pass({
+    mode: 'structured', base_price: base.value, included_guests: incl.value, extra_guest_price: extraPrice.value,
+    service_charge_pct: pct.value, service_charge_label: label.value, deposit_amount: dep.value,
+    balance_due_days: days.value, notes: notes.value,
+  })
+}
+
 // ---- draft save ----
 
 export interface PackageMeta {
@@ -183,10 +281,12 @@ export interface PackageMeta {
   price_note?: string | null
   min_guests?: number | null
   max_guests?: number | null
+  pricing_terms?: PricingTermsInput | null
 }
 
 const META_KEYS = [
   'title', 'subtitle', 'description', 'cover_image_url', 'magazine_url', 'price_note', 'min_guests', 'max_guests',
+  'pricing_terms',
 ] as const
 
 function validateMeta(v: unknown): Validated<PackageMeta> {
@@ -204,6 +304,7 @@ function validateMeta(v: unknown): Validated<PackageMeta> {
   if (b.price_note !== undefined) { const r = parseNullableText('price_note', b.price_note, L.priceNote); if (!r.ok) return r; meta.price_note = r.value }
   if (b.min_guests !== undefined) { const r = parseNullableInt('min_guests', b.min_guests, L.guestsMin, L.guestsMax); if (!r.ok) return r; meta.min_guests = r.value }
   if (b.max_guests !== undefined) { const r = parseNullableInt('max_guests', b.max_guests, L.guestsMin, L.guestsMax); if (!r.ok) return r; meta.max_guests = r.value }
+  if (b.pricing_terms !== undefined) { const r = validatePricingTerms(b.pricing_terms); if (!r.ok) return r; meta.pricing_terms = r.value }
   if (Object.keys(meta).length === 0) return fail('meta must contain at least one field')
   if (typeof meta.min_guests === 'number' && typeof meta.max_guests === 'number' && meta.min_guests > meta.max_guests) {
     return fail('min_guests cannot be greater than max_guests')

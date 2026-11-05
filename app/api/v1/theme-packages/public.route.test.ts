@@ -104,6 +104,23 @@ describe('GET /theme-packages/[key]', () => {
     })
     expect(findLeaks(data, { secrets: SECRETS })).toEqual([])
   })
+  it('includes the pricing block built from the stored terms and leaks nothing', async () => {
+    const terms = { mode: 'structured', base_price: 675, included_guests: 10, extra_guest_price: 30, service_charge_pct: 20, service_charge_label: null, deposit_amount: 200, balance_due_days: 10, notes: ['Taxes included'] }
+    use({ theme_packages: PKG, theme_package_versions: { ...VERSION, pricing_terms: terms }, ...DOC_TABLES })
+    const { data } = await (await docGet(req(), keyParams('spooky_birthday'))).json()
+    expect(data.pricing.lines).toEqual([
+      '$675 for 10 guests', '$30 for each additional guest', '20% service charge',
+      '$200 deposit required to reserve the date', 'Remaining balance due 10 days before the event',
+    ])
+    expect(data.pricing.notes).toEqual(['Taxes included'])
+    expect(Object.keys(data.pricing).sort()).toEqual(['lines', 'mode', 'notes', 'reservable', 'terms'])
+    expect(findLeaks(data, { secrets: SECRETS })).toEqual([])
+  })
+  it('pricing is null for a version without terms', async () => {
+    use({ theme_packages: PKG, theme_package_versions: VERSION, ...DOC_TABLES })
+    const { data } = await (await docGet(req(), keyParams('spooky_birthday'))).json()
+    expect(data.pricing).toBeNull()
+  })
   it('unknown, archived, not-live and malformed keys all get the identical 404', async () => {
     const bodies: string[] = []
     const run = async (tables: Record<string, unknown>, key: string) => {
@@ -145,10 +162,37 @@ describe('POST /theme-packages/[key]/preview', () => {
       args: { p_version_id: 'ver-1', p_selection: sel, p_guest_count: 20, p_event_date: '2099-01-15' },
     }])
     const { data } = await res.json()
-    expect(Object.keys(data).sort()).toEqual(['event_date', 'excluded', 'guest_count', 'items', 'listed_subtotal', 'unpriced_items'])
+    expect(Object.keys(data).sort()).toEqual(['event_date', 'excluded', 'guest_count', 'items', 'listed_subtotal', 'reservation', 'unpriced_items'])
+    expect(data.reservation).toBeNull() // this version has no pricing terms
     expect(data.items[0]).toMatchObject({ catalog_item_name: 'Cake', listed_price: 80, line_total: 80, price_treatment: 'listed' })
     expect(findLeaks(data, { secrets: SECRETS })).toEqual([])
     expect(JSON.stringify(data)).not.toContain('captured_at')
+  })
+  it('returns the allowlisted reservation numbers and never the stored terms or snapshot', async () => {
+    const withReservation = {
+      ...RAW_SNAPSHOT, snapshot_version: 3,
+      reservation: {
+        mode: 'structured', guest_count: 20, extra_guests: 10, extras_total: 300, subtotal: 975, service_charge: 195, total: 1170,
+        deposit: 200, balance: 970, balance_due_date: '2099-01-05',
+        terms: { mode: 'structured', base_price: 675, created_by: 'SECRET-CREATOR', notes: ['SECRET-NOTE'] },
+      },
+    }
+    use(live, () => ({ data: withReservation, error: null }))
+    const { data } = await (await post({ guest_count: 20, event_date: '2099-01-15' })).json()
+    expect(Object.keys(data.reservation).sort()).toEqual(['balance', 'balance_due_date', 'deposit', 'extra_guests', 'extras_total', 'guest_count', 'mode', 'service_charge', 'subtotal', 'total'])
+    expect(data.reservation).toMatchObject({ total: 1170, deposit: 200, balance: 970, balance_due_date: '2099-01-05' })
+    expect(findLeaks(data, { secrets: SECRETS })).toEqual([])
+    expect(JSON.stringify(data)).not.toContain('base_price')
+  })
+  it('a free-text reservation exposes the mode only', async () => {
+    use(live, () => ({ data: { ...RAW_SNAPSHOT, reservation: { mode: 'free_text', terms: { free_text: 'SECRET-NOTE' } } }, error: null }))
+    const { data } = await (await post({})).json()
+    expect(data.reservation).toEqual({ mode: 'free_text' })
+  })
+  it('passes event_date to the function so balance_due_date can be computed', async () => {
+    const f = use(live, () => ({ data: RAW_SNAPSHOT, error: null }))
+    await post({ guest_count: 20, event_date: '2099-01-15' })
+    expect(f.rpcCalls[0].args.p_event_date).toBe('2099-01-15')
   })
   it('works with an empty body (everything optional)', async () => {
     const f = use(live, () => ({ data: RAW_SNAPSHOT, error: null }))

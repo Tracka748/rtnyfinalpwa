@@ -14,7 +14,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const DUPLICATE_WINDOW_MS = 2 * 60 * 1000
 
 const VERSION_PUBLIC_COLUMNS =
-  'id, title, subtitle, description, cover_image_url, magazine_url, price_note, min_guests, max_guests, published_at'
+  'id, title, subtitle, description, cover_image_url, magazine_url, price_note, min_guests, max_guests, published_at, pricing_terms'
 
 export interface LivePackage {
   pkg: { id: string; key: string; occasion: string }
@@ -22,7 +22,7 @@ export interface LivePackage {
   version: {
     id: string; title: string; subtitle: string | null; description: string | null; cover_image_url: string | null
     magazine_url: string | null; price_note: string | null; min_guests: number | null; max_guests: number | null
-    published_at: string | null
+    published_at: string | null; pricing_terms: unknown
   }
 }
 
@@ -101,7 +101,7 @@ export async function loadLiveDocument(supabase: AdminClient, live: LivePackage)
   const ownerOf = await loadOwnerNames(supabase, services)
 
   return projectLiveDocument({
-    pkg: live.pkg, theme: live.theme, version: live.version, components, options, items, services, links, ownerOf,
+    pkg: live.pkg, theme: live.theme, version: live.version, pricingTerms: live.version.pricing_terms, components, options, items, services, links, ownerOf,
   })
 }
 

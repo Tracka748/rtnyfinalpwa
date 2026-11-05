@@ -12,7 +12,7 @@ const TODAY = '2026-11-04'
 
 function doc(over: Partial<LiveDocument['meta']> = {}): LiveDocument {
   return {
-    key: 'spooky_birthday', occasion: 'Birthday', theme: null, version_id: VERSION_ID, requestable: true, components: [],
+    key: 'spooky_birthday', occasion: 'Birthday', theme: null, version_id: VERSION_ID, requestable: true, pricing: null, components: [],
     meta: { title: 'Spooky', subtitle: null, description: null, cover_image_url: null, magazine_url: null, price_note: null, min_guests: 10, max_guests: 40, published_at: null, ...over },
   }
 }

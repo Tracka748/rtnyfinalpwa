@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
 import { fail, mapDbError, ok, readJson } from '@/lib/catalog-api'
-import { projectSnapshot } from '@/lib/theme-package-public'
+import { projectReservation, projectSnapshot } from '@/lib/theme-package-public'
 import { resolveLivePackage } from '@/lib/theme-package-public-api'
 import { isSlugKey, validatePreviewBody } from '@/lib/theme-package-public-validation'
 
@@ -34,7 +34,7 @@ export async function POST(
 
     const snapshot = projectSnapshot(data)
     if (!snapshot) return fail(500, 'Something went wrong')
-    return ok(snapshot)
+    return ok({ ...snapshot, reservation: projectReservation(data) })
   } catch (err) {
     return mapDbError(err, 'theme-packages/[key]/preview POST')
   }

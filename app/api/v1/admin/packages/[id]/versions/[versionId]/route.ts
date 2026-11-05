@@ -6,7 +6,7 @@ import { chunk } from '@/lib/catalog-guards'
 import { isUuid } from '@/lib/catalog-validation'
 
 const VERSION_COLUMNS =
-  'id, package_id, version_number, status, title, subtitle, description, cover_image_url, magazine_url, min_guests, max_guests, price_note, revision, created_by, updated_by, submitted_at, reviewed_by, reviewed_at, review_note, published_at, superseded_at, created_at, updated_at'
+  'id, package_id, version_number, status, title, subtitle, description, cover_image_url, magazine_url, min_guests, max_guests, price_note, pricing_terms, revision, created_by, updated_by, submitted_at, reviewed_by, reviewed_at, review_note, published_at, superseded_at, created_at, updated_at'
 const COMPONENT_COLUMNS = 'id, slot_label, sort_order, requirement, quantity, notes'
 const EVENT_COLUMNS = 'id, version_id, package_id, version_number, action, from_status, to_status, actor_id, note, revision, created_at'
 const EDITABLE = ['draft', 'needs_changes']

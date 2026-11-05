@@ -95,8 +95,18 @@ describe('validateCreateRequestBody', () => {
   it('accepts a full body and normalises it', () => {
     expect(create({ notes: '  hello  ', version_id: U1.toUpperCase() })).toEqual({
       ok: true,
-      value: { version_id: U1, selection: { components: [] }, event_date: '2026-12-25', guest_count: 20, budget_range: '$500–$1,000', event_type: null, notes: 'hello' },
+      value: { version_id: U1, selection: { components: [] }, event_date: '2026-12-25', guest_count: 20, budget_range: '$500–$1,000', event_type: null, notes: 'hello', intent: 'quote' },
     })
+  })
+  it('intent defaults to quote, accepts reserve and quote, and rejects anything else', () => {
+    expect(create({})).toMatchObject({ ok: true, value: { intent: 'quote' } })
+    expect(create({ intent: 'quote' })).toMatchObject({ ok: true, value: { intent: 'quote' } })
+    expect(create({ intent: 'reserve' })).toMatchObject({ ok: true, value: { intent: 'reserve' } })
+    for (const i of ['buy', 'RESERVE', '', null, 5, true, {}, []]) {
+      const r = create({ intent: i })
+      expect(r.ok).toBe(false)
+      expect(err(r)).toBe('intent must be reserve or quote')
+    }
   })
   it('requires version_id, event_date and guest_count (budget_range is optional)', () => {
     for (const k of ['version_id', 'event_date', 'guest_count']) {

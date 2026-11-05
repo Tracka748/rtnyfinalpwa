@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  isOptionAvailable, parseGuestCount, projectCard, projectLiveDocument, projectSnapshot, projectSnapshotSummary,
+  isOptionAvailable, parseGuestCount, projectCard, projectLiveDocument, projectReservation, projectSnapshot, projectSnapshotSummary,
   type OwnerResolver, type RawComponent, type RawItem, type RawLink, type RawOption, type RawService,
 } from '@/lib/theme-package-public'
 import { findLeaks } from '@/lib/test-support/leaks'
@@ -74,7 +74,7 @@ function doc(over: { components?: RawComponent[]; options?: RawOption[]; items?:
 describe('projectLiveDocument: output shape and privacy', () => {
   it('exposes only the public fields', () => {
     const d = doc()
-    expect(Object.keys(d).sort()).toEqual(['components', 'key', 'meta', 'occasion', 'requestable', 'theme', 'version_id'])
+    expect(Object.keys(d).sort()).toEqual(['components', 'key', 'meta', 'occasion', 'pricing', 'requestable', 'theme', 'version_id'])
     expect(Object.keys(d.meta).sort()).toEqual(['cover_image_url', 'description', 'magazine_url', 'max_guests', 'min_guests', 'price_note', 'published_at', 'subtitle', 'title'])
     expect(Object.keys(d.components[0]).sort()).toEqual(['available', 'id', 'notes', 'options', 'quantity', 'requirement', 'slot_label'])
     expect(Object.keys(d.components[0].options[0]).sort()).toEqual(['available', 'id', 'is_default', 'item', 'pricing', 'provider'])
@@ -83,6 +83,31 @@ describe('projectLiveDocument: output shape and privacy', () => {
   })
   it('leaks no internal key or value anywhere', () => {
     expect(findLeaks(doc(), { secrets: SECRETS })).toEqual([])
+  })
+  it('pricing is null when the version has no terms', () => {
+    expect(doc().pricing).toBeNull()
+  })
+  it('pricing block exposes exactly mode, reservable, lines, notes and terms (structured) and leaks nothing', () => {
+    const d = projectLiveDocument({
+      pkg: { key: 'spooky', occasion: 'Birthday' }, theme: null, version,
+      pricingTerms: { mode: 'structured', base_price: 675, included_guests: 10, extra_guest_price: 30, service_charge_pct: 20, service_charge_label: null, deposit_amount: 200, balance_due_days: 10, notes: ['Taxes included'], ...({ created_by: 'SECRET-CREATOR' } as object) },
+      components: [comp('c1', 0)], options: [opt('o1', 'c1', 'i1', 's1', true)], items: [item('i1')], services: [service('s1')], links: [link('i1', 's1')], ownerOf,
+    })
+    expect(Object.keys(d.pricing!).sort()).toEqual(['lines', 'mode', 'notes', 'reservable', 'terms'])
+    expect(Object.keys(d.pricing!.terms!).sort()).toEqual(['balance_due_days', 'base_price', 'deposit_amount', 'extra_guest_price', 'included_guests', 'service_charge_label', 'service_charge_pct'])
+    expect(d.pricing!.lines).toHaveLength(5)
+    expect(d.pricing!.notes).toEqual(['Taxes included'])
+    expect(findLeaks(d, { secrets: SECRETS })).toEqual([])
+    expect(Object.keys(d.meta)).not.toContain('pricing_terms')
+  })
+  it('free-text pricing block exposes exactly mode, reservable, lines, notes and free_text', () => {
+    const d = projectLiveDocument({
+      pkg: { key: 'spooky', occasion: 'Birthday' }, theme: null, version,
+      pricingTerms: { mode: 'free_text', free_text: 'Call for pricing', notes: [] },
+      components: [comp('c1', 0)], options: [opt('o1', 'c1', 'i1', 's1', true)], items: [item('i1')], services: [service('s1')], links: [link('i1', 's1')], ownerOf,
+    })
+    expect(Object.keys(d.pricing!).sort()).toEqual(['free_text', 'lines', 'mode', 'notes', 'reservable'])
+    expect(d.pricing).toMatchObject({ reservable: true, lines: [], free_text: 'Call for pricing' })
   })
   it('leaks nothing even when every option is unavailable or unpriced', () => {
     const d = doc({ items: [item('i1', { status: 'archived' })], links: [link('i1', 's1', { status: 'rejected' })] })
@@ -241,6 +266,32 @@ describe('projectSnapshot', () => {
   it('drops an unknown price_status and an unknown treatment', () => {
     const s = projectSnapshot({ items: [{ price_status: 'weird', price_treatment: 'weird', listed_price: 5 }] })!
     expect(s.items[0]).toMatchObject({ price_status: null, price_treatment: null, listed_price: null })
+  })
+})
+
+describe('projectReservation', () => {
+  const structured = {
+    mode: 'structured', guest_count: 12, extra_guests: 2, extras_total: 60, subtotal: 735, service_charge: 147, total: 882,
+    deposit: 200, balance: 682, balance_due_date: '2027-01-05',
+    terms: { mode: 'structured', base_price: 675, created_by: 'SECRET-CREATOR' },
+  }
+  it('returns exactly the allowlisted structured fields and never the stored terms', () => {
+    const r = projectReservation({ reservation: structured, package_id: 'SECRET-PKG' })!
+    expect(Object.keys(r).sort()).toEqual(['balance', 'balance_due_date', 'deposit', 'extra_guests', 'extras_total', 'guest_count', 'mode', 'service_charge', 'subtotal', 'total'])
+    expect(r).toMatchObject({ mode: 'structured', total: 882, deposit: 200, balance: 682, balance_due_date: '2027-01-05' })
+    expect(findLeaks(r, { secrets: SECRETS })).toEqual([])
+    expect(JSON.stringify(r)).not.toContain('base_price')
+  })
+  it('free text exposes the mode only', () => {
+    expect(projectReservation({ reservation: { mode: 'free_text', terms: { free_text: 'secret terms text' } } })).toEqual({ mode: 'free_text' })
+  })
+  it('structured without a guest count gives null numbers', () => {
+    expect(projectReservation({ reservation: { mode: 'structured', terms: {}, guest_count: null } })).toMatchObject({ mode: 'structured', guest_count: null, total: null, balance_due_date: null })
+  })
+  it('returns null for no reservation, junk and v1/v2 snapshots', () => {
+    for (const s of [null, undefined, 'x', 5, [], {}, { reservation: null }, { reservation: 'x' }, { reservation: { mode: 'weird' } }, rawSnapshot]) {
+      expect(projectReservation(s)).toBeNull()
+    }
   })
 })
 

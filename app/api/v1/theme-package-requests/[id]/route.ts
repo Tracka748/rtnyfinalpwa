@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/authz'
 import { createSupabaseAdmin } from '@/lib/supabase'
 import { fail, mapDbError, ok } from '@/lib/catalog-api'
 import { isUuid } from '@/lib/catalog-validation'
-import { parseGuestCount, projectSnapshot, projectSnapshotSummary } from '@/lib/theme-package-public'
+import { parseGuestCount, projectReservation, projectSnapshot, projectSnapshotSummary } from '@/lib/theme-package-public'
 
 const notFound = () => fail(404, 'Request not found')
 
@@ -21,7 +21,7 @@ export async function GET(
 
     const { data, error } = await createSupabaseAdmin()
       .from('plan_requests')
-      .select('id, status, created_at, event_date, guest_count, budget_range, notes, package_snapshot')
+      .select('id, status, created_at, event_date, guest_count, budget_range, notes, request_kind, package_snapshot')
       .eq('id', id)
       .eq('user_id', auth.userId)
       .eq('request_source', 'theme_package')
@@ -38,6 +38,8 @@ export async function GET(
         guest_count: parseGuestCount(data.guest_count),
         budget_range: data.budget_range,
         notes: data.notes,
+        request_kind: data.request_kind,
+        reservation: projectReservation(data.package_snapshot),
         package: projectSnapshotSummary(data.package_snapshot).package,
         snapshot: projectSnapshot(data.package_snapshot),
       },

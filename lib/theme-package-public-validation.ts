@@ -162,6 +162,7 @@ export interface CreateRequestInput {
   budget_range: BudgetRange | null // null when the customer left it out
   event_type: string | null // null = use the package occasion
   notes: string | null
+  intent: 'reserve' | 'quote' // quote = the existing request-a-quote flow
 }
 
 export function validateCreateRequestBody(raw: unknown, today: string = todayUtc()): Validated<CreateRequestInput> {
@@ -169,7 +170,7 @@ export function validateCreateRequestBody(raw: unknown, today: string = todayUtc
   if (!o.ok) return o
   // No user id, email, price, service, partner or snapshot is ever read from the body:
   // any such key is simply an unknown field.
-  const extra = unknownKeys(o.value, ['version_id', 'selection', 'event_date', 'guest_count', 'budget_range', 'event_type', 'notes'])
+  const extra = unknownKeys(o.value, ['version_id', 'selection', 'event_date', 'guest_count', 'budget_range', 'event_type', 'notes', 'intent'])
   if (extra) return fail(extra)
 
   if (!isUuid(o.value.version_id)) return fail('version_id must be a valid uuid')
@@ -184,6 +185,8 @@ export function validateCreateRequestBody(raw: unknown, today: string = todayUtc
   if (!budget.ok) return budget
   const eventType = parseOptionalEventType(o.value.event_type)
   if (!eventType.ok) return eventType
+  const intent = o.value.intent === undefined ? 'quote' : o.value.intent
+  if (intent !== 'reserve' && intent !== 'quote') return fail('intent must be reserve or quote')
   let notes: string | null = null
   if (o.value.notes !== undefined && o.value.notes !== null) {
     if (typeof o.value.notes !== 'string') return fail('notes must be a string or null')
@@ -199,6 +202,7 @@ export function validateCreateRequestBody(raw: unknown, today: string = todayUtc
     budget_range: budget.value,
     event_type: eventType.value,
     notes,
+    intent,
   })
 }
 

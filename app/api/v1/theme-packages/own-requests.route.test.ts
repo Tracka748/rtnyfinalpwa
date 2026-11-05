@@ -29,9 +29,15 @@ const SNAPSHOT = {
   items: [{ component_id: 'c1', slot_label: 'Cake', option_id: 'o1', catalog_item_id: 'SECRET-ITEM', catalog_item_name: 'Cake', item_type: 'food', service_id: 'SECRET-SERVICE', partner_id: 'SECRET-PARTNER', vendor_id: 'SECRET-VENDOR', quantity: 1, listed_price: 80, pricing_model: 'flat', price_treatment: 'listed', price_status: 'priced', line_total: 80, price_note: null, guest_fit: true }],
   excluded: [], listed_subtotal: 80, unpriced_items: 0, captured_at: '2026-11-03T00:00:00Z',
 }
+const RESERVATION = {
+  mode: 'structured', guest_count: 20, extra_guests: 10, extras_total: 300, subtotal: 975, service_charge: 195, total: 1170,
+  deposit: 200, balance: 970, balance_due_date: '2099-01-05',
+  terms: { mode: 'structured', base_price: 675, notes: ['SECRET-NOTE'], created_by: 'SECRET-COORD' },
+}
+const RESERVATION_KEYS = ['balance', 'balance_due_date', 'deposit', 'extra_guests', 'extras_total', 'guest_count', 'mode', 'service_charge', 'subtotal', 'total']
 const ROW = {
   id: REQ_ID, status: 'pending', created_at: '2026-11-03T10:00:00Z', event_date: '2099-01-15', guest_count: '20', budget_range: '$500–$1,000', notes: 'hello',
-  package_snapshot: SNAPSHOT, contact_email: 'secret@x.com', coordinator_id: 'SECRET-COORD', user_id: SESSION, selected_package_id: 'SECRET-VERSION', vendor_snapshot: { a: 1 },
+  request_kind: 'custom_quote', package_snapshot: SNAPSHOT, contact_email: 'secret@x.com', coordinator_id: 'SECRET-COORD', user_id: SESSION, selected_package_id: 'SECRET-VERSION', vendor_snapshot: { a: 1 },
 }
 
 const withRows = (data: unknown) => {
@@ -57,11 +63,20 @@ describe('GET /theme-package-requests', () => {
     const { data } = await res.json()
     expect(data.requests).toEqual([{
       id: REQ_ID, status: 'pending', created_at: '2026-11-03T10:00:00Z', event_date: '2099-01-15', guest_count: 20,
-      package: { key: 'spooky_birthday', title: 'Spooky' }, listed_subtotal: 80, unpriced_items: 0,
+      request_kind: 'custom_quote', package: { key: 'spooky_birthday', title: 'Spooky' }, listed_subtotal: 80, unpriced_items: 0, reservation: null,
     }])
     expect(data).toMatchObject({ has_more: false, next_offset: null })
     expect(findLeaks(data, { secrets: SECRETS, allowKeys: ['status'] })).toEqual([])
     expect(f.calls[0].eq).toEqual({ user_id: SESSION, request_source: 'theme_package' })
+  })
+  it('includes request_kind and only the allowlisted reservation numbers (never terms)', async () => {
+    const reserved = { ...ROW, request_kind: 'reserve', package_snapshot: { ...SNAPSHOT, snapshot_version: 3, reservation: RESERVATION } }
+    withRows([reserved])
+    const { data } = await (await listGet(req())).json()
+    expect(data.requests[0].request_kind).toBe('reserve')
+    expect(Object.keys(data.requests[0].reservation).sort()).toEqual(RESERVATION_KEYS)
+    expect(findLeaks(data, { secrets: SECRETS, allowKeys: ['status'] })).toEqual([])
+    expect(JSON.stringify(data)).not.toContain('base_price')
   })
   it('paginates', async () => {
     withRows(Array.from({ length: 51 }, (_, i) => ({ ...ROW, id: `r${i}` })))
@@ -96,7 +111,7 @@ describe('GET /theme-package-requests/[id]', () => {
       budget_range: '$500–$1,000', notes: 'hello', package: { key: 'spooky_birthday', title: 'Spooky' },
     })
     expect(data.request.snapshot.items[0]).toMatchObject({ catalog_item_name: 'Cake', listed_price: 80, line_total: 80 })
-    expect(Object.keys(data.request).sort()).toEqual(['budget_range', 'created_at', 'event_date', 'guest_count', 'id', 'notes', 'package', 'snapshot', 'status'])
+    expect(Object.keys(data.request).sort()).toEqual(['budget_range', 'created_at', 'event_date', 'guest_count', 'id', 'notes', 'package', 'request_kind', 'reservation', 'snapshot', 'status'])
     expect(findLeaks(data, { secrets: SECRETS, allowKeys: ['status'] })).toEqual([])
     expect(f.calls[0].eq).toEqual({ id: REQ_ID, user_id: SESSION, request_source: 'theme_package' })
   })
@@ -109,6 +124,16 @@ describe('GET /theme-package-requests/[id]', () => {
     const malformed = await detailGet(req(), idParams('not-a-uuid'))
     expect(malformed.status).toBe(404)
     expect(JSON.stringify(await malformed.json())).toBe(missing)
+  })
+  it('detail includes request_kind and only the allowlisted reservation numbers (never terms or raw snapshot)', async () => {
+    withRows({ ...ROW, request_kind: 'reserve', package_snapshot: { ...SNAPSHOT, snapshot_version: 3, reservation: RESERVATION } })
+    const { data } = await (await detailGet(req(), idParams(REQ_ID))).json()
+    expect(data.request.request_kind).toBe('reserve')
+    expect(Object.keys(data.request.reservation).sort()).toEqual(RESERVATION_KEYS)
+    expect(data.request.reservation).toMatchObject({ total: 1170, deposit: 200, balance: 970 })
+    expect(findLeaks(data, { secrets: SECRETS, allowKeys: ['status'] })).toEqual([])
+    expect(JSON.stringify(data)).not.toContain('base_price')
+    expect(Object.keys(data.request.snapshot).sort()).toEqual(['event_date', 'excluded', 'guest_count', 'items', 'listed_subtotal', 'unpriced_items'])
   })
   it('returns budget_range: null for a request made without a budget', async () => {
     withRows({ ...ROW, budget_range: null })

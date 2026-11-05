@@ -3,6 +3,7 @@
 // (created_by, reviewed_by, partner_id, service_id, ...) can never reach a response.
 
 import { PRICE_TREATMENTS, type PriceTreatment } from '@/lib/catalog-validation'
+import { buildPricing, type PublicPackagePricing } from '@/lib/theme-package-pricing'
 
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -77,6 +78,42 @@ export function projectSnapshot(raw: unknown): PublicSnapshot | null {
     excluded,
     listed_subtotal: num(s.listed_subtotal),
     unpriced_items: num(s.unpriced_items),
+  }
+}
+
+// ---- reservation (the server-computed numbers on a v3 snapshot) ----
+
+export interface PublicReservation {
+  mode: 'structured' | 'free_text'
+  guest_count?: number | null
+  extra_guests?: number | null
+  extras_total?: number | null
+  subtotal?: number | null
+  service_charge?: number | null
+  total?: number | null
+  deposit?: number | null
+  balance?: number | null
+  balance_due_date?: string | null
+}
+
+/** Allowlisted view of snapshot.reservation. The stored `terms` are never copied. Null when absent or junk. */
+export function projectReservation(snapshot: unknown): PublicReservation | null {
+  const s = obj(snapshot)
+  const r = s ? obj(s.reservation) : null
+  if (!r) return null
+  if (r.mode === 'free_text') return { mode: 'free_text' }
+  if (r.mode !== 'structured') return null
+  return {
+    mode: 'structured',
+    guest_count: num(r.guest_count),
+    extra_guests: num(r.extra_guests),
+    extras_total: num(r.extras_total),
+    subtotal: num(r.subtotal),
+    service_charge: num(r.service_charge),
+    total: num(r.total),
+    deposit: num(r.deposit),
+    balance: num(r.balance),
+    balance_due_date: str(r.balance_due_date),
   }
 }
 
@@ -210,6 +247,7 @@ export interface LiveDocument {
     published_at: string | null
   }
   requestable: boolean
+  pricing: PublicPackagePricing | null
   components: PublicComponent[]
 }
 
@@ -217,6 +255,7 @@ export function projectLiveDocument(input: {
   pkg: { key: string; occasion: string }
   theme: PublicTheme | null
   version: LiveDocument['meta'] & { id: string }
+  pricingTerms?: unknown
   components: RawComponent[]
   options: RawOption[]
   items: RawItem[]
@@ -278,6 +317,7 @@ export function projectLiveDocument(input: {
       published_at: v.published_at,
     },
     requestable: components.length > 0 && components.every(c => c.requirement !== 'required' || c.available),
+    pricing: buildPricing(input.pricingTerms),
     components,
   }
 }

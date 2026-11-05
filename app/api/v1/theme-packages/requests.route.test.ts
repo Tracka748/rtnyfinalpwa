@@ -26,6 +26,11 @@ const DUP_ID = '55555555-5555-5555-5555-555555555555'
 const PKG = { id: 'pkg-1', key: 'spooky_birthday', occasion: 'Birthday', status: 'active', theme_id: null, live_version_id: VERSION_ID }
 const VERSION = { id: VERSION_ID, title: 'Spooky', subtitle: null, description: null, cover_image_url: null, magazine_url: null, price_note: null, min_guests: null, max_guests: null, published_at: null }
 const SELECTION = { components: [{ component_id: COMP_ID, included: true }] }
+const RESERVATION_KEYS = ['balance', 'balance_due_date', 'deposit', 'extra_guests', 'extras_total', 'guest_count', 'mode', 'service_charge', 'subtotal', 'total']
+const STORED_RESERVATION = {
+  mode: 'structured', guest_count: 20, extra_guests: 10, extras_total: 300, subtotal: 975, service_charge: 195, total: 1170,
+  deposit: 200, balance: 970, balance_due_date: '2099-01-05', terms: { mode: 'structured', base_price: 675, notes: ['SECRET-NOTE'] },
+}
 const BODY = { version_id: VERSION_ID, selection: SELECTION, event_date: '2099-01-15', guest_count: 20, budget_range: '$500–$1,000', notes: 'hello' }
 
 interface Opts {
@@ -35,7 +40,7 @@ interface Opts {
   dup?: unknown[]
   rpc?: FakeResult
   user?: unknown
-  eventTypeUpdate?: FakeResult
+  readback?: FakeResult
 }
 
 function setup(o: Opts = {}) {
@@ -43,7 +48,8 @@ function setup(o: Opts = {}) {
     respond: (q: Recorded) => {
       if (q.table === 'theme_packages') return { data: 'pkg' in o ? o.pkg : PKG, error: null }
       if (q.table === 'theme_package_versions') return { data: 'version' in o ? o.version : VERSION, error: null }
-      if (q.table === 'plan_requests' && q.op === 'update') return o.eventTypeUpdate ?? { data: [{ id: NEW_ID }], error: null }
+      // the post-create read-back of the stored row (request_kind + snapshot)
+      if (q.table === 'plan_requests' && q.eq.id === NEW_ID) return o.readback ?? { data: { request_kind: 'custom_quote', package_snapshot: null }, error: null }
       if (q.table === 'plan_requests') return { data: 'selected_package_id' in q.eq ? o.dup ?? [] : o.recent ?? [], error: null }
       return { data: null, error: null }
     },
@@ -71,12 +77,13 @@ describe('POST /theme-packages/[key]/requests', () => {
     const f = setup()
     const res = await send(BODY)
     expect(res.status).toBe(201)
-    expect(await res.json()).toEqual({ success: true, data: { request_id: NEW_ID } })
+    expect(await res.json()).toEqual({ success: true, data: { request_id: NEW_ID, request_kind: 'custom_quote', reservation: null } })
     expect(f.rpcCalls).toEqual([{
       fn: 'theme_package_create_request',
       args: {
         p_user_id: SESSION, p_version_id: VERSION_ID, p_selection: SELECTION, p_event_date: '2099-01-15',
         p_guest_count: 20, p_budget_range: '$500–$1,000', p_notes: 'hello', p_contact_email: 'real@user.com',
+        p_event_type: null, p_intent: 'quote',
       },
     }])
   })
@@ -129,7 +136,8 @@ describe('POST /theme-packages/[key]/requests', () => {
   it('scopes the abuse reads to the session user', async () => {
     const f = setup()
     await send(BODY)
-    const reads = f.calls.filter(c => c.table === 'plan_requests')
+    // the two abuse reads (the post-create read-back is filtered by id and covered in the reserve tests)
+    const reads = f.calls.filter(c => c.table === 'plan_requests' && !('id' in c.eq))
     expect(reads).toHaveLength(2)
     for (const r of reads) expect(r.eq).toMatchObject({ user_id: SESSION, request_source: 'theme_package' })
   })
@@ -179,7 +187,7 @@ describe('POST /theme-packages/[key]/requests', () => {
 })
 
 describe('POST /theme-packages/[key]/requests: optional budget and event type', () => {
-  const RPC_KEYS = ['p_budget_range', 'p_contact_email', 'p_event_date', 'p_guest_count', 'p_notes', 'p_selection', 'p_user_id', 'p_version_id']
+  const RPC_KEYS = ['p_budget_range', 'p_contact_email', 'p_event_date', 'p_event_type', 'p_guest_count', 'p_intent', 'p_notes', 'p_selection', 'p_user_id', 'p_version_id']
   const updates = (f: ReturnType<typeof setup>) => f.calls.filter(c => c.table === 'plan_requests' && c.op === 'update')
 
   it('accepts a request without a budget and passes null to the function', async () => {
@@ -202,25 +210,22 @@ describe('POST /theme-packages/[key]/requests: optional budget and event type', 
     expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
     expect(f.rpcCalls).toHaveLength(0)
   })
-  it('without an event_type (or a blank one) keeps the package occasion: no update is made', async () => {
+  it('without an event_type (or a blank one) passes null so the function keeps the package occasion: no update is made', async () => {
     for (const body of [BODY, { ...BODY, event_type: '' }, { ...BODY, event_type: '   ' }, { ...BODY, event_type: null }]) {
       const f = setup()
       expect((await send(body)).status).toBe(201)
+      expect(f.rpcCalls[0].args.p_event_type).toBeNull()
       expect(updates(f)).toHaveLength(0)
     }
   })
-  it('a custom event_type is stored with one scoped update that writes only event_type', async () => {
+  it('a custom event_type is passed (trimmed) to the function, which stores it atomically: no update query is made', async () => {
     const f = setup()
     const res = await send({ ...BODY, event_type: '  Baby shower  ' })
     expect(res.status).toBe(201)
-    expect(await res.json()).toEqual({ success: true, data: { request_id: NEW_ID } })
-    expect(updates(f)).toHaveLength(1)
-    expect(updates(f)[0]).toMatchObject({
-      payload: { event_type: 'Baby shower' },
-      eq: { id: NEW_ID, user_id: SESSION, request_source: 'theme_package' },
-    })
+    expect(f.rpcCalls[0].args.p_event_type).toBe('Baby shower')
+    expect(updates(f)).toHaveLength(0)
   })
-  it('the function call is unchanged: exactly the same eight server-controlled arguments', async () => {
+  it('the function call has exactly these ten server-controlled arguments (the original eight plus p_event_type and p_intent)', async () => {
     const f = setup()
     await send({ ...BODY, event_type: 'Baby shower' })
     expect(Object.keys(f.rpcCalls[0].args).sort()).toEqual(RPC_KEYS)
@@ -231,9 +236,10 @@ describe('POST /theme-packages/[key]/requests: optional budget and event type', 
     await send({ ...BODY, event_type: 'other_package' })
     expect(f.calls.find(c => c.table === 'theme_packages')!.eq).toEqual({ key: 'spooky_birthday' })
   })
-  it('an event_type equal to the package occasion needs no update', async () => {
+  it('an event_type equal to the package occasion is still passed to the function, and no update is made', async () => {
     const f = setup()
     await send({ ...BODY, event_type: 'Birthday' })
+    expect(f.rpcCalls[0].args.p_event_type).toBe('Birthday')
     expect(updates(f)).toHaveLength(0)
   })
   it('81 characters or control characters are rejected before any DB work', async () => {
@@ -243,14 +249,16 @@ describe('POST /theme-packages/[key]/requests: optional budget and event type', 
     expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
     expect(f.rpcCalls).toHaveLength(0)
   })
-  it('if the event_type write fails the request still succeeds and the failure is logged', async () => {
-    for (const eventTypeUpdate of [{ data: null, error: { code: 'XX000', message: 'boom' } }, { data: [], error: null }]) {
-      const f = setup({ eventTypeUpdate })
-      const res = await send({ ...BODY, event_type: 'Baby shower' })
-      expect(res.status).toBe(201)
-      expect((await res.json()).data.request_id).toBe(NEW_ID)
-      expect(updates(f)).toHaveLength(1)
-      expect(console.error).toHaveBeenCalled()
+  it('if the read-back of the stored row fails the request still succeeds, with request_kind from the intent and no reservation, and the failure is logged', async () => {
+    for (const readback of [{ data: null, error: { code: 'XX000', message: 'boom' } }, { data: null, error: null }]) {
+      for (const [intent, kind] of [['quote', 'custom_quote'], ['reserve', 'reserve']]) {
+        const f = setup({ readback })
+        const res = await send({ ...BODY, intent })
+        expect(res.status).toBe(201)
+        expect((await res.json()).data).toEqual({ request_id: NEW_ID, request_kind: kind, reservation: null })
+        expect(updates(f)).toHaveLength(0)
+        expect(console.error).toHaveBeenCalled()
+      }
     }
   })
   it('a duplicate within 2 minutes is still a duplicate when only the budget or event_type differ', async () => {
@@ -270,4 +278,97 @@ describe('POST /theme-packages/[key]/requests: optional budget and event type', 
       expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
     }
   )
+})
+
+describe('POST /theme-packages/[key]/requests: reserve intent', () => {
+  const reservedRow = { request_kind: 'reserve', package_snapshot: { snapshot_version: 3, reservation: STORED_RESERVATION, package_id: 'SECRET-PKG' } }
+  const SECRET_JSON = ['SECRET-NOTE', 'SECRET-PKG', 'base_price']
+
+  it('reserve success: passes p_intent, returns request_kind and only the allowlisted reservation numbers', async () => {
+    const f = setup({ readback: { data: reservedRow, error: null } })
+    const res = await send({ ...BODY, intent: 'reserve' })
+    expect(res.status).toBe(201)
+    const { data } = await res.json()
+    expect(f.rpcCalls[0].args.p_intent).toBe('reserve')
+    expect(data.request_id).toBe(NEW_ID)
+    expect(data.request_kind).toBe('reserve')
+    expect(Object.keys(data.reservation).sort()).toEqual(RESERVATION_KEYS)
+    expect(data.reservation).toMatchObject({ total: 1170, deposit: 200, balance: 970, balance_due_date: '2099-01-05' })
+    const json = JSON.stringify(data)
+    for (const x of SECRET_JSON) expect(json).not.toContain(x)
+    expect(Object.keys(data).sort()).toEqual(['request_id', 'request_kind', 'reservation'])
+  })
+  it('reads the stored row back scoped to the new request id and the session user', async () => {
+    const f = setup({ readback: { data: reservedRow, error: null } })
+    await send({ ...BODY, intent: 'reserve' })
+    const read = f.calls.find(c => c.table === 'plan_requests' && c.eq.id === NEW_ID)!
+    expect(read.op).toBe('select')
+    expect(read.eq).toEqual({ id: NEW_ID, user_id: SESSION })
+  })
+  it('a free-text reservation returns the mode only', async () => {
+    setup({ readback: { data: { request_kind: 'reserve', package_snapshot: { reservation: { mode: 'free_text', terms: { free_text: 'SECRET-NOTE' } } } }, error: null } })
+    const { data } = await (await send({ ...BODY, intent: 'reserve' })).json()
+    expect(data.reservation).toEqual({ mode: 'free_text' })
+  })
+  it('reserve with a customized selection: the function error is mapped to 400 with its message', async () => {
+    setup({ rpc: { data: null, error: { code: 'P0001', message: 'a customized package is requested as a quote, not a reservation' } } })
+    const res = await send({ ...BODY, intent: 'reserve' })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('a customized package is requested as a quote, not a reservation')
+  })
+  it('reserve against a package without pricing terms: 400 with the function message', async () => {
+    setup({ rpc: { data: null, error: { code: 'P0001', message: 'this package cannot be reserved directly; request a quote instead' } } })
+    const res = await send({ ...BODY, intent: 'reserve' })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('this package cannot be reserved directly; request a quote instead')
+  })
+  it('the default intent is quote: the function receives p_intent "quote" and the kind is custom_quote', async () => {
+    const f = setup()
+    const res = await send(BODY)
+    expect(f.rpcCalls[0].args.p_intent).toBe('quote')
+    expect((await res.json()).data.request_kind).toBe('custom_quote')
+    const g = setup()
+    await send({ ...BODY, intent: 'quote' })
+    expect(g.rpcCalls[0].args.p_intent).toBe('quote')
+  })
+  it('an invalid intent is a 400 before any DB work', async () => {
+    const f = setup()
+    for (const intent of ['buy', 'RESERVE', '', null, 5]) expect((await send({ ...BODY, intent })).status).toBe(400)
+    expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
+    expect(f.rpcCalls).toHaveLength(0)
+  })
+  it('reserve with a guest count outside the version min/max is a 400 with no abuse reads and no function call', async () => {
+    const version = { ...VERSION, min_guests: 10, max_guests: 30 }
+    for (const guest_count of [9, 31]) {
+      const f = setup({ version })
+      const res = await send({ ...BODY, guest_count, intent: 'reserve' })
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toBe("guest count is outside this package's range")
+      expect(f.rpcCalls).toHaveLength(0)
+      expect(f.calls.some(c => c.table === 'plan_requests')).toBe(false)
+    }
+    for (const guest_count of [10, 30]) {
+      const f = setup({ version })
+      expect((await send({ ...BODY, guest_count, intent: 'reserve' })).status).toBe(201)
+      expect(f.rpcCalls).toHaveLength(1)
+    }
+  })
+  it('a missing date or guest count is still a 400 for reserve, before any DB work', async () => {
+    const { event_date: _d, ...noDate } = BODY
+    const { guest_count: _g, ...noGuests } = BODY
+    setup()
+    expect((await send({ ...noDate, intent: 'reserve' })).status).toBe(400)
+    expect((await send({ ...noGuests, intent: 'reserve' })).status).toBe(400)
+    expect(h.createSupabaseAdmin).not.toHaveBeenCalled()
+  })
+  it('keeps the other rules for reserve: stale version 409, duplicate 409, unverified email 403', async () => {
+    setup()
+    expect((await send({ ...BODY, intent: 'reserve', version_id: OTHER })).status).toBe(409)
+    const d = setup({ dup: [{ id: DUP_ID }] })
+    expect((await send({ ...BODY, intent: 'reserve' })).status).toBe(409)
+    expect(d.rpcCalls).toHaveLength(0)
+    const e = setup({ user: { id: SESSION, email: 'a@b.com', email_confirmed_at: null } })
+    expect((await send({ ...BODY, intent: 'reserve' })).status).toBe(403)
+    expect(e.rpcCalls).toHaveLength(0)
+  })
 })

@@ -24,7 +24,7 @@ function doc(components: PublicComponent[], over: Partial<LiveDocument> = {}): L
   return {
     key: 'spooky', occasion: 'Birthday', theme: null, version_id: u(900),
     meta: { title: 'Spooky', subtitle: null, description: null, cover_image_url: null, magazine_url: null, price_note: null, min_guests: 10, max_guests: 40, published_at: null },
-    requestable: true, components, ...over,
+    requestable: true, pricing: null, components, ...over,
   }
 }
 
