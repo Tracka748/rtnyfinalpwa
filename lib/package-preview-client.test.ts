@@ -28,9 +28,31 @@ describe('fetchPreview: request', () => {
   })
 })
 
+describe('fetchPreview: event date and reservation', () => {
+  const RESERVATION = { mode: 'structured', guest_count: 20, extra_guests: 10, extras_total: 300, subtotal: 975, service_charge: 195, total: 1170, deposit: 200, balance: 970, balance_due_date: '2099-01-05' }
+  it('sends event_date only when given', async () => {
+    const f = fakeFetch(200, { success: true, data: SNAPSHOT })
+    await fetchPreview(f, 'k', { ...BODY, event_date: '2099-01-15' })
+    const [, init] = (f as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit]
+    expect(Object.keys(JSON.parse(String(init.body))).sort()).toEqual(['event_date', 'guest_count', 'selection'])
+  })
+  it('returns the allowlisted reservation from the response, without terms', async () => {
+    const r = await fetchPreview(fakeFetch(200, { success: true, data: { ...SNAPSHOT, reservation: { ...RESERVATION, terms: { base_price: 675 } } } }), 'k', BODY)
+    expect(r.kind === 'ok' && r.reservation).toEqual(RESERVATION)
+  })
+  it('a free-text reservation is the mode only; a missing or junk one is null', async () => {
+    const ft = await fetchPreview(fakeFetch(200, { success: true, data: { ...SNAPSHOT, reservation: { mode: 'free_text', terms: {} } } }), 'k', BODY)
+    expect(ft.kind === 'ok' && ft.reservation).toEqual({ mode: 'free_text' })
+    for (const reservation of [null, undefined, 'x', { mode: 'weird' }]) {
+      const r = await fetchPreview(fakeFetch(200, { success: true, data: { ...SNAPSHOT, reservation } }), 'k', BODY)
+      expect(r.kind === 'ok' && r.reservation).toBeNull()
+    }
+  })
+})
+
 describe('fetchPreview: responses', () => {
   it('200 with a snapshot -> ok', async () => {
-    expect(await fetchPreview(fakeFetch(200, { success: true, data: SNAPSHOT }), 'k', BODY)).toEqual({ kind: 'ok', snapshot: SNAPSHOT })
+    expect(await fetchPreview(fakeFetch(200, { success: true, data: SNAPSHOT }), 'k', BODY)).toEqual({ kind: 'ok', snapshot: SNAPSHOT, reservation: null })
   })
   it('400 -> rejected with the server message (trimmed to 200 characters)', async () => {
     expect(await fetchPreview(fakeFetch(400, { success: false, error: 'required component "Cake" cannot be removed' }), 'k', BODY)).toEqual({

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  capitalizeFirst, describeLine, describePricing, formatUsd, guestRangeLabel, quoteLineNote, shortReference,
+  capitalizeFirst, describeLine, describePricing, formatLongDate, formatUsd, guestRangeLabel, quoteLineNote, shortReference,
 } from '@/lib/package-page-format'
 import type { PublicPricing, PublicSnapshotItem } from '@/lib/theme-package-public'
 
@@ -94,5 +94,16 @@ describe('shortReference / capitalizeFirst', () => {
   it('capitalizes the first letter only', () => {
     expect(capitalizeFirst('vendor to be assigned')).toBe('Vendor to be assigned')
     expect(capitalizeFirst('')).toBe('')
+  })
+})
+
+describe('formatLongDate', () => {
+  it('formats a YYYY-MM-DD date without shifting the day', () => {
+    expect(formatLongDate('2027-01-05')).toBe('Jan 5, 2027')
+    expect(formatLongDate('2026-12-31')).toBe('Dec 31, 2026')
+    expect(formatLongDate('2028-02-29')).toBe('Feb 29, 2028')
+  })
+  it('returns null for junk, impossible dates and missing values', () => {
+    for (const v of ['2026-02-30', '2026-13-01', '2026-1-5', 'Jan 5', '', null, undefined]) expect(formatLongDate(v)).toBeNull()
   })
 })

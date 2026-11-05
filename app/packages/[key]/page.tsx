@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { PackageConfigurator } from '@/components/custom/packages/PackageConfigurator'
-import { PackageHero } from '@/components/custom/packages/PackageHero'
+import { PackageExperience } from '@/components/custom/packages/PackageExperience'
 import { safeExternalUrl } from '@/lib/safe-url'
 import { getLiveDocument } from '@/lib/theme-package-page-data'
 
@@ -36,8 +35,7 @@ export default async function PackagePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
-      <PackageHero doc={doc} />
-      <PackageConfigurator initialDoc={doc} />
+      <PackageExperience initialDoc={doc} />
     </div>
   )
 }

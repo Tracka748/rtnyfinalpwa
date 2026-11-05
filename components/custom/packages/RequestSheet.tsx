@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useRequestSubmit } from '@/hooks/useRequestSubmit'
 import { Dialog, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { formatUsd, quoteLineNote, shortReference } from '@/lib/package-page-format'
 import {
-  buildRequestBody, classifyRequestResponse, EVENT_TYPE_MAX, initialFormValues, NOTES_MAX, outcomeCopy,
+  buildRequestBody, EVENT_TYPE_MAX, initialFormValues, NOTES_MAX, outcomeCopy,
   validateForm, withPageGuestCount, type FormErrors, type RequestFormValues,
 } from '@/lib/package-request-form'
 import { clearResume, saveResume } from '@/lib/package-resume'
@@ -19,6 +20,7 @@ import { safeSessionStorage, setReturnTo } from '@/lib/return-to'
 import type { LiveDocument, PublicSnapshot } from '@/lib/theme-package-public'
 import { BUDGET_RANGES, todayUtc } from '@/lib/theme-package-public-validation'
 import { SheetDialogContent } from './SheetDialogContent'
+import { primaryButtonClass } from './styles'
 
 const NOT_SURE = 'not-sure' // Radix Select items cannot have an empty value
 
@@ -47,8 +49,7 @@ export function RequestSheet({ open, onOpenChange, doc, selection, guestCount, s
   const [errors, setErrors] = useState<FormErrors>({})
   const [banner, setBanner] = useState<Banner>(null)
   const [view, setView] = useState<View>({ kind: 'form' })
-  const [submitting, setSubmitting] = useState(false)
-  const inFlight = useRef(false)
+  const { submitting, send } = useRequestSubmit(doc.key)
 
   // The guest field never keeps its own stale copy: every time the sheet opens it takes the page's
   // current guest count (clamped). It is deliberately keyed to `open` only, so edits made while the
@@ -74,64 +75,45 @@ export function RequestSheet({ open, onOpenChange, doc, selection, guestCount, s
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (inFlight.current) return // guard the handler itself, not just the button
     const found = validateForm(values, { today: todayUtc(), minGuests: doc.meta.min_guests, maxGuests: doc.meta.max_guests })
     setErrors(found)
     setBanner(null)
     if (Object.keys(found).length > 0) return
 
-    inFlight.current = true
-    setSubmitting(true)
-    try {
-      let status = 0
-      let json: unknown = null
-      try {
-        const res = await fetch(`/api/v1/theme-packages/${encodeURIComponent(doc.key)}/requests`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildRequestBody(doc, toRequestSelection(doc, selection), values)),
-        })
-        status = res.status
-        try { json = await res.json() } catch { json = null }
-      } catch {
-        status = 0
-      }
+    const outcome = await send(buildRequestBody(doc, toRequestSelection(doc, selection), values))
+    if (!outcome) return // a send is already in flight
 
-      const outcome = classifyRequestResponse(status, json)
-      switch (outcome.kind) {
-        case 'created':
-        case 'duplicate':
-          clearResume(safeSessionStorage(), doc.key)
-          setView({ kind: 'confirmed', requestId: outcome.requestId, duplicate: outcome.kind === 'duplicate' })
-          break
-        case 'sign_in': {
-          const storage = safeSessionStorage()
-          saveResume(storage, {
-            v: 1,
-            packageKey: doc.key,
-            versionId: doc.version_id,
-            guestCount,
-            selection: describeSelection(doc, selection),
-            form: values,
-            savedAt: Date.now(),
-          })
-          setReturnTo(storage, `/packages/${doc.key}`)
-          router.push('/login')
-          break
-        }
-        case 'invalid':
-          if (outcome.field) setErrors({ [outcome.field]: outcome.message })
-          else setBanner({ text: outcome.message })
-          break
-        case 'package_updated':
-          setBanner({ text: outcomeCopy(outcome), reload: true })
-          break
-        default:
-          setBanner({ text: outcomeCopy(outcome) })
+    switch (outcome.kind) {
+      case 'created':
+      case 'duplicate':
+        clearResume(safeSessionStorage(), doc.key)
+        setView({ kind: 'confirmed', requestId: outcome.requestId, duplicate: outcome.kind === 'duplicate' })
+        break
+      case 'sign_in': {
+        const storage = safeSessionStorage()
+        saveResume(storage, {
+          v: 1,
+          mode: 'quote',
+          packageKey: doc.key,
+          versionId: doc.version_id,
+          guestCount,
+          selection: describeSelection(doc, selection),
+          form: values,
+          savedAt: Date.now(),
+        })
+        setReturnTo(storage, `/packages/${doc.key}`)
+        router.push('/login')
+        break
       }
-    } finally {
-      inFlight.current = false
-      setSubmitting(false)
+      case 'invalid':
+        if (outcome.field) setErrors({ [outcome.field]: outcome.message })
+        else setBanner({ text: outcome.message })
+        break
+      case 'package_updated':
+        setBanner({ text: outcomeCopy(outcome), reload: true })
+        break
+      default:
+        setBanner({ text: outcomeCopy(outcome) })
     }
   }
 
@@ -153,7 +135,7 @@ export function RequestSheet({ open, onOpenChange, doc, selection, guestCount, s
             <p className="text-sm text-text-primary/60">
               Reference <span className="font-mono text-text-primary">{shortReference(view.requestId)}</span>
             </p>
-            <Button type="button" className="mt-2 min-h-11 px-6" onClick={() => handleOpenChange(false)}>
+            <Button type="button" className={`${primaryButtonClass} mt-2`} onClick={() => handleOpenChange(false)}>
               Back to package
             </Button>
           </div>
@@ -255,7 +237,7 @@ export function RequestSheet({ open, onOpenChange, doc, selection, guestCount, s
                   <SelectTrigger id="rq-budget" className="w-full data-[size=default]:h-11">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[90]">
                     <SelectItem value={NOT_SURE}>Not sure yet</SelectItem>
                     {BUDGET_RANGES.map(b => (
                       <SelectItem key={b} value={b}>{b}</SelectItem>
@@ -281,7 +263,7 @@ export function RequestSheet({ open, onOpenChange, doc, selection, guestCount, s
             </div>
 
             <div className="border-t border-border bg-surface px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-              <Button type="submit" disabled={submitting} className="min-h-12 w-full text-base font-semibold">
+              <Button type="submit" disabled={submitting} className={`${primaryButtonClass} min-h-12 w-full`}>
                 {submitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />

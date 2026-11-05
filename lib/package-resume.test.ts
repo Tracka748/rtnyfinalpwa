@@ -25,7 +25,7 @@ const choice: SavedChoice = {
 }
 const NOW = 1_800_000_000_000
 const payload = (over: Partial<ResumePayload> = {}): ResumePayload => ({
-  v: 1, packageKey: 'spooky_birthday', versionId: 'v1', guestCount: 25, selection: [choice],
+  v: 1, mode: 'quote', packageKey: 'spooky_birthday', versionId: 'v1', guestCount: 25, selection: [choice],
   form: { eventDate: '2027-01-15', eventType: 'Birthday', guestCount: '25', budgetRange: '', notes: 'hi' },
   savedAt: NOW, ...over,
 })
@@ -89,5 +89,28 @@ describe('clearResume', () => {
     clearResume(s, 'spooky_birthday')
     expect(loadResume(s, 'spooky_birthday', NOW)).toBeNull()
     expect(loadResume(s, 'other', NOW)).not.toBeNull()
+  })
+})
+
+describe('resume mode (reserve or quote)', () => {
+  it('round-trips both modes', () => {
+    for (const mode of ['reserve', 'quote'] as const) {
+      const s = memoryStorage()
+      saveResume(s, payload({ mode }))
+      expect(loadResume(s, 'spooky_birthday', NOW + 1000)?.mode).toBe(mode)
+    }
+  })
+  it('a payload saved before the reserve flow (no mode) loads as a quote request', () => {
+    const s = memoryStorage()
+    const { mode: _mode, ...legacy } = payload()
+    s.data.set(RESUME_PREFIX + 'spooky_birthday', JSON.stringify(legacy))
+    expect(loadResume(s, 'spooky_birthday', NOW)?.mode).toBe('quote')
+  })
+  it('an unknown mode is rejected', () => {
+    const s = memoryStorage()
+    for (const mode of ['buy', '', null, 5, {}]) {
+      s.data.set(RESUME_PREFIX + 'spooky_birthday', JSON.stringify({ ...payload(), mode }))
+      expect(loadResume(s, 'spooky_birthday', NOW)).toBeNull()
+    }
   })
 })

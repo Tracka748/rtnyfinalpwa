@@ -1,10 +1,10 @@
 // Browser-side helpers for the server price preview. fetch is injected so this is testable in node.
 
-import type { LiveDocument, PublicSnapshot } from '@/lib/theme-package-public'
+import { projectReservation, type LiveDocument, type PublicReservation, type PublicSnapshot } from '@/lib/theme-package-public'
 import type { SelectionInput } from '@/lib/theme-package-public-validation'
 
 export type PreviewResult =
-  | { kind: 'ok'; snapshot: PublicSnapshot }
+  | { kind: 'ok'; snapshot: PublicSnapshot; reservation: PublicReservation | null }
   | { kind: 'rejected'; message: string }
   | { kind: 'not_found' }
   | { kind: 'unavailable' }
@@ -32,7 +32,7 @@ const readJson = async (res: Response): Promise<unknown> => {
 export async function fetchPreview(
   fetchFn: typeof fetch,
   packageKey: string,
-  body: { selection: SelectionInput; guest_count: number },
+  body: { selection: SelectionInput; guest_count: number; event_date?: string },
   signal?: AbortSignal
 ): Promise<PreviewResult> {
   let res: Response
@@ -52,7 +52,10 @@ export async function fetchPreview(
     const message = isObject(json) && typeof json.error === 'string' ? json.error.slice(0, 200) : ''
     return { kind: 'rejected', message }
   }
-  if (res.ok && isObject(json) && json.success === true && isSnapshot(json.data)) return { kind: 'ok', snapshot: json.data }
+  const data = isObject(json) ? json.data : undefined
+  if (res.ok && isObject(json) && json.success === true && isObject(data) && isSnapshot(data)) {
+    return { kind: 'ok', snapshot: data, reservation: projectReservation({ reservation: data.reservation }) }
+  }
   return { kind: 'unavailable' }
 }
 

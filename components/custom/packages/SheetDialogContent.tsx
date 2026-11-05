@@ -8,15 +8,16 @@ import { cn } from '@/lib/utils'
 
 /**
  * Bottom sheet below 768px, centered modal from 768px up: CSS only, one Radix Dialog (focus trap,
- * Escape and scroll lock included). Animations are skipped for prefers-reduced-motion users.
+ * Escape and scroll lock included). Overlay and content sit at z-80, above the site nav (z-55) and its
+ * drawer (z-70); selects opened inside the sheet need z-90. Animations are skipped for prefers-reduced-motion users.
  */
 export function SheetDialogContent({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className="z-[80]" />
       <DialogPrimitive.Content
         className={cn(
-          'fixed inset-x-0 bottom-0 z-50 flex max-h-[calc(100dvh-5rem)] flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-surface shadow-xl outline-none',
+          'fixed inset-x-0 bottom-0 z-[80] flex max-h-[calc(100dvh-5rem)] flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-surface shadow-xl outline-none',
           'md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl',
           'motion-safe:data-[state=open]:animate-in motion-safe:data-[state=closed]:animate-out',
           'motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=closed]:fade-out-0',

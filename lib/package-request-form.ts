@@ -2,7 +2,7 @@
 // feedback; the server stays the authority.
 
 import { GUEST_LIMITS, clampGuestCount } from '@/lib/package-selection'
-import type { LiveDocument } from '@/lib/theme-package-public'
+import { projectReservation, type LiveDocument, type PublicReservation } from '@/lib/theme-package-public'
 import type { SelectionInput } from '@/lib/theme-package-public-validation'
 
 export const EVENT_TYPE_MAX = 80
@@ -20,7 +20,7 @@ export type FormErrors = Partial<Record<FormField, string>>
 
 const CONTROL_CHARS_RE = /[\u0000-\u001F\u007F-\u009F]/
 
-function isRealDate(s: string): boolean {
+export function isRealDate(s: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
   if (!m) return false
   const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3])
@@ -82,6 +82,7 @@ export function validateForm(
 
 export interface RequestBody {
   version_id: string
+  intent: 'quote'
   selection: SelectionInput
   event_date: string
   guest_count: number
@@ -90,17 +91,24 @@ export interface RequestBody {
   notes?: string
 }
 
+/** The event type to send: nothing when it is blank or unchanged from the package occasion. */
+export function eventTypeToSend(doc: LiveDocument, v: RequestFormValues): string | null {
+  const eventType = v.eventType.trim()
+  return eventType !== '' && eventType !== doc.occasion.trim() ? eventType : null
+}
+
 /** Never carries prices, package ids, a user id or an email: only what the customer chose. */
 export function buildRequestBody(doc: LiveDocument, selection: SelectionInput, v: RequestFormValues): RequestBody {
   const body: RequestBody = {
     version_id: doc.version_id,
+    intent: 'quote',
     selection,
     event_date: v.eventDate,
     guest_count: Number(v.guestCount.trim()),
   }
   if (v.budgetRange.trim() !== '') body.budget_range = v.budgetRange
-  const eventType = v.eventType.trim()
-  if (eventType !== '' && eventType !== doc.occasion.trim()) body.event_type = eventType
+  const eventType = eventTypeToSend(doc, v)
+  if (eventType) body.event_type = eventType
   const notes = v.notes.trim()
   if (notes !== '') body.notes = notes
   return body
@@ -109,7 +117,7 @@ export function buildRequestBody(doc: LiveDocument, selection: SelectionInput, v
 // ---- server responses ----
 
 export type RequestOutcome =
-  | { kind: 'created'; requestId: string }
+  | { kind: 'created'; requestId: string; reservation: PublicReservation | null }
   | { kind: 'duplicate'; requestId: string }
   | { kind: 'sign_in' }
   | { kind: 'verify_email' }
@@ -137,7 +145,9 @@ export function classifyRequestResponse(status: number, body: unknown): RequestO
   switch (status) {
     case 201: {
       const id = isObject(data.data) ? data.data.request_id : undefined
-      return typeof id === 'string' && id ? { kind: 'created', requestId: id } : { kind: 'error' }
+      return typeof id === 'string' && id
+        ? { kind: 'created', requestId: id, reservation: projectReservation({ reservation: isObject(data.data) ? data.data.reservation : null }) }
+        : { kind: 'error' }
     }
     case 401:
       return { kind: 'sign_in' }

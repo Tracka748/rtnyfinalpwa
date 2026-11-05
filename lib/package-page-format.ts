@@ -51,6 +51,16 @@ export function guestRangeLabel(min: number | null, max: number | null): string 
   return null
 }
 
+const LONG_DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+/** '2027-01-05' -> 'Jan 5, 2027'. Parsed by hand and formatted in UTC so the day never shifts; junk returns null. */
+export function formatLongDate(iso: string | null | undefined): string | null {
+  const m = typeof iso === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null
+  if (!m) return null
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  return d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]) ? LONG_DATE.format(d) : null
+}
+
 export function shortReference(requestId: string): string {
   return `REQ-${requestId.replace(/-/g, '').slice(0, 8).toUpperCase()}`
 }

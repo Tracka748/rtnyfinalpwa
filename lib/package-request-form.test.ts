@@ -94,7 +94,7 @@ describe('validateForm', () => {
 describe('buildRequestBody', () => {
   it('sends the version, selection, date and guests; leaves out everything the customer left blank', () => {
     expect(buildRequestBody(doc(), selection, good)).toEqual({
-      version_id: VERSION_ID, selection, event_date: '2026-12-25', guest_count: 20,
+      version_id: VERSION_ID, intent: 'quote', selection, event_date: '2026-12-25', guest_count: 20,
     })
   })
   it('"Not sure yet" sends no budget; a chosen budget is sent as is', () => {
@@ -119,7 +119,7 @@ describe('buildRequestBody', () => {
   })
   it('only ever contains the allowed keys: no prices, package ids, user id or email', () => {
     const body = buildRequestBody(doc(), selection, { ...good, budgetRange: BUDGET_RANGES[0], eventType: 'Baby shower', notes: 'hi' })
-    const allowed = ['version_id', 'selection', 'event_date', 'guest_count', 'budget_range', 'event_type', 'notes']
+    const allowed = ['version_id', 'intent', 'selection', 'event_date', 'guest_count', 'budget_range', 'event_type', 'notes']
     expect(Object.keys(body).every(k => allowed.includes(k))).toBe(true)
   })
   it('is accepted by the server validator for every combination of optional fields', () => {
@@ -136,9 +136,15 @@ describe('buildRequestBody', () => {
 
 describe('classifyRequestResponse', () => {
   it('201 with a request id -> created (without one -> error)', () => {
-    expect(classifyRequestResponse(201, { success: true, data: { request_id: 'abc' } })).toEqual({ kind: 'created', requestId: 'abc' })
+    expect(classifyRequestResponse(201, { success: true, data: { request_id: 'abc' } })).toEqual({ kind: 'created', requestId: 'abc', reservation: null })
     expect(classifyRequestResponse(201, { success: true, data: {} })).toEqual({ kind: 'error' })
     expect(classifyRequestResponse(201, null)).toEqual({ kind: 'error' })
+  })
+  it('201 carries the allowlisted reservation numbers (never the stored terms)', () => {
+    const reservation = { mode: 'structured', guest_count: 20, extra_guests: 10, extras_total: 300, subtotal: 975, service_charge: 195, total: 1170, deposit: 200, balance: 970, balance_due_date: '2099-01-05' }
+    const out = classifyRequestResponse(201, { success: true, data: { request_id: 'abc', request_kind: 'reserve', reservation: { ...reservation, terms: { base_price: 675 } } } })
+    expect(out).toEqual({ kind: 'created', requestId: 'abc', reservation })
+    expect(classifyRequestResponse(201, { success: true, data: { request_id: 'abc', reservation: { mode: 'free_text' } } })).toEqual({ kind: 'created', requestId: 'abc', reservation: { mode: 'free_text' } })
   })
   it('401 -> sign_in', () => {
     expect(classifyRequestResponse(401, { success: false, error: 'Not authenticated' })).toEqual({ kind: 'sign_in' })
