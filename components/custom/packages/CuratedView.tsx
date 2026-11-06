@@ -16,13 +16,15 @@ interface Props {
   linesByComponent: Map<string, PublicSnapshotItem>
   selectionIsCurated: boolean
   headingRef: Ref<HTMLHeadingElement>
+  /** Goes on the inline primary button so the page can hide the sticky bar while it is in view. */
+  ctaRef: Ref<HTMLButtonElement>
   onPrimary: () => void
   onCustomize: () => void
 }
 
 const TONE = { price: 'text-accent-primary', free: 'text-accent-secondary', quote: 'text-text-secondary' } as const
 
-export function CuratedView({ doc, linesByComponent, selectionIsCurated, headingRef, onPrimary, onCustomize }: Props) {
+export function CuratedView({ doc, linesByComponent, selectionIsCurated, headingRef, ctaRef, onPrimary, onCustomize }: Props) {
   const { meta } = doc
   const cover = safeExternalUrl(meta.cover_image_url)
   const story = safeExternalUrl(meta.magazine_url)
@@ -131,12 +133,12 @@ export function CuratedView({ doc, linesByComponent, selectionIsCurated, heading
       )}
 
       <section aria-label="Next step" className="flex flex-col items-start gap-2">
-        <Button type="button" className={primaryButtonClass} disabled={action.disabled} onClick={onPrimary}>
+        <Button ref={ctaRef} type="button" className={primaryButtonClass} disabled={action.disabled} onClick={onPrimary}>
           {action.label}
         </Button>
         {action.sublabel && <p className="text-sm text-text-primary/70">{action.sublabel}</p>}
         {showCustomizeLink(doc) && (
-          <button type="button" className={textButtonClass} onClick={onCustomize}>
+          <button type="button" className={`${textButtonClass} -ml-4`} onClick={onCustomize}>
             Customize this experience
           </button>
         )}

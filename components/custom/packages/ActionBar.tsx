@@ -20,12 +20,20 @@ interface Props {
   busy?: boolean
   action: BarAction
   onRetry?: () => void
+  /** False slides the bar out and takes it out of the tab order. It stays mounted and fixed, so nothing shifts. */
+  visible?: boolean
 }
 
 /** The slim sticky bar used in both modes. Fixed height, safe-area padding, 44px targets. */
-export function ActionBar({ caption, text, note, dim, busy, action, onRetry }: Props) {
+export function ActionBar({ caption, text, note, dim, busy, action, onRetry, visible = true }: Props) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg">
+    <div
+      className={cn(
+        'fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg',
+        'transition-[transform,visibility] duration-200 motion-reduce:transition-none',
+        visible ? 'visible translate-y-0' : 'invisible translate-y-full'
+      )}
+    >
       <div className="mx-auto flex h-[72px] max-w-3xl items-center gap-3 px-4">
         <div className="min-w-0 flex-1" aria-live="polite" aria-atomic="true" aria-busy={busy}>
           {caption && <p className="font-label truncate text-[10px] tracking-widest text-text-secondary">{caption}</p>}

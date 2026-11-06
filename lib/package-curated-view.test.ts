@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   curatedBarText, customizeBarText, customizeSubtotalText, includedItems, isCuratedSelection, primaryAction,
-  showCustomizeLink, showItemPrices, toParagraphs,
+  showCustomizeLink, showItemPrices, showStickyBar, toParagraphs,
 } from '@/lib/package-curated-view'
 import { initialSelection, swapOption, toggleOptional } from '@/lib/package-selection'
 import type { LiveDocument, PublicComponent, PublicOption } from '@/lib/theme-package-public'
@@ -207,5 +207,18 @@ describe('isCuratedSelection', () => {
     expect(isCuratedSelection(d, toggled)).toBe(false)
     expect(isCuratedSelection(d, toggleOptional(toggled, d, 'c2'))).toBe(true)
     expect(isCuratedSelection(d, swapOption(sel, d, 'c1', 'o2'))).toBe(false)
+  })
+})
+
+describe('showStickyBar', () => {
+  it('no inline button (customize view): always shown, whatever the observer says', () => {
+    for (const inView of [null, true, false]) expect(showStickyBar({ hasInlineCta: false, inView })).toBe(true)
+  })
+  it('inline button in view or not yet known: hidden', () => {
+    expect(showStickyBar({ hasInlineCta: true, inView: true })).toBe(false)
+    expect(showStickyBar({ hasInlineCta: true, inView: null })).toBe(false)
+  })
+  it('inline button out of view: shown', () => {
+    expect(showStickyBar({ hasInlineCta: true, inView: false })).toBe(true)
   })
 })

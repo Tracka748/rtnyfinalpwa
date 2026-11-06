@@ -6,9 +6,10 @@ import { CuratedView } from './CuratedView'
 import { CustomizeView } from './CustomizeView'
 import { RequestSheet } from './RequestSheet'
 import { ReserveSheet } from './ReserveSheet'
+import { useInlineCtaInView } from '@/hooks/useInlineCtaInView'
 import { lastGood, usePackagePreview } from '@/hooks/usePackagePreview'
 import {
-  curatedBarText, customizeBarText, isCuratedSelection, primaryAction, showItemPrices,
+  curatedBarText, customizeBarText, isCuratedSelection, primaryAction, showItemPrices, showStickyBar,
 } from '@/lib/package-curated-view'
 import { parseLiveDocumentResponse } from '@/lib/package-preview-client'
 import { initialFormValues, withPageGuestCount, type RequestFormValues } from '@/lib/package-request-form'
@@ -47,6 +48,7 @@ export function PackageExperience({ initialDoc }: { initialDoc: LiveDocument }) 
 
   const headingRef = useRef<HTMLHeadingElement>(null)
   const firstRender = useRef(true)
+  const { ref: ctaRef, inView: ctaInView } = useInlineCtaInView()
 
   // Prices are needed in customize mode, and in the curated view only for packages without pricing terms.
   const needsPrices = doc.requestable && (mode === 'customize' || showItemPrices(doc))
@@ -151,6 +153,7 @@ export function PackageExperience({ initialDoc }: { initialDoc: LiveDocument }) 
           linesByComponent={linesByComponent}
           selectionIsCurated={isCuratedSelection(doc, selection)}
           headingRef={headingRef}
+          ctaRef={ctaRef}
           onPrimary={onPrimary}
           onCustomize={() => setMode('customize')}
         />
@@ -171,6 +174,7 @@ export function PackageExperience({ initialDoc }: { initialDoc: LiveDocument }) 
 
       {mode === 'curated' ? (
         <ActionBar
+          visible={showStickyBar({ hasInlineCta: true, inView: ctaInView })}
           caption={curatedBar.caption}
           text={curatedBar.text}
           dim={showItemPrices(doc) && preview.status !== 'ready'}

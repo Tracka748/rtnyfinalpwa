@@ -109,3 +109,11 @@ export function customizeBarText(input: {
     : null
   return { text, note, dim: status === 'loading' }
 }
+
+/**
+ * Whether the sticky bar shows. With no inline button (customize view) it always shows. With one, it stays
+ * hidden while the button is in view and while that is not yet known (no flash on first paint).
+ */
+export function showStickyBar({ hasInlineCta, inView }: { hasInlineCta: boolean; inView: boolean | null }): boolean {
+  return !hasInlineCta || inView === false
+}
