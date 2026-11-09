@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
@@ -3270,7 +3270,7 @@ export type Database = {
           request_source: string
           selected_package_id: string | null
           selected_service_ids: string[] | null
-          status: string | null
+          status: string
           time_end: string | null
           time_start: string | null
           user_id: string | null
@@ -3296,7 +3296,7 @@ export type Database = {
           request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
-          status?: string | null
+          status?: string
           time_end?: string | null
           time_start?: string | null
           user_id?: string | null
@@ -3322,7 +3322,7 @@ export type Database = {
           request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
-          status?: string | null
+          status?: string
           time_end?: string | null
           time_start?: string | null
           user_id?: string | null
@@ -3849,6 +3849,44 @@ export type Database = {
         }
         Relationships: []
       }
+      request_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          key: string
+          label: string
+          specialist_type_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          specialist_type_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          specialist_type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_categories_specialist_type_id_fkey"
+            columns: ["specialist_type_id"]
+            isOneToOne: false
+            referencedRelation: "specialist_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           content: string | null
@@ -4364,8 +4402,10 @@ export type Database = {
       }
       theme_packages: {
         Row: {
+          category_id: string | null
           created_at: string
           created_by: string | null
+          curator_id: string | null
           id: string
           key: string
           live_version_id: string | null
@@ -4375,8 +4415,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
+          curator_id?: string | null
           id?: string
           key: string
           live_version_id?: string | null
@@ -4386,8 +4428,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
+          curator_id?: string | null
           id?: string
           key?: string
           live_version_id?: string | null
@@ -4398,8 +4442,22 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "theme_packages_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "request_categories"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "theme_packages_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_packages_curator_id_fkey"
+            columns: ["curator_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -5629,6 +5687,14 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      request_eligible_coordinators: {
+        Args: never
+        Returns: {
+          coordinator_id: string
+          is_admin: boolean
+          specialist_type_keys: string[]
+        }[]
       }
       specialist_access: {
         Args: { p_capability: string; p_user_id: string }
