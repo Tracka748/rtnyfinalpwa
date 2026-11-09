@@ -3887,6 +3887,78 @@ export type Database = {
           },
         ]
       }
+      request_notifications: {
+        Row: {
+          audience: string
+          created_at: string
+          dedupe_key: string
+          email_attempts: number
+          email_last_error: string | null
+          email_locked_until: string | null
+          email_next_attempt_at: string
+          email_provider_id: string | null
+          email_sent_at: string | null
+          email_status: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_user_id: string
+          request_id: string
+          updated_at: string
+        }
+        Insert: {
+          audience: string
+          created_at?: string
+          dedupe_key: string
+          email_attempts?: number
+          email_last_error?: string | null
+          email_locked_until?: string | null
+          email_next_attempt_at?: string
+          email_provider_id?: string | null
+          email_sent_at?: string | null
+          email_status?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_user_id: string
+          request_id: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          dedupe_key?: string
+          email_attempts?: number
+          email_last_error?: string | null
+          email_locked_until?: string | null
+          email_next_attempt_at?: string
+          email_provider_id?: string | null
+          email_sent_at?: string | null
+          email_status?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_user_id?: string
+          request_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_notifications_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_notifications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "plan_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           content: string | null
@@ -5695,6 +5767,42 @@ export type Database = {
           is_admin: boolean
           specialist_type_keys: string[]
         }[]
+      }
+      request_notifications_claim_email: {
+        Args: { p_limit?: number; p_request_id?: string }
+        Returns: {
+          audience: string
+          created_at: string
+          dedupe_key: string
+          email_attempts: number
+          email_last_error: string | null
+          email_locked_until: string | null
+          email_next_attempt_at: string
+          email_provider_id: string | null
+          email_sent_at: string | null
+          email_status: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_user_id: string
+          request_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "request_notifications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      request_notifications_mark_email: {
+        Args: {
+          p_error_code?: string
+          p_id: string
+          p_outcome: string
+          p_provider_message_id?: string
+        }
+        Returns: boolean
       }
       specialist_access: {
         Args: { p_capability: string; p_user_id: string }
