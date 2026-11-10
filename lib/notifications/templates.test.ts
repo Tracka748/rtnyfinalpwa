@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CUSTOMER_STATUS_COPY,
   buildCustomerConfirmationEmail,
+  buildCustomerStatusEmail,
+  buildStaffAssignedEmail,
   buildStaffNewRequestEmail,
   escapeHtml,
-  normalizeAppUrl,
+  isCustomerStatus,
+  parseBaseUrl,
   requestTypeLabel,
 } from '@/lib/notifications/templates'
 
@@ -15,15 +19,88 @@ describe('escapeHtml', () => {
   })
 })
 
-describe('normalizeAppUrl', () => {
-  it('accepts http(s) urls and strips trailing slashes', () => {
-    expect(normalizeAppUrl('https://app.example.com/')).toBe('https://app.example.com')
-    expect(normalizeAppUrl(' http://localhost:3000// ')).toBe('http://localhost:3000')
+describe('parseBaseUrl', () => {
+  it('accepts an https origin and normalizes away the trailing slash', () => {
+    expect(parseBaseUrl('https://app.example.com')).toBe('https://app.example.com')
+    expect(parseBaseUrl('https://app.example.com/')).toBe('https://app.example.com')
+    expect(parseBaseUrl('  https://app.example.com/  ')).toBe('https://app.example.com')
+    expect(parseBaseUrl('https://app.example.com:8443')).toBe('https://app.example.com:8443')
+    expect(parseBaseUrl('HTTPS://APP.EXAMPLE.COM')).toBe('https://app.example.com')
   })
-  it('rejects empty, schemeless and hostile values', () => {
-    for (const bad of [undefined, null, '', 'app.example.com', 'javascript:alert(1)', 'https://x.com/"><img src=x>', 'https://x.com/a b', "https://x.com/'"]) {
-      expect(normalizeAppUrl(bad as never)).toBeNull()
-    }
+
+  it.each([
+    ['http scheme', 'http://app.example.com'],
+    ['localhost over http', 'http://localhost:3000'],
+    ['a path', 'https://app.example.com/admin'],
+    ['a query', 'https://app.example.com?test=1'],
+    ['an empty query', 'https://app.example.com/?'],
+    ['credentials', 'https://user:pass@app.example.com'],
+    ['a username only', 'https://user@app.example.com'],
+    ['a fragment', 'https://app.example.com/#section'],
+    ['an empty fragment', 'https://app.example.com/#'],
+    ['a doubled slash path', 'https://app.example.com//'],
+    ['javascript:', 'javascript:alert(1)'],
+    ['a schemeless host', 'app.example.com'],
+    ['a hostile value', 'https://app.example.com/"><img src=x>'],
+    ['an embedded space', 'https://app example.com'],
+    ['empty', ''],
+    ['whitespace only', '   '],
+  ])('rejects %s', (_name, value) => {
+    expect(parseBaseUrl(value)).toBeNull()
+  })
+
+  it('rejects null and undefined', () => {
+    expect(parseBaseUrl(null)).toBeNull()
+    expect(parseBaseUrl(undefined)).toBeNull()
+  })
+})
+
+describe('buildStaffAssignedEmail', () => {
+  const email = buildStaffAssignedEmail({ requestId: ID, appUrl: 'https://app.example.com' })
+
+  it('has the fixed subject and a link built from the given origin', () => {
+    expect(email.subject).toBe('A request was assigned to you')
+    expect(email.text).toContain(`https://app.example.com/admin/requests/${ID}`)
+    expect(email.html).toContain(`href="https://app.example.com/admin/requests/${ID}"`)
+  })
+
+  it('is link-only: no reason, note, customer or type text', () => {
+    const body = `${email.subject}${email.html}${email.text}`
+    expect(body).not.toMatch(/reason|note:|@|Package|Plan My Event/i)
+  })
+
+  it('rejects a request id that is not a uuid', () => {
+    expect(() => buildStaffAssignedEmail({ requestId: 'x"><script>', appUrl: 'https://app.example.com' })).toThrow()
+  })
+})
+
+describe('buildCustomerStatusEmail', () => {
+  const EXPECTED = {
+    date_confirmed: 'Your event date has been confirmed. Our team will be in touch with next steps.',
+    deposit_requested: 'Your event request has moved to the deposit stage. Please look out for further instructions from our team.',
+    declined: "Unfortunately, we're unable to move forward with your event request at this time. Thank you for considering RocTicketNy.",
+    cancelled: 'Your event request has been cancelled. If you believe this was done in error, please contact our team at hello@rocticketny.com.',
+  } as const
+
+  it('has exactly the four customer statuses', () => {
+    expect(Object.keys(CUSTOMER_STATUS_COPY).sort()).toEqual(Object.keys(EXPECTED).sort())
+    expect(isCustomerStatus('pending')).toBe(false)
+    expect(isCustomerStatus('in_progress')).toBe(false)
+    expect(isCustomerStatus('constructor')).toBe(false)
+  })
+
+  it.each(Object.entries(EXPECTED))('%s uses the exact copy in the text and HTML parts, with no link', (status, copy) => {
+    const email = buildCustomerStatusEmail({ status: status as keyof typeof EXPECTED })
+    expect(email.subject).toBe('An update on your event request')
+    expect(email.text).toBe(copy)
+    expect(email.html).toContain(escapeHtml(copy))
+    expect(email.html).not.toMatch(/href|https?:\/\//i)
+    expect(email.text).not.toMatch(/https?:\/\//i)
+  })
+
+  it('makes no response-time promise and rejects an unknown status', () => {
+    for (const copy of Object.values(EXPECTED)) expect(copy).not.toMatch(/\b(within|hours?|days?|24|48)\b/i)
+    expect(() => buildCustomerStatusEmail({ status: 'pending' as never })).toThrow()
   })
 })
 

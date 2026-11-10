@@ -13,11 +13,33 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-/** http(s) URL without whitespace or quote/angle characters, trailing slashes removed; else null. */
-export function normalizeAppUrl(raw: string | null | undefined): string | null {
-  const v = (raw ?? '').trim().replace(/\/+$/, '')
-  return /^https?:\/\/[^\s"'<>\\]+$/i.test(v) ? v : null
+/**
+ * Strict base URL for links in emails. Valid only when it parses, is https, has a host, carries no
+ * credentials, has an empty or "/" path, and has no query or fragment. The URL parser drops an empty
+ * "?" or "#", so a raw "?" or "#" is rejected too. The result is the parsed origin (no trailing slash).
+ */
+export function parseBaseUrl(raw: string | null | undefined): string | null {
+  const v = (raw ?? '').trim()
+  if (!v || v.includes('?') || v.includes('#')) return null
+  let u: URL
+  try { u = new URL(v) } catch { return null }
+  if (u.protocol !== 'https:' || !u.hostname) return null
+  if (u.username || u.password) return null
+  if (u.pathname !== '' && u.pathname !== '/') return null
+  if (u.search || u.hash) return null
+  return u.origin
 }
+
+/** Exact customer wording per status. Fixed text only: no links, no reasons, no staff notes. */
+export const CUSTOMER_STATUS_COPY = {
+  date_confirmed: 'Your event date has been confirmed. Our team will be in touch with next steps.',
+  deposit_requested: 'Your event request has moved to the deposit stage. Please look out for further instructions from our team.',
+  declined: "Unfortunately, we're unable to move forward with your event request at this time. Thank you for considering RocTicketNy.",
+  cancelled: 'Your event request has been cancelled. If you believe this was done in error, please contact our team at hello@rocticketny.com.',
+} as const
+export type CustomerStatus = keyof typeof CUSTOMER_STATUS_COPY
+export const isCustomerStatus = (v: unknown): v is CustomerStatus =>
+  typeof v === 'string' && Object.prototype.hasOwnProperty.call(CUSTOMER_STATUS_COPY, v)
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -61,6 +83,31 @@ export function buildStaffNewRequestEmail(o: {
     ),
     text: `A new ${label} was submitted.\n\nOpen the request: ${link}\n\nSign in with a staff account to view the details. This email does not include customer information.`,
   }
+}
+
+/** appUrl must already be a parseBaseUrl result. Link-only: no reason, note or customer details. */
+export function buildStaffAssignedEmail(o: { requestId: string; appUrl: string }): EmailContent {
+  if (!UUID.test(o.requestId)) throw new Error('invalid_request_id')
+  const link = `${o.appUrl}/admin/requests/${o.requestId}`
+  const subject = 'A request was assigned to you'
+  return {
+    subject,
+    html: layout(
+      subject,
+      `<p>A request has been assigned to you.</p>
+<p><a href="${escapeHtml(link)}" style="color:#1AC8ED;">Open the request</a></p>
+<p style="color:#666;font-size:13px;">Sign in with a staff account to view the details. This email does not include customer information.</p>`
+    ),
+    text: `A request has been assigned to you.\n\nOpen the request: ${link}\n\nSign in with a staff account to view the details. This email does not include customer information.`,
+  }
+}
+
+/** Exact copy for the status, no links. */
+export function buildCustomerStatusEmail(o: { status: CustomerStatus }): EmailContent {
+  if (!isCustomerStatus(o.status)) throw new Error('invalid_status')
+  const copy = CUSTOMER_STATUS_COPY[o.status]
+  const subject = 'An update on your event request'
+  return { subject, html: layout(subject, `<p>${escapeHtml(copy)}</p>`), text: copy }
 }
 
 export function buildCustomerConfirmationEmail(o: { source: string | null; kind: string | null }): EmailContent {
