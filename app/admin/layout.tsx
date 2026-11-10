@@ -7,6 +7,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
+  // Everything under /admin, including /admin/requests, is gated by this admin-only check.
   const { isAdmin, user } = await checkAdminAccess();
 
   if (!isAdmin) {

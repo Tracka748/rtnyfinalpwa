@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { useInboxUnread } from '@/hooks/useInboxUnread';
+import { badgeText } from '@/lib/request-inbox-ui';
 
-type NavItem = { href: string; icon: string; label: string };
+type NavItem = { href: string; icon: string; label: string; badge?: 'requests' };
 type NavGroup = { icon: string; label: string; children: NavItem[] };
 type NavEntry = NavItem | NavGroup;
 
@@ -19,6 +21,8 @@ const navItems: NavEntry[] = [
   { href: '/admin/promoter-applications', icon: '📝', label: 'Applications' },
   { href: '/admin/event-drafts', icon: '✏️', label: 'Drafts' },
   { href: '/admin/theme-verification', icon: '🎨', label: 'Theme Verification' },
+  // PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
+  { href: '/admin/requests', icon: '📥', label: 'Requests', badge: 'requests' },
   { href: '/admin/orders', icon: '🛒', label: 'Orders' },
   { href: '/admin/users', icon: '👥', label: 'Users' },
   { href: '/admin/groups', icon: '👥', label: 'Groups' },
@@ -46,6 +50,7 @@ const pageTitles: Record<string, string> = {
   '/admin/promoter-applications': 'Applications',
   '/admin/event-drafts': 'Drafts',
   '/admin/theme-verification': 'Theme Verification',
+  '/admin/requests': 'Requests',
   '/admin/orders': 'Orders',
   '/admin/users': 'User Management',
   '/admin/groups': 'Group Management',
@@ -66,6 +71,7 @@ interface AdminShellProps {
 
 export function AdminShell({ children, userEmail }: AdminShellProps) {
   const pathname = usePathname();
+  const unreadRequests = badgeText(useInboxUnread());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -102,7 +108,8 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
     if (isMobile) setSidebarOpen(false);
   }, [pathname, isMobile]);
 
-  const pageTitle = pageTitles[pathname] ?? 'Admin';
+  const pageTitle =
+    pageTitles[pathname] ?? (pathname.startsWith('/admin/requests/') ? 'Request' : 'Admin');
 
   return (
     <div className="min-h-screen bg-[#121113] flex">
@@ -216,7 +223,15 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                 ].join(' ')}
               >
                 <span className="text-lg shrink-0">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge === 'requests' && unreadRequests && (
+                  <span
+                    className="min-w-[1.25rem] rounded-full bg-[#59FFA0] px-1.5 text-center text-[10px] font-bold leading-5 text-black"
+                    aria-label={`${unreadRequests} unread requests`}
+                  >
+                    {unreadRequests}
+                  </span>
+                )}
               </a>
             );
           })}
