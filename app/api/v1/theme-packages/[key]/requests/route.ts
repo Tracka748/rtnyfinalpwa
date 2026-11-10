@@ -5,6 +5,7 @@ import { fail, mapDbError, ok, readJson } from '@/lib/catalog-api'
 import { projectReservation } from '@/lib/theme-package-public'
 import { checkRequestAbuse, getVerifiedEmail, resolveLivePackage } from '@/lib/theme-package-public-api'
 import { isSlugKey, validateCreateRequestBody } from '@/lib/theme-package-public-validation'
+import { scheduleOutbox } from '@/lib/notifications/outbox'
 
 // Requests are created ONLY by theme_package_create_request. The user id comes from the session,
 // the contact email from the account, and every price/vendor/service/snapshot is built server-side.
@@ -69,6 +70,8 @@ export async function POST(
     // Read the stored row back only to return its allowlisted reservation numbers. If this read
     // fails the request still exists, so log and still succeed.
     const requestId = data as string
+    // Notification rows were queued by the plan_requests insert trigger; send them after the response.
+    scheduleOutbox(requestId)
     const { data: row, error: readErr } = await supabase
       .from('plan_requests')
       .select('request_kind, package_snapshot')

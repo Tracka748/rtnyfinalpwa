@@ -6,7 +6,9 @@ const h = vi.hoisted(() => ({
   requireAdmin: vi.fn(),
   requireCapability: vi.fn(),
   createSupabaseAdmin: vi.fn(),
+  scheduleOutbox: vi.fn(),
 }))
+vi.mock('@/lib/notifications/outbox', () => ({ scheduleOutbox: h.scheduleOutbox }))
 vi.mock('@/lib/authz', async () => {
   const actual = await vi.importActual<typeof import('@/lib/authz')>('@/lib/authz')
   return { ...actual, requireUser: h.requireUser, requireAdmin: h.requireAdmin, requireCapability: h.requireCapability }
@@ -70,6 +72,28 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, 'error').mockImplementation(() => {})
   h.requireUser.mockResolvedValue({ error: false, response: null, userId: SESSION })
+})
+
+describe('POST /theme-packages/[key]/requests: notification scheduling', () => {
+  it('schedules the outbox for the new request after the RPC succeeds', async () => {
+    setup()
+    expect((await send(BODY)).status).toBe(201)
+    expect(h.scheduleOutbox).toHaveBeenCalledTimes(1)
+    expect(h.scheduleOutbox).toHaveBeenCalledWith(NEW_ID)
+  })
+
+  it('still schedules when the read-back fails (the request exists)', async () => {
+    setup({ readback: { data: null, error: { code: 'XX000', message: 'x' } } })
+    expect((await send(BODY)).status).toBe(201)
+    expect(h.scheduleOutbox).toHaveBeenCalledWith(NEW_ID)
+  })
+
+  it('does not schedule when the RPC fails or the body is invalid', async () => {
+    setup({ rpc: { data: null, error: { code: 'XX000', message: 'x' } } })
+    await send(BODY)
+    await send({ ...BODY, guest_count: 0 })
+    expect(h.scheduleOutbox).not.toHaveBeenCalled()
+  })
 })
 
 describe('POST /theme-packages/[key]/requests', () => {

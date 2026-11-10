@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database'
+import { scheduleOutbox } from '@/lib/notifications/outbox'
 
 type PlanRequestInsert = Database['public']['Tables']['plan_requests']['Insert']
 
@@ -142,6 +143,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Notification rows were queued by the plan_requests insert trigger; send them after the response.
+    scheduleOutbox(data.id)
 
     // Fire-and-forget admin notification
     sendPlanRequestEmail({
