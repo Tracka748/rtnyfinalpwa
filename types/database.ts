@@ -5768,6 +5768,10 @@ export type Database = {
           specialist_type_keys: string[]
         }[]
       }
+      request_enqueue_notifications: {
+        Args: { p_request_id: string }
+        Returns: number
+      }
       request_notifications_claim_email: {
         Args: { p_limit?: number; p_request_id?: string }
         Returns: {
