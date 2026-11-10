@@ -3273,6 +3273,7 @@ export type Database = {
           status: string
           time_end: string | null
           time_start: string | null
+          unowned_since: string | null
           user_id: string | null
           vendor_snapshot: Json | null
         }
@@ -3299,6 +3300,7 @@ export type Database = {
           status?: string
           time_end?: string | null
           time_start?: string | null
+          unowned_since?: string | null
           user_id?: string | null
           vendor_snapshot?: Json | null
         }
@@ -3325,6 +3327,7 @@ export type Database = {
           status?: string
           time_end?: string | null
           time_start?: string | null
+          unowned_since?: string | null
           user_id?: string | null
           vendor_snapshot?: Json | null
         }
@@ -3846,6 +3849,51 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      request_activity: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          from_owner: string | null
+          from_status: string | null
+          id: string
+          note: string | null
+          reason: string | null
+          request_id: string
+          to_owner: string | null
+          to_status: string | null
+          txid: number
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          from_owner?: string | null
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          reason?: string | null
+          request_id: string
+          to_owner?: string | null
+          to_status?: string | null
+          txid?: number
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          from_owner?: string | null
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          reason?: string | null
+          request_id?: string
+          to_owner?: string | null
+          to_status?: string | null
+          txid?: number
         }
         Relationships: []
       }
