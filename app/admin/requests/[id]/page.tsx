@@ -2,12 +2,18 @@
 
 // PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { contactCard, itemPriceText, statusLabel } from '@/lib/request-inbox-ui'
 import { capitalizeFirst, formatLongDate, formatUsd } from '@/lib/package-page-format'
 import { notifyInboxUnreadChanged } from '@/hooks/useInboxUnread'
+import { availableActions, hasAnyBarAction, type ActivityEntry } from '@/lib/request-lifecycle-ui'
+import { callLifecycle, shouldCloseSheet, type CallResult } from '@/lib/request-lifecycle-client'
+import { RequestActionBar } from '@/components/admin/requests/RequestActionBar'
+import { ConfirmActionSheet, type SheetAction, type SheetSubmit } from '@/components/admin/requests/ConfirmActionSheet'
+import { RequestTimeline } from '@/components/admin/requests/RequestTimeline'
+import { RequestNoteBox } from '@/components/admin/requests/RequestNoteBox'
 
 interface PackageItem {
   name: string | null
@@ -39,6 +45,12 @@ interface Detail {
   budget_range: string | null
   estimated_total: number | null
   owner: { id: string; name: string | null } | null
+  // Viewer signals computed by the server. They only decide what to show; the server enforces every action.
+  is_owner?: boolean
+  is_admin?: boolean
+  can_manage?: boolean
+  activity?: ActivityEntry[]
+  activity_redacted?: boolean
   package: {
     title: string | null
     occasion: string | null
@@ -80,35 +92,95 @@ export default function AdminRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [load, setLoad] = useState<Load>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [banner, setBanner] = useState<string | null>(null)
+  const [sheet, setSheet] = useState<SheetAction | null>(null)
   const markedFor = useRef<string | null>(null)
+  const busyRef = useRef(false)
+
+  // Loads the detail. A silent load (after an action) never shows the loading or error state, so the
+  // page and any open form stay as they are; it also never marks the request read.
+  const fetchDetail = useCallback(async (opts: { silent: boolean; signal?: AbortSignal }): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/v1/admin/requests/${encodeURIComponent(id)}`, { cache: 'no-store', signal: opts.signal })
+      if (res.status === 404 || res.status === 400) { setLoad({ kind: 'not_found' }); return false }
+      const body = await res.json().catch(() => null)
+      if (!res.ok || !body?.success || !body.data?.request) {
+        if (!opts.silent) setLoad({ kind: 'error' })
+        return false
+      }
+      setLoad({ kind: 'ready', detail: body.data.request as Detail })
+      return true
+    } catch {
+      if (!opts.silent && !opts.signal?.aborted) setLoad({ kind: 'error' })
+      return false
+    }
+  }, [id])
 
   useEffect(() => {
     const ctrl = new AbortController()
     setLoad({ kind: 'loading' })
     ;(async () => {
-      try {
-        const res = await fetch(`/api/v1/admin/requests/${encodeURIComponent(id)}`, { cache: 'no-store', signal: ctrl.signal })
-        if (res.status === 404 || res.status === 400) { setLoad({ kind: 'not_found' }); return }
-        const body = await res.json().catch(() => null)
-        if (!res.ok || !body?.success || !body.data?.request) { setLoad({ kind: 'error' }); return }
-        setLoad({ kind: 'ready', detail: body.data.request as Detail })
-
-        // Read state is per user and enforced by the server: mark this request read once, then refresh the badge.
-        if (markedFor.current !== id) {
-          markedFor.current = id
-          try {
-            const r = await fetch(`/api/v1/admin/requests/${encodeURIComponent(id)}/read`, { method: 'POST', cache: 'no-store' })
-            if (r.ok) notifyInboxUnreadChanged()
-          } catch {
-            // marking read is best effort
-          }
+      const ok = await fetchDetail({ silent: false, signal: ctrl.signal })
+      // Read state is per user and enforced by the server: mark this request read once, then refresh the badge.
+      if (ok && markedFor.current !== id) {
+        markedFor.current = id
+        try {
+          const r = await fetch(`/api/v1/admin/requests/${encodeURIComponent(id)}/read`, { method: 'POST', cache: 'no-store' })
+          if (r.ok) notifyInboxUnreadChanged()
+        } catch {
+          // marking read is best effort
         }
-      } catch {
-        if (!ctrl.signal.aborted) setLoad({ kind: 'error' })
       }
     })()
     return () => ctrl.abort()
-  }, [id, attempt])
+  }, [id, attempt, fetchDetail])
+
+  // One action at a time. No optimistic updates: on success the detail is re-fetched; on 404/409 the page is
+  // stale, so a banner explains it and the detail is re-fetched in the background.
+  const run = useCallback(async (route: Parameters<typeof callLifecycle>[1], body?: Record<string, unknown>): Promise<CallResult> => {
+    if (busyRef.current) return { ok: false, status: 0, message: 'Please wait for the current action to finish.' }
+    busyRef.current = true
+    setBusy(true)
+    setBanner(null)
+    try {
+      const result = await callLifecycle(id, route, body)
+      if (result.ok) {
+        await fetchDetail({ silent: true })
+      } else if (shouldCloseSheet(result.status)) {
+        setBanner(result.message)
+        void fetchDetail({ silent: true })
+      }
+      return result
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+    }
+  }, [id, fetchDetail])
+
+  async function submitSheet(s: SheetSubmit): Promise<CallResult> {
+    let result: CallResult
+    switch (s.action) {
+      case 'claim':
+        result = await run('claim')
+        break
+      case 'release':
+        result = await run('release', { reason: s.reason })
+        break
+      case 'assign':
+      case 'reassign':
+        result = await run('reassign', { assignee_id: s.assigneeId, ...(s.reason ? { reason: s.reason } : {}) })
+        break
+      case 'reopen':
+        result = await run('status', { to: 'in_progress', reason: s.reason })
+        break
+      case 'status':
+        result = await run('status', { to: s.toStatus })
+        break
+    }
+    if (result.ok || shouldCloseSheet(result.status)) setSheet(null)
+    return result
+  }
 
   const back = (
     <Link href="/admin/requests" className="inline-block mb-4 text-sm text-[#1AC8ED] hover:underline">← All requests</Link>
@@ -120,6 +192,7 @@ export default function AdminRequestDetailPage() {
   if (load.kind === 'not_found') {
     return (
       <div className="max-w-3xl mx-auto">{back}
+        {banner && <p role="alert" className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">{banner}</p>}
         <div className="rounded-xl bg-[#1a1a1a] border border-white/10 p-8 text-center text-white">
           This request wasn&apos;t found, or you don&apos;t have access to it.
         </div>
@@ -131,7 +204,7 @@ export default function AdminRequestDetailPage() {
       <div className="max-w-3xl mx-auto">{back}
         <div className="rounded-xl bg-[#1a1a1a] border border-white/10 p-8 text-center">
           <p className="text-white mb-3">Something went wrong loading this request.</p>
-          <button type="button" onClick={() => setAttempt(a => a + 1)} className="px-4 py-2 rounded-lg bg-[#1AC8ED]/15 text-[#1AC8ED] text-sm font-medium">Try again</button>
+          <button type="button" onClick={() => setAttempt(a => a + 1)} className="min-h-[44px] px-4 rounded-lg bg-[#1AC8ED]/15 text-[#1AC8ED] text-sm font-medium">Try again</button>
         </div>
       </div>
     )
@@ -141,10 +214,25 @@ export default function AdminRequestDetailPage() {
   const pkg = d.package
   const res = pkg?.reservation
   const contact = contactCard(d.contact)
+  const actions = availableActions({
+    status: d.status,
+    hasOwner: d.owner !== null,
+    isOwner: d.is_owner === true,
+    isAdmin: d.is_admin === true,
+    canManage: d.can_manage === true,
+  })
+  const activity = Array.isArray(d.activity) ? d.activity : []
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className={['max-w-3xl mx-auto space-y-4', hasAnyBarAction(actions) ? 'pb-28' : ''].join(' ')}>
       {back}
+
+      {banner && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+          <p>{banner}</p>
+          <button type="button" onClick={() => setBanner(null)} className="min-h-[44px] shrink-0 px-2 text-red-300 hover:text-white">Dismiss</button>
+        </div>
+      )}
 
       <Card title={d.type_label}>
         <span className="inline-block mb-2 text-xs font-medium rounded-full px-2.5 py-0.5 bg-[#1AC8ED]/15 text-[#1AC8ED]">{statusLabel(d.status)}</span>
@@ -215,6 +303,27 @@ export default function AdminRequestDetailPage() {
           </dl>
         )}
       </Card>
+
+      <Card title="Activity">
+        <RequestTimeline entries={activity} redacted={d.activity_redacted === true} />
+      </Card>
+
+      {actions.note && (
+        <Card title="Notes">
+          <RequestNoteBox busy={busy} onSubmit={note => run('notes', { note })} />
+        </Card>
+      )}
+
+      <RequestActionBar actions={actions} busy={busy} onAction={setSheet} />
+
+      <ConfirmActionSheet
+        action={sheet}
+        statusOptions={actions.statusOptions}
+        currentOwnerId={d.owner?.id ?? null}
+        busy={busy}
+        onClose={() => setSheet(null)}
+        onSubmit={submitSheet}
+      />
     </div>
   )
 }
