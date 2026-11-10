@@ -5772,6 +5772,46 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: number
       }
+      request_inbox_can_view: { Args: { p_actor: string }; Returns: boolean }
+      request_inbox_detail: {
+        Args: { p_actor: string; p_request_id: string }
+        Returns: Json
+      }
+      request_inbox_list: {
+        Args: {
+          p_actor: string
+          p_limit?: number
+          p_offset?: number
+          p_scope?: string
+          p_status?: string
+        }
+        Returns: {
+          created_at: string
+          event_date: string
+          event_type: string
+          guest_count: string
+          is_owner: boolean
+          owner_id: string
+          owner_name: string
+          request_id: string
+          request_kind: string
+          request_source: string
+          status: string
+          title: string
+          total_count: number
+          type_label: string
+          unread: boolean
+        }[]
+      }
+      request_inbox_mark_read: {
+        Args: { p_actor: string; p_request_id: string }
+        Returns: number
+      }
+      request_inbox_unread_count: { Args: { p_actor: string }; Returns: number }
+      request_inbox_visible: {
+        Args: { p_actor: string; p_request_id: string }
+        Returns: boolean
+      }
       request_notifications_claim_email: {
         Args: { p_limit?: number; p_request_id?: string }
         Returns: {
