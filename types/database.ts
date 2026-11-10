@@ -5808,6 +5808,23 @@ export type Database = {
         }
         Returns: string
       }
+      request_add_note: {
+        Args: { p_actor: string; p_note: string; p_request_id: string }
+        Returns: Json
+      }
+      request_assign: {
+        Args: {
+          p_actor: string
+          p_assignee: string
+          p_reason?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      request_claim: {
+        Args: { p_actor: string; p_request_id: string }
+        Returns: Json
+      }
       request_eligible_coordinators: {
         Args: never
         Returns: {
@@ -5860,6 +5877,42 @@ export type Database = {
         Args: { p_actor: string; p_request_id: string }
         Returns: boolean
       }
+      request_lifecycle_load: {
+        Args: { p_actor: string; p_admin_only?: boolean; p_request_id: string }
+        Returns: {
+          budget_range: string | null
+          contact_email: string | null
+          coordinator_id: string | null
+          created_at: string | null
+          estimated_total: number | null
+          event_date: string | null
+          event_subtype: string | null
+          event_type: string
+          fulfillment_mode: string | null
+          guest_count: string | null
+          has_venue: boolean | null
+          id: string
+          needs: Json | null
+          notes: string | null
+          package_snapshot: Json | null
+          request_kind: string | null
+          request_source: string
+          selected_package_id: string | null
+          selected_service_ids: string[] | null
+          status: string
+          time_end: string | null
+          time_start: string | null
+          unowned_since: string | null
+          user_id: string | null
+          vendor_snapshot: Json | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "plan_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       request_notifications_claim_email: {
         Args: { p_limit?: number; p_request_id?: string }
         Returns: {
@@ -5895,6 +5948,28 @@ export type Database = {
           p_provider_message_id?: string
         }
         Returns: boolean
+      }
+      request_reassign: {
+        Args: {
+          p_actor: string
+          p_new_owner: string
+          p_reason: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      request_release: {
+        Args: { p_actor: string; p_reason: string; p_request_id: string }
+        Returns: Json
+      }
+      request_set_status: {
+        Args: {
+          p_actor: string
+          p_reason?: string
+          p_request_id: string
+          p_to: string
+        }
+        Returns: Json
       }
       specialist_access: {
         Args: { p_capability: string; p_user_id: string }
