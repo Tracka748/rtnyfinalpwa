@@ -7,9 +7,10 @@ vi.mock('@/lib/notifications/outbox', () => ({ scheduleOutbox: vi.fn() }))
 import { NOTE_MAX, REASON_MAX, STATUS_TARGETS as SERVER_TARGETS } from '@/lib/request-lifecycle-api'
 import * as limits from '@/lib/request-limits'
 import {
-  EMAIL_NOTICE, REDACTED_NOTICE, STAFF_FALLBACK, STATUS_TARGETS, TIMELINE_LIMIT,
+  EMAIL_NOTICE, REASON_LABEL, REDACTED_NOTICE, STAFF_FALLBACK, STATUS_TARGETS, TIMELINE_LIMIT,
   activityLabel, availableActions, checkNote, checkReason, confirmCopy, describeChange, hasAnyBarAction,
-  isClosed, mayEmailCustomer, personName, requiresReason, safeMessage, showsReason, timelineDetail, timelineTruncated,
+  isClosed, mayEmailCustomer, personName, reasonTag, reassignBody, releaseBody, requiresReason, safeMessage,
+  showsReason, statusBody, timelineDetail, timelineTruncated,
   type ActionState,
 } from './request-lifecycle-ui'
 
@@ -106,8 +107,44 @@ describe('reason rules and confirm copy', () => {
     expect(requiresReason('reassign')).toBe(true)
     expect(requiresReason('reopen')).toBe(true)
     for (const a of ['assign', 'claim', 'status', 'note'] as const) expect(requiresReason(a)).toBe(false)
-    expect(showsReason('assign')).toBe(true)
-    for (const a of ['claim', 'status', 'note'] as const) expect(showsReason(a)).toBe(false)
+  })
+
+  it('shows a reason field on every action except claim and note; optional on status changes, required on reopen', () => {
+    for (const a of ['release', 'assign', 'reassign', 'status', 'reopen'] as const) expect(showsReason(a)).toBe(true)
+    for (const a of ['claim', 'note'] as const) expect(showsReason(a)).toBe(false)
+    expect(reasonTag('status')).toBe('optional')
+    expect(reasonTag('assign')).toBe('optional')
+    for (const a of ['reopen', 'release', 'reassign'] as const) expect(reasonTag(a)).toBe('required')
+  })
+
+  it('labels every reason field with the same internal-only text', () => {
+    expect(REASON_LABEL).toBe('Internal note, not sent to the customer')
+  })
+
+  it('a status change needs no reason, but a reopen does', () => {
+    expect(checkReason('', requiresReason('status')).error).toBeNull()
+    expect(checkReason('   ', requiresReason('status')).error).toBeNull()
+    expect(checkReason('', requiresReason('reopen')).error).toBe('A reason is required')
+    expect(checkReason('   ', requiresReason('reopen')).error).toBe('A reason is required')
+  })
+
+  it('request bodies never carry a blank reason', () => {
+    expect(statusBody('declined', null)).toEqual({ to: 'declined' })
+    expect('reason' in statusBody('declined', null)).toBe(false)
+    expect(statusBody('declined', checkReason('   ', false).value)).toEqual({ to: 'declined' })
+    expect(statusBody('declined', checkReason('  called them  ', false).value)).toEqual({ to: 'declined', reason: 'called them' })
+    expect(statusBody('in_progress', 'reopening')).toEqual({ to: 'in_progress', reason: 'reopening' })
+    expect(reassignBody('u1', null)).toEqual({ assignee_id: 'u1' })
+    expect(reassignBody('u1', 'workload')).toEqual({ assignee_id: 'u1', reason: 'workload' })
+    expect(releaseBody('busy')).toEqual({ reason: 'busy' })
+  })
+
+  it('an optional status reason allows 500 characters and rejects 501, counted by code points', () => {
+    expect(checkReason('a'.repeat(500), false).error).toBeNull()
+    expect(checkReason('a'.repeat(501), false).error).toMatch(/at most 500/)
+    expect(checkReason('😀'.repeat(500), false).error).toBeNull()
+    expect(checkReason('😀'.repeat(501), false).error).toMatch(/at most 500/)
+    expect(statusBody('completed', checkReason('😀'.repeat(500), false).value).reason).toBe('😀'.repeat(500))
   })
 
   it('adds the email notice for the four customer-facing statuses only', () => {

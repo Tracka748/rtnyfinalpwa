@@ -8,7 +8,9 @@ import { useParams } from 'next/navigation'
 import { contactCard, itemPriceText, statusLabel } from '@/lib/request-inbox-ui'
 import { capitalizeFirst, formatLongDate, formatUsd } from '@/lib/package-page-format'
 import { notifyInboxUnreadChanged } from '@/hooks/useInboxUnread'
-import { availableActions, hasAnyBarAction, type ActivityEntry } from '@/lib/request-lifecycle-ui'
+import {
+  availableActions, hasAnyBarAction, reassignBody, releaseBody, statusBody, type ActivityEntry,
+} from '@/lib/request-lifecycle-ui'
 import { callLifecycle, shouldCloseSheet, type CallResult } from '@/lib/request-lifecycle-client'
 import { RequestActionBar } from '@/components/admin/requests/RequestActionBar'
 import { ConfirmActionSheet, type SheetAction, type SheetSubmit } from '@/components/admin/requests/ConfirmActionSheet'
@@ -165,17 +167,17 @@ export default function AdminRequestDetailPage() {
         result = await run('claim')
         break
       case 'release':
-        result = await run('release', { reason: s.reason })
+        result = await run('release', releaseBody(s.reason))
         break
       case 'assign':
       case 'reassign':
-        result = await run('reassign', { assignee_id: s.assigneeId, ...(s.reason ? { reason: s.reason } : {}) })
+        result = await run('reassign', reassignBody(s.assigneeId, s.reason))
         break
       case 'reopen':
-        result = await run('status', { to: 'in_progress', reason: s.reason })
+        result = await run('status', statusBody('in_progress', s.reason))
         break
       case 'status':
-        result = await run('status', { to: s.toStatus })
+        result = await run('status', statusBody(s.toStatus, s.reason)) // a blank reason sends none
         break
     }
     if (result.ok || shouldCloseSheet(result.status)) setSheet(null)

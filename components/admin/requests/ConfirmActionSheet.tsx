@@ -11,7 +11,7 @@ import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 import { loadAssignableOwners, shouldCloseSheet, type AssignableOwner, type CallResult } from '@/lib/request-lifecycle-client'
 import { REASON_MAX } from '@/lib/request-limits'
 import {
-  checkReason, confirmCopy, requiresReason, showsReason, type LifecycleAction, type StatusTarget,
+  REASON_LABEL, checkReason, confirmCopy, reasonTag, requiresReason, showsReason, type LifecycleAction, type StatusTarget,
 } from '@/lib/request-lifecycle-ui'
 import { statusLabel } from '@/lib/request-inbox-ui'
 
@@ -134,7 +134,7 @@ function SheetBody({ action, statusOptions, currentOwnerId, busy, onClose, onSub
         {showsReason(action) && (
           <div>
             <label htmlFor="lifecycle-reason" className="block text-sm text-[#7DD8E8]">
-              Reason {reasonRequired ? '(required)' : '(optional)'}
+              {REASON_LABEL} <span className="text-white/60">({reasonTag(action)})</span>
             </label>
             <Textarea
               id="lifecycle-reason"

@@ -74,10 +74,22 @@ export function requiresReason(action: LifecycleAction): boolean {
   return action === 'release' || action === 'reassign' || action === 'reopen'
 }
 
-/** Whether the confirm sheet shows a reason field (optional for assign). */
+/** Whether the confirm sheet shows a reason field: every action except claim and note. */
 export function showsReason(action: LifecycleAction): boolean {
-  return requiresReason(action) || action === 'assign'
+  return requiresReason(action) || action === 'assign' || action === 'status'
 }
+
+/** The label on every reason field. The text is stored in the activity log and is never emailed. */
+export const REASON_LABEL = 'Internal note, not sent to the customer'
+
+export const reasonTag = (action: LifecycleAction): 'required' | 'optional' => (requiresReason(action) ? 'required' : 'optional')
+
+// Request bodies for the lifecycle routes. A blank reason is never sent.
+export const releaseBody = (reason: string | null): { reason: string | null } => ({ reason })
+export const reassignBody = (assigneeId: string | null, reason: string | null): { assignee_id: string | null; reason?: string } =>
+  ({ assignee_id: assigneeId, ...(reason ? { reason } : {}) })
+export const statusBody = (to: string | null, reason: string | null): { to: string | null; reason?: string } =>
+  ({ to, ...(reason ? { reason } : {}) })
 
 export interface ConfirmCopy { title: string; lines: string[]; submitLabel: string }
 
