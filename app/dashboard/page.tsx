@@ -1,9 +1,10 @@
 // app/dashboard/page.tsx
 import { getCurrentUser } from "@/lib/auth/get-user"
-import { createSupabaseServer, createSupabaseAdmin } from "@/lib/supabase"
+import { createSupabaseAdmin } from "@/lib/supabase"
 import { redirect } from "next/navigation"
 import { LogoutButton } from "@/components/custom/auth/logout-button"
 import { SavedDayPlans } from "@/components/custom/dashboard/SavedDayPlans"
+import { loadSavedDayPlans } from "@/lib/day-plan-read"
 import { ProfileVibesSection } from "@/components/custom/dashboard/ProfileVibesSection"
 import { ChevronRight, Calendar, Ticket, Settings, Users, Building2 } from "lucide-react"
 import Link from "next/link"
@@ -24,15 +25,11 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const supabase = await createSupabaseServer()
-  const { data: dayPlans } = await supabase
-    .from('day_plans')
-    .select('id, plan_date, stops, total_estimated_spend, total_duration_minutes, created_at')
-    .eq('user_id', user!.id)
-    .order('created_at', { ascending: false })
-    .limit(5)
-
   const supabaseAdmin = createSupabaseAdmin()
+
+  // day_plans has RLS on with no policies: read it with the service role, scoped to the session user.
+  const dayPlans = await loadSavedDayPlans(supabaseAdmin, user!.id)
+
   const { data: crewMemberships } = await supabaseAdmin
     .from('crew_members')
     .select('crew:crews(id, name, invite_code, crew_members(count))')
@@ -136,7 +133,7 @@ export default async function DashboardPage() {
 
         {/* Saved Day Plans */}
         <div className="bg-card border border-white/5 rounded-2xl p-6 mt-6">
-          <SavedDayPlans plans={(dayPlans ?? []) as any} />
+          <SavedDayPlans plans={dayPlans} />
         </div>
 
         {/* My Crews */}

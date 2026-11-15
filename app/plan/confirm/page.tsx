@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { cn } from '@/lib/utils'
+import { buildPayloadFromPending } from '@/lib/day-plan'
+import { saveDayPlanRequest, SAVE_MESSAGES } from '@/lib/day-plan-save-client'
+import { safeSessionStorage, setReturnTo } from '@/lib/return-to'
 import { dayPlanCheckoutEnabled } from '@/lib/feature-flags'
 
 export const PLAN_STORAGE_KEY = 'rtny_pending_day_plan'
 
 export interface ConfirmStop {
+  businessId?: string | null
   name: string
   category: string
   icon?: string
@@ -32,6 +35,8 @@ export interface PendingDayPlan {
     energyType?: string
     tags?: string[]
     budget?: string
+    timeStart?: string
+    timeEnd?: string
   }
   source: 'curated' | 'generated'
 }
@@ -183,39 +188,29 @@ export default function PlanConfirmPage() {
   }, [])
 
   async function handleSave() {
-    if (!plan) return
+    if (!plan || saving) return
     setSaving(true)
     setSaveError(null)
-
-    const supabase = createBrowserSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const { error } = await supabase.from('day_plans').insert({
-      user_id:                user.id,
-      plan_date:              plan.date,
-      stops:                  plan.stops,
-      budget_range:           plan.preferences?.budget ?? null,
-      energy_type:            plan.preferences?.energyType ?? null,
-      group_type:             plan.preferences?.groupType ?? null,
-      tags:                   plan.preferences?.tags ?? [],
-      time_start:             null,
-      time_end:               null,
-      transportation:         plan.preferences?.transportation ?? null,
-      total_estimated_spend:  plan.totalSpend,
-      total_duration_minutes: plan.totalMins ?? null,
-    })
-
-    setSaving(false)
-    if (error) {
-      setSaveError('Could not save plan. Please try again.')
-    } else {
-      setSaved(true)
-      sessionStorage.removeItem(PLAN_STORAGE_KEY)
+    try {
+      const outcome = await saveDayPlanRequest(buildPayloadFromPending(plan))
+      if (outcome.status === 'saved') {
+        setSaved(true)
+        try { sessionStorage.removeItem(PLAN_STORAGE_KEY) } catch { /* storage blocked: harmless */ }
+      } else if (outcome.status === 'signed_out') {
+        // The plan stays in sessionStorage; come back here after sign-in.
+        setReturnTo(safeSessionStorage(), '/plan/confirm')
+        router.push('/login')
+      } else if (outcome.status === 'limit') {
+        setSaveError(SAVE_MESSAGES.limit)
+      } else if (outcome.status === 'profile') {
+        setSaveError(SAVE_MESSAGES.profile)
+      } else {
+        setSaveError(SAVE_MESSAGES.error)
+      }
+    } catch {
+      setSaveError(SAVE_MESSAGES.error)
+    } finally {
+      setSaving(false)
     }
   }
 

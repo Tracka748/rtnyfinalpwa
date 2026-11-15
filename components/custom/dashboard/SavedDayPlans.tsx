@@ -1,32 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import type { SavedPlanView } from '@/lib/day-plan'
+import { getAvatarEmoji } from '@/lib/business-avatar'
+import { COVER_SCRIM_ALPHA, COVER_TEXT, ROW_SURFACE } from '@/lib/cover-contrast'
 
-// Matches the EnrichedStop shape persisted by PlanMyDay
-interface SavedStop {
-  stop: {
-    name: string
-    category: string
-    address: string | null
-    estimated_arrival: string   // "HH:MM"
-    estimated_spend: number
-    duration_minutes: number
-  }
-  segment: string
-  locked: boolean
-}
-
-interface SavedPlan {
-  id: string
-  plan_date: string | null
-  stops: SavedStop[]
-  total_estimated_spend: number | null
-  total_duration_minutes: number | null
-  created_at: string | null
-}
-
+// Plans arrive normalised by lib/day-plan-read.ts (any stored shape), with logo_url and
+// cover_image_url resolved server-side from public.businesses by business_id (http(s) only).
+// No image URL from the plan data is used.
 interface Props {
-  plans: SavedPlan[]
+  plans: SavedPlanView[]
 }
 
 function formatTime(t: string): string {
@@ -109,22 +92,63 @@ export function SavedDayPlans({ plans }: Props) {
               {/* Expanded itinerary */}
               {expanded && (
                 <div className="space-y-3 border-t border-white/10 pt-4">
-                  {plan.stops.map((enriched, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <span className="text-xs text-[#A0A0A0]/60 w-16 shrink-0 pt-0.5 font-[family-name:var(--font-rubik)]">
-                        {formatTime(enriched.stop.estimated_arrival)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#F9FDFF] font-[family-name:var(--font-rubik)] truncate">
-                          {enriched.stop.name}
-                        </p>
-                        <p className="text-xs text-[#A0A0A0] capitalize truncate">
-                          {enriched.stop.category}
-                          {enriched.stop.address ? ` · ${enriched.stop.address}` : ''}
-                        </p>
-                        <p className="text-xs text-[#59FFA0] mt-0.5 font-[family-name:var(--font-rubik)]">
-                          ${enriched.stop.estimated_spend.toLocaleString()} est.
-                        </p>
+                  {plan.stops.map((stop, i) => (
+                    // Card and cover treatment follow the Plan My Day stop card (PlanMyDay.tsx StopCard),
+                    // with a stronger solid scrim so every text colour meets 4.5:1 (lib/cover-contrast.ts).
+                    <div
+                      key={i}
+                      className="relative overflow-hidden rounded-[26px] border border-[#2A2A2A] shadow-lg"
+                      style={{ backgroundColor: ROW_SURFACE }}
+                    >
+                      {stop.cover_image_url && (
+                        <>
+                          <img
+                            src={stop.cover_image_url}
+                            alt=""
+                            aria-hidden="true"
+                            loading="lazy"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            style={{ filter: 'blur(2px) brightness(0.75)', transform: 'scale(1.05)' }}
+                          />
+                          <div
+                            className="absolute inset-0"
+                            style={{ backgroundColor: `rgba(0,0,0,${COVER_SCRIM_ALPHA})` }}
+                          />
+                        </>
+                      )}
+
+                      <div className="relative z-10 flex items-start gap-3 p-3">
+                        {/* Fixed logo slot: the stop card's avatar markup, with its emoji fallback. */}
+                        <div className="w-10 h-10 rounded-xl border border-[#2a2829] overflow-hidden shrink-0 flex items-center justify-center bg-[#1a1819]">
+                          {stop.logo_url ? (
+                            <img
+                              src={stop.logo_url}
+                              alt={stop.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-lg leading-none" aria-hidden="true">{getAvatarEmoji(stop.category)}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1 font-[family-name:var(--font-rubik)]">
+                          {stop.time && (
+                            <p className="text-sm leading-5" style={{ color: COVER_TEXT.secondary }}>
+                              {formatTime(stop.time)}
+                            </p>
+                          )}
+                          <p className="text-sm leading-5 font-medium break-words" style={{ color: COVER_TEXT.primary }}>
+                            {stop.name}
+                          </p>
+                          <p className="text-sm leading-5 capitalize break-words" style={{ color: COVER_TEXT.secondary }}>
+                            {stop.category}
+                            {stop.address ? ` · ${stop.address}` : ''}
+                          </p>
+                          {stop.spend != null && (
+                            <p className="text-sm leading-5 mt-0.5" style={{ color: COVER_TEXT.spend }}>
+                              ${stop.spend.toLocaleString()} est.
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

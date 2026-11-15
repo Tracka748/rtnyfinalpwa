@@ -3,7 +3,11 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { BUDGET_OPTIONS, TAGS, ENERGY_OPTIONS, GROUP_OPTIONS, TRANSPORT_OPTIONS } from '@/lib/day-plan-options'
+import { safeSessionStorage, setReturnTo } from '@/lib/return-to'
+import { getAvatarEmoji } from '@/lib/business-avatar'
+import { buildPayloadFromEnriched } from '@/lib/day-plan'
+import { saveDayPlanRequest, SAVE_MESSAGES } from '@/lib/day-plan-save-client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,46 +66,7 @@ interface PlaceholderSlot {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BUDGET_OPTIONS = [
-  { label: 'Under $50',   apiValue: 50   },
-  { label: '$50–$100',    apiValue: 100  },
-  { label: '$100–$200',   apiValue: 200  },
-  { label: '$200+',       apiValue: null }, // no budget cap
-]
-
-const TAGS = [
-  { value: 'solo',          icon: '🙋' },
-  { value: 'casual',        icon: '😌' },
-  { value: 'comfort',       icon: '🛋️' },
-  { value: 'recharge',      icon: '🔋' },
-  { value: 'social',        icon: '🥂' },
-  { value: 'explore',       icon: '🗺️' },
-  { value: 'entertainment', icon: '🎭' },
-  { value: 'night',         icon: '🌙' },
-  { value: 'shopping',      icon: '🛍️' },
-  { value: 'food',          icon: '🍽️' },
-  { value: 'self-care',     icon: '🌸' },
-]
-
-const ENERGY_OPTIONS = [
-  { value: 'relaxed',    label: 'Relaxed',    icon: '🌊' },
-  { value: 'active',     label: 'Active',     icon: '⚡' },
-  { value: 'family_fun', label: 'Family Fun', icon: '🎠' },
-]
-
-const GROUP_OPTIONS = [
-  { value: 'solo',    label: 'Solo',          icon: '🙋' },
-  { value: 'couple',  label: 'Couple',        icon: '💑' },
-  { value: 'friends', label: 'Friends',       icon: '👥' },
-  { value: 'family',  label: 'Parent/Family', icon: '👨‍👩‍👧' },
-  { value: 'pet',     label: 'Pet Owner',     icon: '🐾' },
-]
-
-const TRANSPORT_OPTIONS = [
-  { value: 'car',       label: 'Driving',    icon: '🚗' },
-  { value: 'rideshare', label: 'Rideshare',  icon: '🚕' },
-  { value: 'walking',   label: 'Walking',    icon: '🚶' },
-]
+// The option lists live in lib/day-plan-options.ts, shared with the save route's allowlists.
 
 // ─── Group-based tag suggestions ──────────────────────────────────────────────
 
@@ -273,23 +238,7 @@ function getCategoryIcon(category: string): string {
   return '📍'
 }
 
-const AVATAR_EMOJI: Record<string, string> = {
-  activity:      '🎯',
-  food:          '🍽️',
-  shopping:      '🛍️',
-  entertainment: '🎭',
-  cafe:          '☕',
-  bar:           '🍸',
-  self_care:     '💆',
-}
-
-function getAvatarEmoji(category: string): string {
-  const lower = category.toLowerCase()
-  for (const [key, emoji] of Object.entries(AVATAR_EMOJI)) {
-    if (lower.includes(key)) return emoji
-  }
-  return '📍'
-}
+// getAvatarEmoji lives in lib/business-avatar.ts, shared with the dashboard's saved-plan rows.
 
 // Category-based overlay/gradient tint — used when a business has no brand_color set.
 const CATEGORY_TINTS: Record<string, string> = {
@@ -1529,18 +1478,22 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
   }
 
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
 
-  function handleConfirmPlan() {
+  // The plan handed to /plan/confirm through sessionStorage. Carries business_id but no image URLs.
+  function pendingPlan() {
     const fmt = (t: string): string => {
       const [h, m] = t.split(':').map(Number)
       const ampm = h >= 12 ? 'PM' : 'AM'
       return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`
     }
-    const plan = {
+    return {
       title: 'My Day Plan',
       date: selectedDate,
       stops: enrichedStops.map(e => ({
+        businessId: e.stop.business_id,
         name: e.stop.name,
         category: e.stop.category,
         time: fmt(e.stop.estimated_arrival),
@@ -1558,41 +1511,52 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
         energyType:     form.energyType,
         tags:           form.tags,
         budget:         form.budget,
+        timeStart:      form.timeStart,
+        timeEnd:        form.timeEnd,
       },
     }
-    sessionStorage.setItem('rtny_pending_day_plan', JSON.stringify(plan))
+  }
+
+  function stashPendingPlan(): boolean {
+    const storage = safeSessionStorage()
+    if (!storage) return false
+    try {
+      storage.setItem('rtny_pending_day_plan', JSON.stringify(pendingPlan()))
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  function handleConfirmPlan() {
+    stashPendingPlan()
     router.push('/plan/confirm')
   }
 
   async function handleSaveDayPlan() {
-    const supabase = createBrowserSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const { error } = await supabase
-      .from('day_plans')
-      .insert({
-        user_id:                user.id,
-        plan_date:              selectedDate,
-        stops:                  enrichedStops,
-        budget_range:           form.budget,
-        energy_type:            form.energyType,
-        group_type:             form.groupType,
-        tags:                   form.tags,
-        time_start:             form.timeStart,
-        time_end:               form.timeEnd,
-        transportation:         form.transportation,
-        total_estimated_spend:  totalSpend,
-        total_duration_minutes: totalMins,
-      })
-
-    if (!error) {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+    if (saving) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const outcome = await saveDayPlanRequest(buildPayloadFromEnriched(enrichedStops, form, selectedDate))
+      if (outcome.status === 'saved') {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      } else if (outcome.status === 'signed_out') {
+        // Keep the plan and come back to the confirm page after sign-in.
+        if (stashPendingPlan()) setReturnTo(safeSessionStorage(), '/plan/confirm')
+        router.push('/login')
+      } else if (outcome.status === 'limit') {
+        setSaveError(SAVE_MESSAGES.limit)
+      } else if (outcome.status === 'profile') {
+        setSaveError(SAVE_MESSAGES.profile)
+      } else {
+        setSaveError(SAVE_MESSAGES.error)
+      }
+    } catch {
+      setSaveError(SAVE_MESSAGES.error)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -1694,12 +1658,32 @@ export function PlanMyDay({ preloadedStops }: { preloadedStops?: PreloadedStop[]
                 </svg>
                 Confirm This Plan
               </button>
+              {saveError && (
+                <div role="alert" className="px-4 py-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm font-sans">
+                  {saveError}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleSaveDayPlan}
-                className="w-full py-4 rounded-2xl border border-[#2a2829] bg-[#1a1819] text-[#f9fdff]/70 font-sans text-sm hover:border-[#59ffa0]/30 hover:text-[#f9fdff] transition-all"
+                disabled={saving}
+                aria-busy={saving}
+                className={cn(
+                  'w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-[#2a2829] font-sans text-sm transition-all',
+                  saving
+                    ? 'text-[#7DD8E8]/30 cursor-not-allowed'
+                    : 'bg-[#1a1819] text-[#f9fdff]/70 hover:border-[#59ffa0]/30 hover:text-[#f9fdff]'
+                )}
               >
-                {saved ? '✓ Plan Saved!' : 'Save My Day Plan'}
+                {saving ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4A8 8 0 014 12z" />
+                    </svg>
+                    Saving…
+                  </>
+                ) : saved ? '✓ Plan Saved!' : 'Save My Day Plan'}
               </button>
               <button
                 type="button"
