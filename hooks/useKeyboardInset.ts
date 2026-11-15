@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react'
 
 export interface KeyboardInset { bottom: number; maxHeight: number }
 
-// PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
-
 /**
  * While `active`, reports how far the on-screen keyboard covers the bottom of the page on small screens,
  * so a bottom sheet can lift above it and keep its textarea visible. Returns null when there is no

@@ -1,13 +1,12 @@
 'use client'
 
-// PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { CallResult } from '@/lib/request-lifecycle-client'
 import { NOTE_MAX } from '@/lib/request-limits'
 import { checkNote } from '@/lib/request-lifecycle-ui'
+import { CONTROL_BORDER, FOCUS_RING, TAP } from '@/components/admin/requests/ui'
 
 interface Props {
   busy: boolean
@@ -30,7 +29,7 @@ export function RequestNoteBox({ busy, onSubmit }: Props) {
 
   return (
     <div>
-      <label htmlFor="request-note" className="block text-sm text-[#7DD8E8]">Add a note</label>
+      <label htmlFor="request-note" className="block text-base leading-6 text-[#7DD8E8]">Add a note</label>
       <Textarea
         id="request-note"
         value={text}
@@ -38,15 +37,15 @@ export function RequestNoteBox({ busy, onSubmit }: Props) {
         disabled={busy}
         rows={4}
         aria-describedby="request-note-count"
-        className="mt-1 min-h-[7rem] bg-[#121113] text-white"
+        className={`mt-1 min-h-[7rem] ${CONTROL_BORDER} bg-[#121113] text-base leading-6 text-white md:text-base`}
       />
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <p id="request-note-count" className={`text-xs ${check.count > NOTE_MAX ? 'text-red-400' : 'text-[#7DD8E8]'}`}>{check.count}/{NOTE_MAX}</p>
-        <Button type="button" disabled={busy || !!check.error || !check.value} onClick={submit} aria-busy={busy} className="min-h-[44px] h-11 bg-[#59FFA0] px-5 font-semibold text-black hover:bg-[#59FFA0]/90">
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p id="request-note-count" className={`text-sm leading-5 ${check.count > NOTE_MAX ? 'text-red-400' : 'text-[#7DD8E8]'}`}>{check.count}/{NOTE_MAX}</p>
+        <Button type="button" disabled={busy || !!check.error || !check.value} onClick={submit} aria-busy={busy} className={`${TAP} h-11 bg-[#59FFA0] px-5 text-base font-semibold text-black hover:bg-[#59FFA0]/90 ${FOCUS_RING}`}>
           {busy ? 'Working…' : 'Add note'}
         </Button>
       </div>
-      {message && <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">{message}</p>}
+      {message && <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-base leading-6 text-red-400">{message}</p>}
     </div>
   )
 }

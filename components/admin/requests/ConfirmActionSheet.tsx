@@ -1,7 +1,5 @@
 'use client'
 
-// PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
-
 import { useEffect, useState } from 'react'
 import { Dialog, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -14,6 +12,7 @@ import {
   REASON_LABEL, checkReason, confirmCopy, reasonTag, requiresReason, showsReason, type LifecycleAction, type StatusTarget,
 } from '@/lib/request-lifecycle-ui'
 import { statusLabel } from '@/lib/request-inbox-ui'
+import { CARD_BORDER, CONTROL_BORDER, FOCUS_RING, TAP } from '@/components/admin/requests/ui'
 
 export type SheetAction = Exclude<LifecycleAction, 'note'>
 
@@ -36,7 +35,7 @@ interface Props {
   onSubmit: (s: SheetSubmit) => Promise<CallResult>
 }
 
-const FIELD = 'min-h-[44px] w-full rounded-md border border-white/15 bg-[#121113] px-3 text-base text-white'
+const FIELD = `${TAP} w-full rounded-md border ${CONTROL_BORDER} bg-[#121113] px-3 text-base text-white ${FOCUS_RING}`
 
 export function ConfirmActionSheet(props: Props) {
   // Remount per action so form state resets between actions but survives a failed submit.
@@ -96,17 +95,17 @@ function SheetBody({ action, statusOptions, currentOwnerId, busy, onClose, onSub
       onInteractOutside={e => { if (busy) e.preventDefault() }}
     >
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-2 pt-5">
-        <div className="pr-10">
+        <div className="pr-12">
           <DialogTitle className="font-header text-xl font-bold text-white">{copy.title}</DialogTitle>
           <DialogDescription asChild>
-            <div className="mt-1 space-y-1 text-sm text-[#7DD8E8]">
+            <div className="mt-2 space-y-1 text-base leading-6 text-[#7DD8E8]">
               {copy.lines.map(l => <p key={l}>{l}</p>)}
             </div>
           </DialogDescription>
         </div>
 
         {action === 'status' && (
-          <label className="block text-sm text-[#7DD8E8]">
+          <label className="block text-base text-[#7DD8E8]">
             New status
             <select value={toStatus} onChange={e => setToStatus(e.target.value as StatusTarget | '')} disabled={busy} className={`${FIELD} mt-1`}>
               <option value="">Choose a status</option>
@@ -116,7 +115,7 @@ function SheetBody({ action, statusOptions, currentOwnerId, busy, onClose, onSub
         )}
 
         {picksOwner && (
-          <label className="block text-sm text-[#7DD8E8]">
+          <label className="block text-base text-[#7DD8E8]">
             {action === 'reassign' ? 'New owner' : 'Owner'}
             <select
               value={assigneeId}
@@ -127,13 +126,13 @@ function SheetBody({ action, statusOptions, currentOwnerId, busy, onClose, onSub
               <option value="">{owners === null && !ownersError ? 'Loading…' : 'Choose a person'}</option>
               {visibleOwners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
-            {ownersError && <span role="alert" className="mt-1 block text-red-400">{ownersError}</span>}
+            {ownersError && <span role="alert" className="mt-1 block text-base text-red-400">{ownersError}</span>}
           </label>
         )}
 
         {showsReason(action) && (
           <div>
-            <label htmlFor="lifecycle-reason" className="block text-sm text-[#7DD8E8]">
+            <label htmlFor="lifecycle-reason" className="block text-base leading-6 text-[#7DD8E8]">
               {REASON_LABEL} <span className="text-white/60">({reasonTag(action)})</span>
             </label>
             <Textarea
@@ -145,22 +144,22 @@ function SheetBody({ action, statusOptions, currentOwnerId, busy, onClose, onSub
               rows={4}
               aria-invalid={reasonCheck.count > REASON_MAX}
               aria-describedby="lifecycle-reason-count"
-              className="mt-1 min-h-[7rem] bg-[#121113] text-white"
+              className={`mt-1 min-h-[7rem] ${CONTROL_BORDER} bg-[#121113] text-base leading-6 text-white md:text-base`}
             />
-            <p id="lifecycle-reason-count" className={`mt-1 text-right text-xs ${reasonCheck.count > REASON_MAX ? 'text-red-400' : 'text-[#7DD8E8]'}`}>
+            <p id="lifecycle-reason-count" className={`mt-1 text-right text-sm leading-5 ${reasonCheck.count > REASON_MAX ? 'text-red-400' : 'text-[#7DD8E8]'}`}>
               {reasonCheck.count}/{REASON_MAX}
             </p>
           </div>
         )}
 
-        {message && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">{message}</p>}
+        {message && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-base leading-6 text-red-400">{message}</p>}
       </div>
 
-      <div className="flex shrink-0 gap-2 border-t border-white/10 bg-[#1a1819] px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <Button type="button" variant="outline" disabled={busy} onClick={onClose} className="min-h-[44px] h-11 flex-1 border-white/20 bg-transparent text-white hover:bg-white/10">
+      <div className={`flex shrink-0 gap-2 border-t ${CARD_BORDER} bg-[#1a1819] px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3`}>
+        <Button type="button" variant="outline" disabled={busy} onClick={onClose} className={`${TAP} h-11 flex-1 ${CONTROL_BORDER} bg-transparent text-base text-white hover:bg-white/10 ${FOCUS_RING}`}>
           Cancel
         </Button>
-        <Button type="button" disabled={!canSubmit} onClick={submit} aria-busy={busy} className="min-h-[44px] h-11 flex-1 bg-[#59FFA0] font-semibold text-black hover:bg-[#59FFA0]/90">
+        <Button type="button" disabled={!canSubmit} onClick={submit} aria-busy={busy} className={`${TAP} h-11 flex-1 bg-[#59FFA0] text-base font-semibold text-black hover:bg-[#59FFA0]/90 ${FOCUS_RING}`}>
           {busy ? 'Working…' : copy.submitLabel}
         </Button>
       </div>

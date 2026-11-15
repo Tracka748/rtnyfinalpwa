@@ -21,7 +21,6 @@ const navItems: NavEntry[] = [
   { href: '/admin/promoter-applications', icon: '📝', label: 'Applications' },
   { href: '/admin/event-drafts', icon: '✏️', label: 'Drafts' },
   { href: '/admin/theme-verification', icon: '🎨', label: 'Theme Verification' },
-  // PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
   { href: '/admin/requests', icon: '📥', label: 'Requests', badge: 'requests' },
   { href: '/admin/orders', icon: '🛒', label: 'Orders' },
   { href: '/admin/users', icon: '👥', label: 'Users' },
@@ -140,7 +139,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                 RTNY Admin
               </p>
               {userEmail && (
-                <p className="text-xs text-[#7DD8E8] mt-0.5 truncate max-w-[150px]">
+                <p className="text-xs text-[#7DD8E8] mt-0.5 break-all">
                   {userEmail}
                 </p>
               )}
@@ -159,7 +158,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                   <button
                     type="button"
                     onClick={() => toggleGroup(item.label)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-[#7DD8E8] hover:bg-white/8 hover:text-white"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors text-[#7DD8E8] hover:bg-white/8 hover:text-white"
                   >
                     <span className="text-lg shrink-0">{item.icon}</span>
                     <span className="flex-1 text-left">{item.label}</span>
@@ -189,7 +188,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                             key={child.href}
                             href={child.href}
                             className={[
-                              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                              'flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
                               isActive
                                 ? 'bg-[#59FFA0]/10 text-[#59FFA0] border border-[#59FFA0]/20'
                                 : 'text-[#7DD8E8] hover:bg-white/8 hover:text-white',
@@ -216,7 +215,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                 key={item.href}
                 href={item.href}
                 className={[
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-[#59FFA0]/10 text-[#59FFA0] border border-[#59FFA0]/20'
                     : 'text-[#7DD8E8] hover:bg-white/8 hover:text-white',
@@ -226,7 +225,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
                 <span className="flex-1">{item.label}</span>
                 {item.badge === 'requests' && unreadRequests && (
                   <span
-                    className="min-w-[1.25rem] rounded-full bg-[#59FFA0] px-1.5 text-center text-[10px] font-bold leading-5 text-black"
+                    className="min-w-[1.25rem] rounded-full bg-[#59FFA0] px-1.5 text-center text-xs font-bold leading-5 text-black"
                     aria-label={`${unreadRequests} unread requests`}
                   >
                     {unreadRequests}
@@ -241,7 +240,7 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
         <div className="p-3 border-t border-white/10 shrink-0">
           <a
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#7DD8E8] hover:bg-white/8 hover:text-[#007BFF] transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium text-[#7DD8E8] hover:bg-white/8 hover:text-[#007BFF] transition-colors"
           >
             <span className="text-lg">←</span>
             <span>Back to Site</span>
@@ -257,16 +256,16 @@ export function AdminShell({ children, userEmail }: AdminShellProps) {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="md:hidden p-2 -ml-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="md:hidden inline-flex min-h-[44px] min-w-[44px] items-center justify-center -ml-2 text-white hover:bg-white/10 rounded-lg transition-colors"
                 aria-label="Toggle menu"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-              <h2 className="text-base font-header font-bold text-white md:hidden">
+              <p className="text-base font-header font-bold text-white md:hidden">
                 {pageTitle}
-              </h2>
+              </p>
             </div>
             <span className="text-xs text-[#7DD8E8] hidden sm:inline">
               {userEmail}

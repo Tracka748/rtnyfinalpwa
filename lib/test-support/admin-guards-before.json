@@ -1,0 +1,479 @@
+{
+  "routes": {
+    "ad-placements": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "ad-reel-durations": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "ads": {
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "ads/[id]": {
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "ads/upload": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "ads/upload-reel": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "analytics": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "audience-overview": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "audience-reach": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "behavior-snapshot": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "behavior-snapshot/[user_id]": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "catalog/eligible-services": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "requireAdmin"
+    },
+    "catalog/items": {
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "guard": "requireAdmin+requireCapability:CATALOG_VIEW"
+    },
+    "catalog/items/[id]": {
+      "methods": [
+        "PATCH"
+      ],
+      "guard": "requireAdmin"
+    },
+    "catalog/items/[id]/services": {
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "guard": "requireAdmin+requireCapability:CATALOG_VIEW"
+    },
+    "catalog/items/[id]/services/[linkId]": {
+      "methods": [
+        "PATCH"
+      ],
+      "guard": "requireAdmin"
+    },
+    "catalog/items/[id]/themes": {
+      "methods": [
+        "PUT"
+      ],
+      "guard": "requireAdmin"
+    },
+    "event-drafts": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "event-drafts/[id]/approve": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "event-drafts/[id]/reject": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "events": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "events/[id]": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "events/[id]/admissions": {
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH",
+        "DELETE"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "events/[id]/update": {
+      "methods": [
+        "PATCH"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "events/create": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "feed-cards": {
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "feed-cards/[id]": {
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "feed-cards/[id]/package": {
+      "methods": [
+        "PUT"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "feed-cards/upload": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "groups": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "groups/[id]/organizers": {
+      "methods": [
+        "POST",
+        "DELETE"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "groups/users": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "invites": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "invites/send": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "packages": {
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "guard": "requireCapability:PACKAGES_MANAGE,PACKAGES_VIEW"
+    },
+    "packages/[id]": {
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "guard": "requireAdmin+requireCapability:PACKAGES_VIEW"
+    },
+    "packages/[id]/versions": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:PACKAGES_MANAGE"
+    },
+    "packages/[id]/versions/[versionId]": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "requireCapability:PACKAGES_VIEW"
+    },
+    "packages/[id]/versions/[versionId]/approve": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireAdmin"
+    },
+    "packages/[id]/versions/[versionId]/draft": {
+      "methods": [
+        "PUT"
+      ],
+      "guard": "requireCapability:PACKAGES_MANAGE"
+    },
+    "packages/[id]/versions/[versionId]/request-changes": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireAdmin"
+    },
+    "packages/[id]/versions/[versionId]/submit": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:PACKAGES_MANAGE"
+    },
+    "packages/[id]/versions/[versionId]/withdraw": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:PACKAGES_MANAGE"
+    },
+    "partner-event-links": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "inlineRole"
+    },
+    "picks-cards": {
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "picks-cards/[id]": {
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "picks-cards/[id]/image": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "promo-codes": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "promo-codes/generate": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkAdminAccess"
+    },
+    "promoter-applications": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "promoter-applications/[id]/approve": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "promoter-applications/[id]/reject": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "promoters": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "requests": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_VIEW"
+    },
+    "requests/[id]": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_VIEW"
+    },
+    "requests/[id]/claim": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_MANAGE"
+    },
+    "requests/[id]/notes": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_MANAGE"
+    },
+    "requests/[id]/read": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_VIEW"
+    },
+    "requests/[id]/reassign": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireAdminActor+requireCapability:EVENTS_REQUESTS_MANAGE"
+    },
+    "requests/[id]/release": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_MANAGE"
+    },
+    "requests/[id]/status": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_MANAGE"
+    },
+    "requests/assignable-owners": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "requireAdminActor+requireCapability:EVENTS_REQUESTS_MANAGE"
+    },
+    "requests/unread-count": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "requireCapability:EVENTS_REQUESTS_VIEW"
+    },
+    "stats": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "theme-verification": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "theme-verification/[id]/approve": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "theme-verification/[id]/reject": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "toolkit/grants": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "users": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "users/[id]/role": {
+      "methods": [
+        "PATCH"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "users/search": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    },
+    "venues": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "checkIsAdmin"
+    }
+  },
+  "pages": {
+    "/admin": "admin-layout",
+    "/admin/ads": "admin-layout",
+    "/admin/audience": "admin-layout",
+    "/admin/event-drafts": "admin-layout",
+    "/admin/events": "admin-layout",
+    "/admin/events/[id]": "admin-layout",
+    "/admin/events/create": "admin-layout",
+    "/admin/feed-cards": "admin-layout",
+    "/admin/groups": "admin-layout",
+    "/admin/invites": "admin-layout",
+    "/admin/orders": "admin-layout",
+    "/admin/partners": "admin-layout",
+    "/admin/partners/[id]/edit": "admin-layout",
+    "/admin/partners/[id]/offers": "admin-layout",
+    "/admin/partners/[id]/offers/wizard": "admin-layout",
+    "/admin/partners/create": "admin-layout",
+    "/admin/picks-cards": "admin-layout",
+    "/admin/promo-codes": "admin-layout",
+    "/admin/promoter-applications": "admin-layout",
+    "/admin/requests": "admin-layout",
+    "/admin/requests/[id]": "admin-layout",
+    "/admin/scan": "admin-layout",
+    "/admin/scanner": "admin-layout",
+    "/admin/settings": "admin-layout",
+    "/admin/theme-verification": "admin-layout",
+    "/admin/toolkit": "admin-layout",
+    "/admin/users": "admin-layout"
+  }
+}

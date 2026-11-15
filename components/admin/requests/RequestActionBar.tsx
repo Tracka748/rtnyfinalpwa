@@ -1,31 +1,34 @@
 'use client'
 
-// PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
-
 import { Button } from '@/components/ui/button'
 import { hasAnyBarAction, type AvailableActions, type LifecycleAction } from '@/lib/request-lifecycle-ui'
+import { CARD_BORDER, CONTROL_BORDER, FOCUS_RING, TAP } from '@/components/admin/requests/ui'
 
 interface Props {
   actions: AvailableActions
   busy: boolean
+  /** True when the full admin sidebar is on screen (admins), so the bar starts after it from md up. */
+  clearSidebar: boolean
   onAction: (action: Exclude<LifecycleAction, 'note'>) => void
 }
 
-const BTN = 'min-h-[44px] h-11 flex-1 basis-[8rem] px-4 text-sm font-semibold'
+const BTN = `${TAP} h-11 flex-1 basis-[8rem] px-4 text-base font-semibold ${FOCUS_RING}`
+const OUTLINE = `${CONTROL_BORDER} bg-transparent text-white hover:bg-white/10`
 
 /**
  * Fixed action bar. It only shows controls: the server decides what is allowed.
  * Layering: z-30 sits below the admin drawer and its overlay (z-40/50), the site nav (z-55) and every
  * dialog (z-80). There is no fixed bottom nav in the admin area. From md the admin sidebar is a 16rem
- * column, so the bar starts at md:left-64 to stay clear of it. Pages need ~7rem of bottom padding.
+ * column, so for admins the bar starts at md:left-64 to stay clear of it; the slim staff shell has no
+ * sidebar, so specialists get the full width. Pages need ~7rem of bottom padding.
  */
-export function RequestActionBar({ actions, busy, onAction }: Props) {
+export function RequestActionBar({ actions, busy, clearSidebar, onAction }: Props) {
   if (!hasAnyBarAction(actions)) return null
   return (
     <div
       role="region"
       aria-label="Request actions"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#121113]/95 backdrop-blur-sm px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:left-64"
+      className={`fixed inset-x-0 bottom-0 z-30 border-t ${CARD_BORDER} bg-[#121113]/95 backdrop-blur-sm px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] ${clearSidebar ? 'md:left-64' : ''}`}
     >
       <div className="mx-auto flex max-w-3xl flex-wrap gap-2">
         {actions.claim && (
@@ -34,17 +37,17 @@ export function RequestActionBar({ actions, busy, onAction }: Props) {
           </Button>
         )}
         {actions.owner && (
-          <Button type="button" variant="outline" disabled={busy} onClick={() => onAction(actions.owner as 'assign' | 'reassign')} className={`${BTN} border-[#1AC8ED]/40 text-[#1AC8ED] bg-transparent hover:bg-[#1AC8ED]/10`}>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => onAction(actions.owner as 'assign' | 'reassign')} className={`${BTN} border-[#1AC8ED] bg-transparent text-[#1AC8ED] hover:bg-[#1AC8ED]/10`}>
             {actions.owner === 'reassign' ? 'Reassign' : 'Assign'}
           </Button>
         )}
         {actions.statusOptions.length > 0 && (
-          <Button type="button" variant="outline" disabled={busy} onClick={() => onAction('status')} className={`${BTN} border-white/20 text-white bg-transparent hover:bg-white/10`}>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => onAction('status')} className={`${BTN} ${OUTLINE}`}>
             Change status
           </Button>
         )}
         {actions.release && (
-          <Button type="button" variant="outline" disabled={busy} onClick={() => onAction('release')} className={`${BTN} border-white/20 text-white bg-transparent hover:bg-white/10`}>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => onAction('release')} className={`${BTN} ${OUTLINE}`}>
             Release
           </Button>
         )}

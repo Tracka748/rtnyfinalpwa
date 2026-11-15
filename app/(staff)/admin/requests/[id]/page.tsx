@@ -1,6 +1,7 @@
 'use client'
 
-// PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
+// Lives under the (staff) route group: the staff layout (events.requests.view) guards it, and every
+// API route it calls enforces its own capability check. See app/(staff)/admin/layout.tsx.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -16,6 +17,7 @@ import { RequestActionBar } from '@/components/admin/requests/RequestActionBar'
 import { ConfirmActionSheet, type SheetAction, type SheetSubmit } from '@/components/admin/requests/ConfirmActionSheet'
 import { RequestTimeline } from '@/components/admin/requests/RequestTimeline'
 import { RequestNoteBox } from '@/components/admin/requests/RequestNoteBox'
+import { CARD_BORDER, FOCUS_RING, PROSE, TAP } from '@/components/admin/requests/ui'
 
 interface PackageItem {
   name: string | null
@@ -74,21 +76,24 @@ type Load =
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
+// Label above, value below on a phone; side by side from sm. Values wrap instead of truncating.
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-4 py-1.5 text-sm">
-      <dt className="text-[#7DD8E8]">{label}</dt>
-      <dd className="text-white text-right">{value}</dd>
+    <div className="flex flex-col gap-0.5 py-2 sm:flex-row sm:justify-between sm:gap-4">
+      <dt className="text-sm leading-5 text-[#7DD8E8]">{label}</dt>
+      <dd className="min-w-0 break-words text-base leading-6 text-white sm:text-right">{value}</dd>
     </div>
   )
 }
 
 const Card = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <section className="rounded-xl bg-[#1a1a1a] border border-white/10 p-5">
-    <h2 className="font-header font-bold text-lg text-white mb-2">{title}</h2>
+  <section className={`rounded-xl border ${CARD_BORDER} bg-[#1a1a1a] p-5`}>
+    <h2 className="mb-3 font-header text-xl font-bold text-white">{title}</h2>
     {children}
   </section>
 )
+
+const BANNER = 'rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-base leading-6 text-red-400'
 
 export default function AdminRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -185,17 +190,27 @@ export default function AdminRequestDetailPage() {
   }
 
   const back = (
-    <Link href="/admin/requests" className="inline-block mb-4 text-sm text-[#1AC8ED] hover:underline">← All requests</Link>
+    <Link href="/admin/requests" className={`mb-2 inline-flex ${TAP} items-center rounded-lg text-base text-[#1AC8ED] underline-offset-4 hover:underline ${FOCUS_RING}`}>
+      ← All requests
+    </Link>
   )
 
   if (load.kind === 'loading') {
-    return <div className="max-w-3xl mx-auto" aria-busy="true">{back}<div className="h-40 rounded-xl bg-[#1a1a1a] border border-white/10 animate-pulse" /></div>
+    return (
+      <div className="mx-auto max-w-3xl" aria-busy="true">
+        <h1 className="sr-only">Request</h1>
+        {back}
+        <div className={`h-40 animate-pulse rounded-xl border ${CARD_BORDER} bg-[#1a1a1a]`} />
+      </div>
+    )
   }
   if (load.kind === 'not_found') {
     return (
-      <div className="max-w-3xl mx-auto">{back}
-        {banner && <p role="alert" className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">{banner}</p>}
-        <div className="rounded-xl bg-[#1a1a1a] border border-white/10 p-8 text-center text-white">
+      <div className="mx-auto max-w-3xl">
+        <h1 className="sr-only">Request</h1>
+        {back}
+        {banner && <p role="alert" className={`mb-3 ${BANNER}`}>{banner}</p>}
+        <div className={`rounded-xl border ${CARD_BORDER} bg-[#1a1a1a] p-8 text-center text-base leading-6 text-white`}>
           This request wasn&apos;t found, or you don&apos;t have access to it.
         </div>
       </div>
@@ -203,10 +218,12 @@ export default function AdminRequestDetailPage() {
   }
   if (load.kind === 'error') {
     return (
-      <div className="max-w-3xl mx-auto">{back}
-        <div className="rounded-xl bg-[#1a1a1a] border border-white/10 p-8 text-center">
-          <p className="text-white mb-3">Something went wrong loading this request.</p>
-          <button type="button" onClick={() => setAttempt(a => a + 1)} className="min-h-[44px] px-4 rounded-lg bg-[#1AC8ED]/15 text-[#1AC8ED] text-sm font-medium">Try again</button>
+      <div className="mx-auto max-w-3xl">
+        <h1 className="sr-only">Request</h1>
+        {back}
+        <div className={`rounded-xl border ${CARD_BORDER} bg-[#1a1a1a] p-8 text-center`}>
+          <p className="mb-3 text-base leading-6 text-white">Something went wrong loading this request.</p>
+          <button type="button" onClick={() => setAttempt(a => a + 1)} className={`${TAP} rounded-lg bg-[#1AC8ED]/15 px-4 text-base font-medium text-[#1AC8ED] ${FOCUS_RING}`}>Try again</button>
         </div>
       </div>
     )
@@ -226,18 +243,23 @@ export default function AdminRequestDetailPage() {
   const activity = Array.isArray(d.activity) ? d.activity : []
 
   return (
-    <div className={['max-w-3xl mx-auto space-y-4', hasAnyBarAction(actions) ? 'pb-28' : ''].join(' ')}>
-      {back}
+    <div className={['mx-auto max-w-3xl space-y-6', hasAnyBarAction(actions) ? 'pb-28' : ''].join(' ')}>
+      <div>
+        {back}
+        <h1 className="font-header text-3xl font-bold text-white">{d.type_label}</h1>
+        <span className="mt-2 inline-block rounded-full bg-[#1AC8ED]/15 px-3 py-1 text-sm font-medium leading-5 text-[#1AC8ED]">
+          {statusLabel(d.status)}
+        </span>
+      </div>
 
       {banner && (
-        <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
-          <p>{banner}</p>
-          <button type="button" onClick={() => setBanner(null)} className="min-h-[44px] shrink-0 px-2 text-red-300 hover:text-white">Dismiss</button>
+        <div role="alert" className={`flex items-start justify-between gap-3 ${BANNER}`}>
+          <p className="min-w-0 break-words">{banner}</p>
+          <button type="button" onClick={() => setBanner(null)} className={`${TAP} shrink-0 rounded-lg px-3 text-base text-red-300 hover:text-white ${FOCUS_RING}`}>Dismiss</button>
         </div>
       )}
 
-      <Card title={d.type_label}>
-        <span className="inline-block mb-2 text-xs font-medium rounded-full px-2.5 py-0.5 bg-[#1AC8ED]/15 text-[#1AC8ED]">{statusLabel(d.status)}</span>
+      <Card title="Summary">
         <dl>
           {d.event_type && <Row label="Event" value={d.event_type} />}
           <Row label="Event date" value={formatLongDate(d.event_date) ?? 'Not given'} />
@@ -251,23 +273,23 @@ export default function AdminRequestDetailPage() {
 
       {pkg && (
         <Card title="Package">
-          <p className="text-white">{pkg.title ?? 'Package'}</p>
-          <p className="text-xs text-[#7DD8E8] mb-3">
+          <p className="break-words text-base leading-6 text-white">{pkg.title ?? 'Package'}</p>
+          <p className="mb-3 text-sm leading-5 text-[#7DD8E8]">
             {[pkg.occasion, isNum(pkg.version_number) ? `Version ${pkg.version_number}` : null].filter(Boolean).join(' · ')}
           </p>
           <ul className="divide-y divide-white/10">
             {(pkg.items ?? []).map((it, i) => (
-              <li key={i} className="flex justify-between gap-4 py-2 text-sm">
-                <span className="text-white min-w-0">
+              <li key={i} className="flex flex-col gap-0.5 py-3 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="min-w-0 break-words text-base leading-6 text-white">
                   {it.name ?? 'Item'}
                   {it.slot_label && <span className="text-[#7DD8E8]"> · {it.slot_label}</span>}
                   {isNum(it.quantity) && it.quantity > 1 && <span className="text-[#7DD8E8]"> × {it.quantity}</span>}
                 </span>
-                <span className="text-white shrink-0">{itemPriceText(it)}</span>
+                <span className="shrink-0 text-base leading-6 text-white">{itemPriceText(it)}</span>
               </li>
             ))}
           </ul>
-          <dl className="mt-3 border-t border-white/10 pt-2">
+          <dl className={`mt-3 border-t ${CARD_BORDER} pt-2`}>
             {isNum(pkg.listed_subtotal) && <Row label="Listed subtotal" value={formatUsd(pkg.listed_subtotal)} />}
             {isNum(pkg.unpriced_items) && pkg.unpriced_items > 0 && (
               <Row label="Priced on request" value={`${pkg.unpriced_items} item${pkg.unpriced_items === 1 ? '' : 's'}`} />
@@ -288,17 +310,17 @@ export default function AdminRequestDetailPage() {
 
       <Card title="Contact">
         {contact.state === 'redacted' ? (
-          <p className="text-sm text-[#7DD8E8]">Contact details are visible only to this request&apos;s owner.</p>
+          <p className="text-base leading-6 text-[#7DD8E8]">Contact details are visible only to this request&apos;s owner.</p>
         ) : contact.rows.length === 0 ? (
-          <p className="text-sm text-[#7DD8E8]">No contact details were provided.</p>
+          <p className="text-base leading-6 text-[#7DD8E8]">No contact details were provided.</p>
         ) : (
           <dl>
             {contact.rows.map(r => (
-              <div key={r.label} className="py-1.5 text-sm">
-                <dt className="text-[#7DD8E8]">{r.label}</dt>
-                <dd className="text-white whitespace-pre-wrap break-words">
+              <div key={r.label} className="py-2">
+                <dt className="text-sm leading-5 text-[#7DD8E8]">{r.label}</dt>
+                <dd className={`${PROSE} whitespace-pre-wrap break-words text-base leading-6 text-white`}>
                   {r.value}
-                  {r.note && <span className="ml-2 text-xs text-yellow-300">({r.note})</span>}
+                  {r.note && <span className="ml-2 text-sm text-yellow-300">({r.note})</span>}
                 </dd>
               </div>
             ))}
@@ -316,7 +338,7 @@ export default function AdminRequestDetailPage() {
         </Card>
       )}
 
-      <RequestActionBar actions={actions} busy={busy} onAction={setSheet} />
+      <RequestActionBar actions={actions} busy={busy} clearSidebar={d.is_admin === true} onAction={setSheet} />
 
       <ConfirmActionSheet
         action={sheet}

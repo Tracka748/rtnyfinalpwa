@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 
-// PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
-
 export const INBOX_UNREAD_EVENT = 'rtny:inbox-unread-changed'
 
 /** Tell every mounted useInboxUnread to refetch (e.g. after a request was marked read). */

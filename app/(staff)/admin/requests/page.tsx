@@ -1,6 +1,7 @@
 'use client'
 
-// PREREQUISITE: this inbox is admin-only. Before assigning ANY specialist, move it behind a capability-guarded staff layout (events.requests.view).
+// Lives under the (staff) route group: the staff layout (events.requests.view) guards it, and every
+// API route it calls enforces its own capability check. See app/(staff)/admin/layout.tsx.
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -11,6 +12,7 @@ import {
   parseInboxParams, statusLabel, type InboxView,
 } from '@/lib/request-inbox-ui'
 import { formatLongDate } from '@/lib/package-page-format'
+import { CARD_BORDER, CONTROL_BORDER, FOCUS_RING, TAP } from '@/components/admin/requests/ui'
 
 interface InboxRow {
   request_id: string
@@ -29,6 +31,8 @@ type Load =
   | { kind: 'loading' }
   | { kind: 'error'; forbidden: boolean }
   | { kind: 'ready'; rows: InboxRow[]; total: number }
+
+const BUTTON = `${TAP} rounded-lg px-4 text-base font-medium ${FOCUS_RING}`
 
 function RequestsInbox() {
   const router = useRouter()
@@ -69,14 +73,14 @@ function RequestsInbox() {
   }, [scope, status, page, attempt])
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-header font-bold text-white mb-1">Requests</h1>
-        <p className="text-[#7DD8E8] text-sm">Plan My Event and package requests</p>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div>
+        <h1 className="mb-1 font-header text-3xl font-bold text-white">Requests</h1>
+        <p className="text-base leading-6 text-[#7DD8E8]">Plan My Event and package requests</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-        <div role="tablist" aria-label="Request scope" className="inline-flex rounded-lg bg-[#1a1a1a] p-1 border border-white/10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div role="tablist" aria-label="Request scope" className={`inline-flex rounded-lg border ${CONTROL_BORDER} bg-[#1a1a1a] p-1`}>
           {INBOX_SCOPES.map((s: InboxScope) => (
             <button
               key={s}
@@ -85,20 +89,23 @@ function RequestsInbox() {
               aria-selected={scope === s}
               onClick={() => go({ scope: s, status, page: 1 })}
               className={[
-                'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
-                scope === s ? 'bg-[#59FFA0]/15 text-[#59FFA0]' : 'text-[#7DD8E8] hover:text-white',
+                `${TAP} rounded-md px-4 text-base transition-colors ${FOCUS_RING}`,
+                // Selected is shown by weight and an underline as well as the tint, never by color alone.
+                scope === s
+                  ? 'bg-[#59FFA0]/15 font-bold text-[#59FFA0] underline decoration-2 underline-offset-4'
+                  : 'font-medium text-[#7DD8E8] hover:text-white',
               ].join(' ')}
             >
               {SCOPE_LABELS[s]}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-sm text-[#7DD8E8]">
+        <label className="flex items-center gap-2 text-base text-[#7DD8E8]">
           <span>Status</span>
           <select
             value={status ?? ''}
             onChange={e => go({ scope, status: (e.target.value || null) as InboxStatus | null, page: 1 })}
-            className="bg-[#1a1a1a] border border-white/10 rounded-md px-3 py-1.5 text-white text-sm"
+            className={`${TAP} rounded-md border ${CONTROL_BORDER} bg-[#1a1a1a] px-3 text-base text-white ${FOCUS_RING}`}
           >
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -107,18 +114,18 @@ function RequestsInbox() {
       </div>
 
       {load.kind === 'loading' && (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading requests">
-          {[0, 1, 2].map(i => <div key={i} className="h-20 rounded-xl bg-[#1a1a1a] border border-white/10 animate-pulse" />)}
+        <div className="space-y-4" aria-busy="true" aria-label="Loading requests">
+          {[0, 1, 2].map(i => <div key={i} className={`h-24 animate-pulse rounded-xl border ${CARD_BORDER} bg-[#1a1a1a]`} />)}
         </div>
       )}
 
       {load.kind === 'error' && (
-        <div className="rounded-xl bg-[#1a1a1a] border border-white/10 p-6 text-center">
-          <p className="text-white mb-3">
+        <div className={`rounded-xl border ${CARD_BORDER} bg-[#1a1a1a] p-6 text-center`}>
+          <p className="mb-3 text-base leading-6 text-white">
             {load.forbidden ? "You don't have access to the request inbox." : 'Something went wrong loading requests.'}
           </p>
           {!load.forbidden && (
-            <button type="button" onClick={() => setAttempt(a => a + 1)} className="px-4 py-2 rounded-lg bg-[#1AC8ED]/15 text-[#1AC8ED] text-sm font-medium">
+            <button type="button" onClick={() => setAttempt(a => a + 1)} className={`${BUTTON} bg-[#1AC8ED]/15 text-[#1AC8ED]`}>
               Try again
             </button>
           )}
@@ -128,13 +135,13 @@ function RequestsInbox() {
       {load.kind === 'ready' && (() => {
         const state = listState(load.rows.length, page)
         if (state === 'empty') {
-          return <div className="rounded-xl bg-[#1a1a1a] border border-white/10 p-8 text-center text-[#7DD8E8]">No requests here yet.</div>
+          return <div className={`rounded-xl border ${CARD_BORDER} bg-[#1a1a1a] p-8 text-center text-base leading-6 text-[#7DD8E8]`}>No requests here yet.</div>
         }
         if (state === 'past_end') {
           return (
-            <div className="rounded-xl bg-[#1a1a1a] border border-white/10 p-8 text-center">
-              <p className="text-[#7DD8E8] mb-3">No more results.</p>
-              <button type="button" onClick={() => go({ scope, status, page: 1 })} className="px-4 py-2 rounded-lg bg-[#1AC8ED]/15 text-[#1AC8ED] text-sm font-medium">
+            <div className={`rounded-xl border ${CARD_BORDER} bg-[#1a1a1a] p-8 text-center`}>
+              <p className="mb-3 text-base leading-6 text-[#7DD8E8]">No more results.</p>
+              <button type="button" onClick={() => go({ scope, status, page: 1 })} className={`${BUTTON} bg-[#1AC8ED]/15 text-[#1AC8ED]`}>
                 Back to first page
               </button>
             </div>
@@ -142,44 +149,44 @@ function RequestsInbox() {
         }
         return (
           <>
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {load.rows.map(r => (
                 <li key={r.request_id}>
                   <Link
                     href={`/admin/requests/${r.request_id}`}
-                    className="block rounded-xl bg-[#1a1a1a] border border-white/10 hover:border-[#59FFA0]/40 transition-colors p-4"
+                    className={`block rounded-xl border ${CARD_BORDER} bg-[#1a1a1a] p-4 transition-colors hover:border-[#59FFA0]/40 ${FOCUS_RING}`}
                   >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={['mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', r.unread ? 'bg-[#59FFA0]' : 'bg-transparent'].join(' ')}
-                        aria-label={r.unread ? 'Unread' : undefined}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-medium text-white truncate">{r.type_label}</p>
-                          <span className="text-xs font-medium rounded-full px-2.5 py-0.5 bg-[#1AC8ED]/15 text-[#1AC8ED]">
-                            {statusLabel(r.status)}
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                      <p className="min-w-0 break-words text-base font-semibold leading-6 text-white">{r.type_label}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {r.unread && (
+                          <span className="inline-flex items-center gap-1.5 text-sm font-semibold leading-5 text-[#59FFA0]">
+                            <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#59FFA0]" />
+                            Unread
                           </span>
-                        </div>
-                        {r.title && <p className="text-sm text-white/80 truncate">{r.title}</p>}
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#7DD8E8]">
-                          {r.event_type && <span>{r.event_type}</span>}
-                          <span>{formatLongDate(r.event_date) ?? 'No date'}</span>
-                          <span>{r.guest_count ? `${r.guest_count} guests` : 'Guests not given'}</span>
-                          <span>{r.owner_name ?? (r.owner_id ? 'Assigned' : 'Unassigned')}</span>
-                        </div>
+                        )}
+                        <span className="rounded-full bg-[#1AC8ED]/15 px-2.5 py-0.5 text-sm font-medium leading-5 text-[#1AC8ED]">
+                          {statusLabel(r.status)}
+                        </span>
                       </div>
+                    </div>
+                    {r.title && <p className="mt-1 break-words text-base leading-6 text-white/80">{r.title}</p>}
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm leading-5 text-[#7DD8E8]">
+                      {r.event_type && <span>{r.event_type}</span>}
+                      <span>{formatLongDate(r.event_date) ?? 'No date'}</span>
+                      <span>{r.guest_count ? `${r.guest_count} guests` : 'Guests not given'}</span>
+                      <span>{r.owner_name ?? (r.owner_id ? 'Assigned' : 'Unassigned')}</span>
                     </div>
                   </Link>
                 </li>
               ))}
             </ul>
-            <div className="mt-5 flex items-center justify-between text-sm text-[#7DD8E8]">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-base text-[#7DD8E8]">
               <button
                 type="button"
                 disabled={page <= 1}
                 onClick={() => go({ scope, status, page: page - 1 })}
-                className="px-4 py-2 rounded-lg border border-white/10 disabled:opacity-40"
+                className={`${BUTTON} border ${CONTROL_BORDER} disabled:opacity-40`}
               >
                 Previous
               </button>
@@ -188,7 +195,7 @@ function RequestsInbox() {
                 type="button"
                 disabled={!hasNextPage(page, load.total)}
                 onClick={() => go({ scope, status, page: page + 1 })}
-                className="px-4 py-2 rounded-lg border border-white/10 disabled:opacity-40"
+                className={`${BUTTON} border ${CONTROL_BORDER} disabled:opacity-40`}
               >
                 Next
               </button>
@@ -202,7 +209,7 @@ function RequestsInbox() {
 
 export default function AdminRequestsPage() {
   return (
-    <Suspense fallback={<div className="text-[#7DD8E8]">Loading…</div>}>
+    <Suspense fallback={<div className="text-base text-[#7DD8E8]">Loading…</div>}>
       <RequestsInbox />
     </Suspense>
   )
