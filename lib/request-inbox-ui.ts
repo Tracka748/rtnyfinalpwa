@@ -114,3 +114,44 @@ export function itemPriceText(item: { price_status?: unknown; line_total?: unkno
   if (item.price_status === 'free') return 'Included'
   return 'Price on request' // 'quote', a priced line without a total, null, or any unknown value
 }
+
+// ---- plan (Plan My Event) ----
+
+// The server returns `plan` to every viewer; it never carries contact data. This reads only the three
+// known keys, so nothing else in the object can reach the Plan card.
+export interface PlanService { title: string; category: string | null }
+export interface PlanCard { times: string | null; needs: string[]; services: PlanService[] }
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
+const clean = (v: unknown, max: number): string | null => {
+  if (typeof v !== 'string') return null
+  const t = v.replace(/[\u0000-\u001F\u007F]/g, ' ').trim()
+  return t === '' ? null : [...t].slice(0, max).join('')
+}
+
+function formatClock(t: string): string {
+  const [h, m] = t.split(':').map(Number)
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
+}
+
+export function planCard(plan: unknown): PlanCard | null {
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return null
+  const p = plan as Record<string, unknown>
+  const start = typeof p.time_start === 'string' && HHMM.test(p.time_start) ? p.time_start : null
+  const end = typeof p.time_end === 'string' && HHMM.test(p.time_end) ? p.time_end : null
+  const times = start && end
+    ? `${formatClock(start)} to ${formatClock(end)}`
+    : start ? formatClock(start) : end ? `Until ${formatClock(end)}` : null
+  const needs = (Array.isArray(p.needs) ? p.needs : [])
+    .map(n => clean(n, 60)).filter((n): n is string => n !== null).slice(0, 20)
+  const services = (Array.isArray(p.services) ? p.services : []).flatMap((s): PlanService[] => {
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return []
+    const o = s as Record<string, unknown>
+    const title = clean(o.title, 120)
+    return title ? [{ title, category: clean(o.category, 60) }] : []
+  }).slice(0, 30)
+  return times || needs.length > 0 || services.length > 0 ? { times, needs, services } : null
+}
+
+/** The customer's name as sent by the server (names only; phone, email and notes stay in `contact`). */
+export const customerName = (v: unknown): string | null => clean(v, 120)

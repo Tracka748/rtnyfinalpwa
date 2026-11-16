@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { contactCard, itemPriceText, statusLabel } from '@/lib/request-inbox-ui'
+import { contactCard, customerName, itemPriceText, planCard, statusLabel } from '@/lib/request-inbox-ui'
 import { capitalizeFirst, formatLongDate, formatUsd } from '@/lib/package-page-format'
 import { notifyInboxUnreadChanged } from '@/hooks/useInboxUnread'
 import {
@@ -48,6 +48,11 @@ interface Detail {
   guest_count: string | null
   budget_range: string | null
   estimated_total: number | null
+  has_venue?: boolean | null
+  // Names only; typed unknown because customerName() validates it. Phone, email and notes stay in `contact`.
+  customer_name?: unknown
+  // Plan My Event plan data from the server; planCard() reads only the known keys.
+  plan?: unknown
   owner: { id: string; name: string | null } | null
   // Viewer signals computed by the server. They only decide what to show; the server enforces every action.
   is_owner?: boolean
@@ -233,6 +238,8 @@ export default function AdminRequestDetailPage() {
   const pkg = d.package
   const res = pkg?.reservation
   const contact = contactCard(d.contact)
+  const plan = planCard(d.plan)
+  const customer = customerName(d.customer_name)
   const actions = availableActions({
     status: d.status,
     hasOwner: d.owner !== null,
@@ -261,15 +268,39 @@ export default function AdminRequestDetailPage() {
 
       <Card title="Summary">
         <dl>
+          {customer && <Row label="Customer" value={customer} />}
           {d.event_type && <Row label="Event" value={d.event_type} />}
           <Row label="Event date" value={formatLongDate(d.event_date) ?? 'Not given'} />
           <Row label="Guests" value={d.guest_count ?? 'Not given'} />
           {d.budget_range && <Row label="Budget" value={d.budget_range} />}
           {isNum(d.estimated_total) && <Row label="Estimated total" value={formatUsd(d.estimated_total)} />}
+          {typeof d.has_venue === 'boolean' && <Row label="Venue" value={d.has_venue ? 'Has a venue' : 'Needs a venue'} />}
           <Row label="Owner" value={d.owner ? d.owner.name ?? 'Assigned' : 'Unassigned'} />
           <Row label="Received" value={new Date(d.created_at).toLocaleString()} />
         </dl>
       </Card>
+
+      {plan && (
+        <Card title="Plan">
+          <dl>
+            {plan.times && <Row label="Time" value={plan.times} />}
+            {plan.needs.length > 0 && <Row label="Looking for" value={plan.needs.join(', ')} />}
+          </dl>
+          {plan.services.length > 0 && (
+            <>
+              <h3 className="mt-3 text-sm leading-5 text-[#7DD8E8]">Chosen services</h3>
+              <ul className="divide-y divide-white/10">
+                {plan.services.map((s, i) => (
+                  <li key={i} className="break-words py-3 text-base leading-6 text-white">
+                    {s.title}
+                    {s.category && <span className="text-[#7DD8E8]"> · {s.category}</span>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Card>
+      )}
 
       {pkg && (
         <Card title="Package">

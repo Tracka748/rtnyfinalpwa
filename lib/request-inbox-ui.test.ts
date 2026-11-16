@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { INBOX_STATUSES } from './request-inbox-api'
 import {
   badgeText, buildApiQuery, buildInboxQuery, contactCard, hasNextPage, itemPriceText,
-  listState, parseInboxParams, statusLabel,
+  customerName, listState, parseInboxParams, planCard, statusLabel,
 } from './request-inbox-ui'
 
 const parse = (s: string) => parseInboxParams(new URLSearchParams(s))
@@ -131,5 +131,67 @@ describe('itemPriceText', () => {
     expect(itemPriceText({ price_status: 'weird', line_total: 80 })).toBe('Price on request')
     expect(itemPriceText({ price_status: null })).toBe('Price on request')
     expect(itemPriceText({})).toBe('Price on request')
+  })
+})
+
+describe('planCard', () => {
+  it('returns null for null, arrays, primitives and an empty plan', () => {
+    for (const v of [null, undefined, 'x', 5, [], {}, { needs: [], services: [] }]) expect(planCard(v)).toBeNull()
+  })
+
+  it('formats a time range, a single start, a single end, and drops bad times', () => {
+    expect(planCard({ time_start: '18:00', time_end: '22:30' })?.times).toBe('6:00 PM to 10:30 PM')
+    expect(planCard({ time_start: '09:05' })?.times).toBe('9:05 AM')
+    expect(planCard({ time_end: '00:15' })?.times).toBe('Until 12:15 AM')
+    expect(planCard({ time_start: '25:00', time_end: 'noon', needs: ['dj'] })?.times).toBeNull()
+  })
+
+  it('keeps string needs only, trimmed, capped at 60 and at most 20', () => {
+    const p = planCard({ needs: ['  dj  ', 5, null, '', { a: 1 }, 'x'.repeat(80), ...Array(30).fill('food')] })!
+    expect(p.needs[0]).toBe('dj')
+    expect(p.needs[1]).toHaveLength(60)
+    expect(p.needs).toHaveLength(20)
+  })
+
+  it('treats needs that are an object or a string as empty', () => {
+    expect(planCard({ needs: { dj: true }, time_start: '18:00' })?.needs).toEqual([])
+    expect(planCard({ needs: 'dj', time_start: '18:00' })?.needs).toEqual([])
+  })
+
+  it('drops services without a title, caps titles at 120 and categories at 60, at most 30', () => {
+    const p = planCard({
+      services: [
+        { title: '' }, { category: 'x' }, null, 'DJ',
+        { title: 'T'.repeat(200), category: 'c'.repeat(90) },
+        ...Array(40).fill({ title: 'DJ', category: 'music' }),
+      ],
+    })!
+    expect(p.services[0].title).toHaveLength(120)
+    expect(p.services[0].category).toHaveLength(60)
+    expect(p.services).toHaveLength(30)
+  })
+
+  it('no contact field can reach the Plan card', () => {
+    const p = planCard({
+      time_start: '18:00', needs: ['dj'], email: 'a@b.c', phone: '555', notes: 'secret', name: 'Jo',
+      services: [{ title: 'DJ', category: 'music', email: 'v@x.y', phone: '1', notes: 'n', contact: { email: 'z' } }],
+    })!
+    expect(Object.keys(p).sort()).toEqual(['needs', 'services', 'times'])
+    expect(Object.keys(p.services[0]).sort()).toEqual(['category', 'title'])
+    expect(JSON.stringify(p)).not.toMatch(/@|555|secret|Jo\b/)
+    // The contact object itself is not a plan.
+    expect(planCard({ name: 'Jo', phone: '555', email: 'a@b.c', notes: 'n' })).toBeNull()
+  })
+
+  it('strips control characters from text', () => {
+    expect(planCard({ needs: ['d\u0000j\n'] })!.needs).toEqual(['d j'])
+  })
+})
+
+describe('customerName', () => {
+  it('returns trimmed text up to 120 characters, else null', () => {
+    expect(customerName('  Jo Smith ')).toBe('Jo Smith')
+    expect(customerName('x'.repeat(200))).toHaveLength(120)
+    for (const v of [null, '', '   ', 5, {}]) expect(customerName(v)).toBeNull()
   })
 })
