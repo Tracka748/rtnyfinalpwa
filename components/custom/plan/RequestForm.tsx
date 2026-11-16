@@ -57,7 +57,10 @@ export function RequestForm({
       {/* Vendor-level plan items */}
       {planItems.length > 0 && (
         <div>
-          <SectionLabel>Vendors Added</SectionLabel>
+          <SectionLabel>Vendors in your request</SectionLabel>
+          <p className="text-[#7DD8E8] text-sm leading-5 font-sans mb-3">
+            These vendors are sent to our planning team with your request.
+          </p>
           <div className="rounded-xl border border-[#2a2829] bg-[#1a1819] overflow-hidden divide-y divide-[#2a2829]">
             {planItems.map(item => (
               <div key={item.vendorId} className="px-4 py-3 flex items-center justify-between gap-3">
@@ -81,7 +84,11 @@ export function RequestForm({
       <div>
         <SectionLabel>Selected Services</SectionLabel>
 
-        {selectedServices.length === 0 ? (
+        {selectedServices.length === 0 && planItems.length > 0 ? (
+          <p className="text-[#7DD8E8] text-sm leading-5 font-sans">
+            No specific services picked. Our team will go over options with these vendors.
+          </p>
+        ) : selectedServices.length === 0 ? (
           <div className="p-6 rounded-xl border border-[#2a2829] bg-[#1a1819] text-center">
             <p className="text-[#7DD8E8] text-sm font-sans">
               No services selected.{' '}

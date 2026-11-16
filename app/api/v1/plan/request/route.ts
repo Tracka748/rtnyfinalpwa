@@ -3,6 +3,7 @@ import { createSupabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database'
 import { scheduleOutbox } from '@/lib/notifications/outbox'
+import { keepKnown, parseVendorIds } from '@/lib/plan-request-vendors'
 
 type PlanRequestInsert = Database['public']['Tables']['plan_requests']['Insert']
 
@@ -15,6 +16,8 @@ interface RequestBody {
   guest_count: string | null
   has_venue: boolean | null
   selected_service_ids: string[]
+  // Vendor ids from "Add to Plan". Only ids are read; names, types and prices never are.
+  selected_vendor_ids?: unknown
   estimated_total: number | null
   needs: string[]
   notes: string | null
@@ -99,6 +102,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const vendorIds = parseVendorIds(body.selected_vendor_ids)
+    if (!vendorIds.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: vendorIds.reason === 'too_many' ? 'Too many vendors selected (max 20)' : 'Invalid vendor selection',
+        },
+        { status: 422 }
+      )
+    }
+
     // Attempt to resolve authenticated user — anonymous submissions are allowed
     let userId: string | null = null
     try {
@@ -111,6 +125,24 @@ export async function POST(request: NextRequest) {
 
     const supabase = createSupabaseAdmin()
 
+    // Keep only vendors that exist and are active, the same vendor-level rule /api/v1/vendors uses.
+    let selectedVendorIds: string[] = []
+    if (vendorIds.ids.length > 0) {
+      const { data: vendorRows, error: vendorError } = await supabase
+        .from('vendors')
+        .select('id')
+        .in('id', vendorIds.ids)
+        .eq('active', true)
+      if (vendorError) {
+        console.error('plan_requests vendor lookup error:', (vendorError as { code?: string }).code ?? 'unknown')
+        return NextResponse.json(
+          { success: false, error: 'Failed to submit plan request' },
+          { status: 500 }
+        )
+      }
+      selectedVendorIds = keepKnown(vendorIds.ids, vendorRows)
+    }
+
     const payload: PlanRequestInsert = {
       event_type: event_type.trim(),
       event_date: event_date ?? null,
@@ -120,6 +152,7 @@ export async function POST(request: NextRequest) {
       guest_count: guest_count ?? null,
       has_venue: has_venue ?? null,
       selected_service_ids: Array.isArray(selected_service_ids) ? selected_service_ids : [],
+      selected_vendor_ids: selectedVendorIds,
       // Package requests are created only by public.theme_package_create_request
       selected_package_id: null,
       estimated_total: estimated_total ?? null,

@@ -136,7 +136,9 @@ describe('itemPriceText', () => {
 
 describe('planCard', () => {
   it('returns null for null, arrays, primitives and an empty plan', () => {
-    for (const v of [null, undefined, 'x', 5, [], {}, { needs: [], services: [] }]) expect(planCard(v)).toBeNull()
+    for (const v of [null, undefined, 'x', 5, [], {}, { needs: [], services: [] }, { needs: [], services: [], vendors: [] }]) {
+      expect(planCard(v)).toBeNull()
+    }
   })
 
   it('formats a time range, a single start, a single end, and drops bad times', () => {
@@ -176,7 +178,7 @@ describe('planCard', () => {
       time_start: '18:00', needs: ['dj'], email: 'a@b.c', phone: '555', notes: 'secret', name: 'Jo',
       services: [{ title: 'DJ', category: 'music', email: 'v@x.y', phone: '1', notes: 'n', contact: { email: 'z' } }],
     })!
-    expect(Object.keys(p).sort()).toEqual(['needs', 'services', 'times'])
+    expect(Object.keys(p).sort()).toEqual(['needs', 'services', 'times', 'vendors'])
     expect(Object.keys(p.services[0]).sort()).toEqual(['category', 'title'])
     expect(JSON.stringify(p)).not.toMatch(/@|555|secret|Jo\b/)
     // The contact object itself is not a plan.
@@ -185,6 +187,53 @@ describe('planCard', () => {
 
   it('strips control characters from text', () => {
     expect(planCard({ needs: ['d\u0000j\n'] })!.needs).toEqual(['d j'])
+  })
+
+  it('vendors alone make a card, in server order', () => {
+    const p = planCard({ vendors: [{ name: 'Sound Co', category: 'dj' }, { name: 'Hall', category: 'venue' }] })!
+    expect(p).not.toBeNull()
+    expect(p.vendors).toEqual([{ name: 'Sound Co', category: 'DJ' }, { name: 'Hall', category: 'Venue' }])
+    expect(p.services).toEqual([])
+  })
+
+  it('maps vendor types to labels, hides addon, title-cases unknown types', () => {
+    const cat = (category: unknown) => planCard({ vendors: [{ name: 'V', category }] })!.vendors[0].category
+    expect(cat('venue')).toBe('Venue')
+    expect(cat('dj')).toBe('DJ')
+    expect(cat('DJ')).toBe('DJ')
+    expect(cat('photographer')).toBe('Photographer')
+    expect(cat('security')).toBe('Security')
+    expect(cat('bartender')).toBe('Bartender')
+    expect(cat('addon')).toBeNull()
+    expect(cat('photo_booth')).toBe('Photo Booth')
+    expect(cat('caterer')).toBe('Caterer')
+    expect(cat(null)).toBeNull()
+    expect(cat('  ')).toBeNull()
+    expect(cat(5)).toBeNull()
+  })
+
+  it('drops vendors without a name and junk, caps names at 60, at most 20', () => {
+    const p = planCard({
+      vendors: [
+        { name: '' }, { category: 'dj' }, null, 'Hall', [], { name: 5 },
+        { name: 'N'.repeat(90), category: 'c'.repeat(90) },
+        ...Array(30).fill({ name: 'DJ Co', category: 'dj' }),
+      ],
+    })!
+    expect(p.vendors[0].name).toHaveLength(60)
+    expect(p.vendors[0].category!.length).toBeLessThanOrEqual(60)
+    expect(p.vendors).toHaveLength(20)
+  })
+
+  it('a vendor carries only name and category', () => {
+    const p = planCard({ vendors: [{ name: 'V', category: 'dj', id: 'x', price: 900, contact_email: 'v@x.y', phone: '1' }] })!
+    expect(Object.keys(p.vendors[0]).sort()).toEqual(['category', 'name'])
+    expect(JSON.stringify(p)).not.toMatch(/@|900/)
+  })
+
+  it('vendors as an object or a string are empty', () => {
+    expect(planCard({ vendors: { name: 'V' }, time_start: '18:00' })!.vendors).toEqual([])
+    expect(planCard({ vendors: 'V', time_start: '18:00' })!.vendors).toEqual([])
   })
 })
 

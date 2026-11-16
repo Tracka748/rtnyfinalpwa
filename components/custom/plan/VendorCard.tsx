@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { Vendor, VendorService, PlanItem } from '@/hooks/usePlanBuilder'
+import { VENDOR_LIMIT_MESSAGE, canAddVendor } from '@/lib/plan-request-vendors'
 
 // ─── Tier config ──────────────────────────────────────────────────────────────
 
@@ -167,6 +168,8 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
   const activeServices = vendor.vendor_services.filter(s => s.active !== false)
   const selectedCount = activeServices.filter(s => selectedServiceIds.has(s.id)).length
   const isInPlan = planItems.some(item => item.vendorId === vendor.id)
+  // The plan holds at most 20 vendors; once full, vendors not already in it cannot be added.
+  const planFull = !isInPlan && !canAddVendor(planItems.length)
 
   // Get day-of-week multiplier for current date
   const getDynamicMultiplier = (service: VendorService): number | null => {
@@ -280,16 +283,24 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
         <button
           type="button"
           onClick={() => onAddToPlan(vendor)}
-          disabled={isInPlan}
+          disabled={isInPlan || planFull}
+          aria-describedby={planFull ? `plan-full-${vendor.id}` : undefined}
           className={cn(
             'w-full py-2 rounded-xl text-sm font-sans font-semibold transition-all duration-200',
             isInPlan
               ? 'bg-[#59ffa0]/10 border border-[#59ffa0]/30 text-[#59ffa0] cursor-default'
-              : 'bg-[#59ffa0] text-[#121113] hover:bg-[#59ffa0]/90 hover:shadow-md hover:shadow-[#59ffa0]/20'
+              : planFull
+                ? 'bg-[#242324] text-[#7DD8E8] cursor-not-allowed'
+                : 'bg-[#59ffa0] text-[#121113] hover:bg-[#59ffa0]/90 hover:shadow-md hover:shadow-[#59ffa0]/20'
           )}
         >
           {isInPlan ? 'Added ✓' : 'Add to Plan'}
         </button>
+        {planFull && (
+          <p id={`plan-full-${vendor.id}`} className="mt-2 text-center text-sm leading-5 font-sans text-[#7DD8E8]">
+            {VENDOR_LIMIT_MESSAGE}
+          </p>
+        )}
       </div>
     </div>
   )

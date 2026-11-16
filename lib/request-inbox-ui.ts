@@ -117,10 +117,25 @@ export function itemPriceText(item: { price_status?: unknown; line_total?: unkno
 
 // ---- plan (Plan My Event) ----
 
-// The server returns `plan` to every viewer; it never carries contact data. This reads only the three
+// The server returns `plan` to every viewer; it never carries contact data. This reads only the
 // known keys, so nothing else in the object can reach the Plan card.
 export interface PlanService { title: string; category: string | null }
-export interface PlanCard { times: string | null; needs: string[]; services: PlanService[] }
+/** A vendor added with "Add to Plan". category is a display label, or null when hidden. */
+export interface PlanVendor { name: string; category: string | null }
+export interface PlanCard { times: string | null; needs: string[]; vendors: PlanVendor[]; services: PlanService[] }
+
+// vendors.type -> label. 'addon' covers many kinds of vendor, so it is hidden (name only).
+const VENDOR_TYPE_LABELS: Record<string, string | null> = {
+  venue: 'Venue', dj: 'DJ', photographer: 'Photographer', security: 'Security', bartender: 'Bartender', addon: null,
+}
+
+/** Label for a vendors.type value: known types mapped, 'addon' hidden, anything else title-cased. */
+export function vendorTypeLabel(type: string | null): string | null {
+  if (!type) return null
+  const key = type.toLowerCase()
+  if (key in VENDOR_TYPE_LABELS) return VENDOR_TYPE_LABELS[key]
+  return key.split(/[\s_-]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ') || null
+}
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 const clean = (v: unknown, max: number): string | null => {
@@ -150,7 +165,15 @@ export function planCard(plan: unknown): PlanCard | null {
     const title = clean(o.title, 120)
     return title ? [{ title, category: clean(o.category, 60) }] : []
   }).slice(0, 30)
-  return times || needs.length > 0 || services.length > 0 ? { times, needs, services } : null
+  const vendors = (Array.isArray(p.vendors) ? p.vendors : []).flatMap((v): PlanVendor[] => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return []
+    const o = v as Record<string, unknown>
+    const name = clean(o.name, 60)
+    return name ? [{ name, category: vendorTypeLabel(clean(o.category, 60)) }] : []
+  }).slice(0, 20)
+  return times || needs.length > 0 || vendors.length > 0 || services.length > 0
+    ? { times, needs, vendors, services }
+    : null
 }
 
 /** The customer's name as sent by the server (names only; phone, email and notes stay in `contact`). */

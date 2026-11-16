@@ -286,6 +286,19 @@ export default function AdminRequestDetailPage() {
             {plan.times && <Row label="Time" value={plan.times} />}
             {plan.needs.length > 0 && <Row label="Looking for" value={plan.needs.join(', ')} />}
           </dl>
+          {plan.vendors.length > 0 && (
+            <>
+              <h3 className="mt-3 text-sm leading-5 text-[#7DD8E8]">Vendors</h3>
+              <ul className="divide-y divide-white/10">
+                {plan.vendors.map((v, i) => (
+                  <li key={i} className="break-words py-3 text-base leading-6 text-white">
+                    {v.name}
+                    {v.category && <span className="text-[#7DD8E8]"> · {v.category}</span>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {plan.services.length > 0 && (
             <>
               <h3 className="mt-3 text-sm leading-5 text-[#7DD8E8]">Chosen services</h3>

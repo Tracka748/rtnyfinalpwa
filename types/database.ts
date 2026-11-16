@@ -3270,6 +3270,7 @@ export type Database = {
           request_source: string
           selected_package_id: string | null
           selected_service_ids: string[] | null
+          selected_vendor_ids: string[]
           status: string
           time_end: string | null
           time_start: string | null
@@ -3297,6 +3298,7 @@ export type Database = {
           request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
+          selected_vendor_ids?: string[]
           status?: string
           time_end?: string | null
           time_start?: string | null
@@ -3324,6 +3326,7 @@ export type Database = {
           request_source?: string
           selected_package_id?: string | null
           selected_service_ids?: string[] | null
+          selected_vendor_ids?: string[]
           status?: string
           time_end?: string | null
           time_start?: string | null
@@ -5899,6 +5902,7 @@ export type Database = {
           request_source: string
           selected_package_id: string | null
           selected_service_ids: string[] | null
+          selected_vendor_ids: string[]
           status: string
           time_end: string | null
           time_start: string | null

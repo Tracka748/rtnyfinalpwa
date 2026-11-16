@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
+import { canAddVendor, planVendorIds } from '@/lib/plan-request-vendors'
 
 // ─── Category → DB type mapping for client-side filtering ────────────────────
 
@@ -342,6 +343,8 @@ export function usePlanBuilder() {
   const addToPlan = useCallback((vendor: Vendor) => {
     setState(s => {
       if (s.planItems.some(item => item.vendorId === vendor.id)) return s
+      // At most 20 vendors per request (the request route rejects more).
+      if (!canAddVendor(s.planItems.length)) return s
       const cheapestService = vendor.vendor_services
         .filter(sv => sv.active !== false)
         .sort((a, b) => a.price - b.price)[0]
@@ -407,6 +410,7 @@ export function usePlanBuilder() {
         guest_count: state.eventDetails.guestCount || null,
         has_venue: state.eventDetails.hasVenue,
         selected_service_ids: [...state.selectedServiceIds],
+        selected_vendor_ids: planVendorIds(state.planItems),
         estimated_total: estimatedTotal || null,
         needs,
         notes: state.notes || null,
