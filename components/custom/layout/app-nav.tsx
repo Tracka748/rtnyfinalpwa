@@ -7,6 +7,9 @@ import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import type { User } from "@supabase/supabase-js"
 import { SidebarTrigger } from "@/components/custom/layout/sidebar-trigger"
 import { LogoutButton } from "@/components/custom/auth/logout-button"
+import { useCanViewRequests } from "@/hooks/useCanViewRequests"
+import { staffNavLinks } from "@/lib/staff-nav"
+import { StaffRequestsLink } from "@/components/staff/RequestsNavLink"
 
 export function AppNav() {
   const pathname = usePathname()
@@ -70,6 +73,10 @@ export function AppNav() {
 
   const isActive = (path: string) => pathname === path
 
+  // Display only: the server answers whether this user may open the request inbox.
+  const canViewRequests = useCanViewRequests(user?.id ?? null)
+  const { showRequests } = staffNavLinks({ signedIn: !!user, isAdmin: false, canViewRequests })
+
   // Taps on the nav's own blank background (not on a link/button) close the menu.
   const closeOnBlankTap = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) setMobileMenuOpen(false)
@@ -126,6 +133,10 @@ export function AppNav() {
 
           {/* Right group: Desktop Navigation */}
           <div className="hidden items-center gap-6 md:flex">
+            {/* Staff only. First in the cluster on purpose: this cluster is pinned to the right edge, so a
+                link that arrives late only grows it leftward, and Home, Events and the rest do not move. */}
+            <StaffRequestsLink canView={showRequests} variant="topbar" />
+
             {/* Home Link */}
             <Link
               href="/"
@@ -332,6 +343,8 @@ export function AppNav() {
                     >
                       My Tickets
                     </Link>
+
+                    <StaffRequestsLink canView={showRequests} variant="menu" onNavigate={() => setMobileMenuOpen(false)} />
 
                     <div className="mt-4 border-t border-[#2A2A2A] pt-4">
                       <p className="px-3 font-sans text-sm text-[#A0A0A0]">

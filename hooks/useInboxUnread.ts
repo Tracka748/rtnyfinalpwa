@@ -12,11 +12,17 @@ export function notifyInboxUnreadChanged(): void {
 /**
  * The caller's unread request count, or null when unknown (loading or failed).
  * Fetched on mount, on window focus and after notifyInboxUnreadChanged. No polling.
+ * Pass enabled=false to do nothing at all (the default keeps the admin shell unchanged).
  */
-export function useInboxUnread(): number | null {
+export function useInboxUnread(enabled = true): number | null {
   const [count, setCount] = useState<number | null>(null)
 
   useEffect(() => {
+    // Not enabled: no request, no listeners, no badge.
+    if (!enabled) {
+      setCount(null)
+      return
+    }
     let alive = true
     let seq = 0
 
@@ -44,7 +50,7 @@ export function useInboxUnread(): number | null {
       window.removeEventListener('focus', load)
       window.removeEventListener(INBOX_UNREAD_EVENT, load)
     }
-  }, [])
+  }, [enabled])
 
   return count
 }

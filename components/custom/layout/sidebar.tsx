@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation"
 import { createBrowserSupabaseClient } from "@/lib/supabase-browser"
 import { LogoutButton } from "@/components/custom/auth/logout-button"
 import { useSidebar } from "@/contexts/sidebar-context"
+import { useCanViewRequests } from "@/hooks/useCanViewRequests"
+import { staffNavLinks } from "@/lib/staff-nav"
+import { StaffRequestsLink } from "@/components/staff/RequestsNavLink"
 import type { User } from "@supabase/supabase-js"
 
 interface Profile {
@@ -142,6 +145,9 @@ export function Sidebar() {
 
   const isPromoter = profile?.role === "promoter" || profile?.role === "admin"
   const isAdmin = profile?.role === "admin"
+  // Display only: the server answers whether this user may open the request inbox.
+  const canViewRequests = useCanViewRequests(user?.id ?? null)
+  const { showRequests } = staffNavLinks({ signedIn: !!user, isAdmin, canViewRequests })
 
   return (
     <>
@@ -250,6 +256,7 @@ export function Sidebar() {
             {isAdmin && (
               <NavItem href="/admin" emoji="🛡️" label="Admin" onClick={handleNavClick} />
             )}
+            <StaffRequestsLink canView={showRequests} variant="sidebar" onNavigate={handleNavClick} />
           </div>
 
           {/* SUPPORT */}

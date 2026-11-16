@@ -34,6 +34,7 @@ describe('request pages and staff shell: readability rules', () => {
       'components/admin/requests/RequestActionBar.tsx',
       'components/admin/requests/RequestNoteBox.tsx',
       'components/admin/requests/RequestTimeline.tsx',
+      'components/staff/RequestsNavLink.tsx',
       'components/staff/SignInRedirect.tsx',
       'components/staff/StaffShell.tsx',
     ])
