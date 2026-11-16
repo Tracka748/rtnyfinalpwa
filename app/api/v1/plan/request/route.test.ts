@@ -135,6 +135,45 @@ describe('POST /plan/request selected_vendor_ids', () => {
     expect(h.scheduleOutbox).not.toHaveBeenCalled()
   })
 
+  const serviceRejected: Array<[string, unknown, string]> = [
+    ['malformed service id', [V(1), 'not-a-uuid'], 'Invalid service selection'],
+    ['non-string service id', [V(1), 7], 'Invalid service selection'],
+    ['non-array services', V(1), 'Invalid service selection'],
+    ['services object', { id: V(1) }, 'Invalid service selection'],
+    ['over 200 service elements', Array(201).fill(V(1)), 'Invalid service selection'],
+    ['31 distinct services', Array.from({ length: 31 }, (_, i) => V(i + 1)), 'Too many services selected (max 30)'],
+  ]
+  for (const [name, value, message] of serviceRejected) {
+    it(`${name}: 422 with "${message}", no lookup, no insert, no outbox`, async () => {
+      const f = setupVendors([V(1)])
+      const res = await send({ ...BODY, selected_service_ids: value, selected_vendor_ids: [V(1)] })
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({ success: false, error: message })
+      expect(lookups(f)).toHaveLength(0)
+      expect(inserts(f)).toHaveLength(0)
+      expect(h.scheduleOutbox).not.toHaveBeenCalled()
+    })
+  }
+
+  it('missing or null services store []', async () => {
+    for (const body of [(({ selected_service_ids: _s, ...rest }) => rest)(BODY), { ...BODY, selected_service_ids: null }]) {
+      const f = setupVendors()
+      expect((await send(body)).status).toBe(201)
+      expect((inserts(f)[0].payload as { selected_service_ids: unknown }).selected_service_ids).toEqual([])
+    }
+  })
+
+  it('30 distinct services are accepted, stored lowercased and deduplicated', async () => {
+    const hex = 'abcdef00-0000-4000-8000-00000000abcd'
+    const thirty = [hex, ...Array.from({ length: 29 }, (_, i) => V(i + 1))]
+    const f = setupVendors([V(1)])
+    const res = await send({ ...BODY, selected_service_ids: [hex.toUpperCase(), ...thirty.slice(1), hex], selected_vendor_ids: [V(1)] })
+    expect(res.status).toBe(201)
+    const payload = inserts(f)[0].payload as { selected_service_ids: unknown; selected_vendor_ids: unknown }
+    expect(payload.selected_service_ids).toEqual(thirty)
+    expect(payload.selected_vendor_ids).toEqual([V(1)])
+  })
+
   it('client vendor names, types and prices are ignored: only ids are stored', async () => {
     const f = setupVendors([V(1)])
     await send({

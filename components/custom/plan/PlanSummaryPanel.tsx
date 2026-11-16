@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { SelectedService, PlanItem } from '@/hooks/usePlanBuilder'
+import { VENDOR_PRICING_NOTE, planTotalView } from '@/lib/plan-total'
 
 interface PlanSummaryPanelProps {
   selectedServices: SelectedService[]
@@ -21,9 +22,15 @@ export function PlanSummaryPanel({
   onRemoveFromPlan,
   compact = false,
 }: PlanSummaryPanelProps) {
+  // The amount is the saved estimated_total (ticked services only). Vendors are listed, never summed.
+  const totalView = planTotalView({
+    servicesTotal: estimatedTotal,
+    serviceCount: selectedServices.length,
+    vendorCount: planItems.length,
+  })
+
   if (compact) {
     // Mobile bottom bar — shown when at least one item or service is added
-    const mobileTotal = planItems.reduce((sum, item) => sum + (item.basePrice ?? 0), 0) + estimatedTotal
     const mobileCount = planItems.length + selectedServices.length
     if (mobileCount === 0) return null
     return (
@@ -33,9 +40,13 @@ export function PlanSummaryPanel({
             <p className="text-[#7DD8E8] text-xs font-label">
               {mobileCount} item{mobileCount !== 1 ? 's' : ''} added
             </p>
-            <p className="text-[#59ffa0] font-slab-serif font-bold text-lg leading-tight">
-              ${mobileTotal.toFixed(2)}
-            </p>
+            {totalView.showAmount ? (
+              <p className="text-[#59ffa0] font-slab-serif font-bold text-lg leading-tight">
+                ${totalView.amount.toFixed(2)}
+              </p>
+            ) : (
+              <p className="text-[#f9fdff] text-sm leading-5 font-sans">{VENDOR_PRICING_NOTE}</p>
+            )}
           </div>
           <div className="flex flex-wrap gap-1 justify-end max-w-[55%]">
             {selectedServices.slice(0, 3).map(s => (
@@ -58,9 +69,6 @@ export function PlanSummaryPanel({
   }
 
   // Desktop sidebar panel
-  const combinedTotal =
-    planItems.reduce((sum, item) => sum + (item.basePrice ?? 0), 0) + estimatedTotal
-
   return (
     <div className="rounded-2xl border border-[#2a2829] bg-[#1a1819] overflow-hidden">
       {/* Header */}
@@ -151,15 +159,24 @@ export function PlanSummaryPanel({
       {/* Total */}
       {(selectedServices.length > 0 || planItems.length > 0) && (
         <div className="px-4 py-3 border-t border-[#2a2829] bg-[#121113]/40">
-          <div className="flex items-center justify-between">
-            <span className="text-[#7DD8E8] text-xs font-label">Estimated Total</span>
-            <span className="text-[#59ffa0] font-slab-serif font-bold text-base">
-              ${combinedTotal.toFixed(2)}
-            </span>
-          </div>
-          <p className="text-[#7DD8E8]/50 text-[10px] mt-1 leading-relaxed">
-            Prices may vary. Dynamic pricing applied for selected date.
-          </p>
+          {totalView.showAmount && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-[#7DD8E8] text-xs font-label">Estimated Total</span>
+                <span className="text-[#59ffa0] font-slab-serif font-bold text-base">
+                  ${totalView.amount.toFixed(2)}
+                </span>
+              </div>
+              <p className="text-[#7DD8E8]/50 text-[10px] mt-1 leading-relaxed">
+                Prices may vary. Dynamic pricing applied for selected date.
+              </p>
+            </>
+          )}
+          {totalView.showVendorNote && (
+            <p className={cn('text-[#f9fdff] text-sm leading-5 font-sans', totalView.showAmount && 'mt-2')}>
+              {VENDOR_PRICING_NOTE}
+            </p>
+          )}
         </div>
       )}
     </div>

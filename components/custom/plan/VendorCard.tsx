@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { Vendor, VendorService, PlanItem } from '@/hooks/usePlanBuilder'
-import { VENDOR_LIMIT_MESSAGE, canAddVendor } from '@/lib/plan-request-vendors'
+import { SERVICE_LIMIT_MESSAGE, VENDOR_LIMIT_MESSAGE, canAddService, canAddVendor } from '@/lib/plan-request-vendors'
 
 // ─── Tier config ──────────────────────────────────────────────────────────────
 
@@ -78,26 +78,38 @@ interface ServiceRowProps {
   onToggle: () => void
   eventDate: string
   dynamicMultiplier: number | null
+  /** True when the 30-service limit is reached and this row is not ticked. */
+  blocked?: boolean
+  /** id of the visible limit message, when blocked. */
+  describedBy?: string
 }
 
-function ServiceRow({ service, selected, onToggle, dynamicMultiplier }: ServiceRowProps) {
+function ServiceRow({ service, selected, onToggle, dynamicMultiplier, blocked = false, describedBy }: ServiceRowProps) {
   const effectivePrice = dynamicMultiplier
     ? Math.round(service.price * dynamicMultiplier * 100) / 100
     : service.price
   const hasDiscount = dynamicMultiplier !== null && dynamicMultiplier !== 1
 
   return (
-    <div
+    <button
+      type="button"
+      aria-pressed={selected}
+      aria-disabled={blocked || undefined}
+      aria-describedby={blocked ? describedBy : undefined}
       className={cn(
-        'flex items-start gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer group',
+        'w-full min-h-[44px] text-left flex items-start gap-3 p-3 rounded-xl border transition-all duration-200 group',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#59ffa0] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1819]',
         selected
-          ? 'border-[#59ffa0] bg-[#59ffa0]/8'
-          : 'border-[#2a2829] bg-[#121113] hover:border-[#59ffa0]/30 hover:bg-[#1a1819]'
+          ? 'border-[#59ffa0] bg-[#59ffa0]/8 cursor-pointer'
+          : blocked
+            ? 'border-[#2a2829] bg-[#121113] opacity-60 cursor-not-allowed'
+            : 'border-[#2a2829] bg-[#121113] hover:border-[#59ffa0]/30 hover:bg-[#1a1819] cursor-pointer'
       )}
-      onClick={onToggle}
+      onClick={blocked ? undefined : onToggle}
     >
-      {/* Checkbox */}
-      <div
+      {/* Checkbox (decorative; the button's aria-pressed carries the state) */}
+      <span
+        aria-hidden="true"
         className={cn(
           'mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all duration-200',
           selected ? 'border-[#59ffa0] bg-[#59ffa0]' : 'border-[#2a2829] group-hover:border-[#59ffa0]/50'
@@ -108,21 +120,21 @@ function ServiceRow({ service, selected, onToggle, dynamicMultiplier }: ServiceR
             <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
-      </div>
+      </span>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[#f9fdff] text-sm font-sans font-medium leading-snug">
+      {/* Info (spans only: a button may contain phrasing content only) */}
+      <span className="block flex-1 min-w-0">
+        <span className="flex items-start justify-between gap-2">
+          <span className="block">
+            <span className="block text-[#f9fdff] text-sm font-sans font-medium leading-snug">
               {service.title}
-            </p>
+            </span>
             {service.description && (
-              <p className="text-[#7DD8E8] text-[11px] mt-0.5 line-clamp-2 leading-relaxed">
+              <span className="block text-[#7DD8E8] text-[11px] mt-0.5 line-clamp-2 leading-relaxed">
                 {service.description}
-              </p>
+              </span>
             )}
-            <div className="flex items-center gap-2 mt-1">
+            <span className="flex items-center gap-2 mt-1">
               <span className="text-[10px] font-label text-[#7DD8E8]/60 tracking-wide">
                 {getCategoryIcon(service.category)} {service.category}
               </span>
@@ -131,23 +143,23 @@ function ServiceRow({ service, selected, onToggle, dynamicMultiplier }: ServiceR
                   · {service.duration_hours}h
                 </span>
               )}
-            </div>
-          </div>
+            </span>
+          </span>
 
           {/* Price */}
-          <div className="text-right shrink-0">
+          <span className="block text-right shrink-0">
             {hasDiscount && (
-              <p className="text-[10px] text-[#7DD8E8]/50 line-through">
+              <span className="block text-[10px] text-[#7DD8E8]/50 line-through">
                 ${service.price.toLocaleString()}
-              </p>
+              </span>
             )}
-            <p className={cn('text-sm font-slab-serif font-bold', selected ? 'text-[#59ffa0]' : 'text-[#f9fdff]')}>
+            <span className={cn('block text-sm font-slab-serif font-bold', selected ? 'text-[#59ffa0]' : 'text-[#f9fdff]')}>
               ${effectivePrice.toLocaleString()}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+            </span>
+          </span>
+        </span>
+      </span>
+    </button>
   )
 }
 
@@ -170,6 +182,10 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
   const isInPlan = planItems.some(item => item.vendorId === vendor.id)
   // The plan holds at most 20 vendors; once full, vendors not already in it cannot be added.
   const planFull = !isInPlan && !canAddVendor(planItems.length)
+  // At most 30 ticked services per request; once full, unticked rows are blocked (ticked ones can be removed).
+  const servicesFull = !canAddService(selectedServiceIds.size)
+  const servicesFullId = `services-full-${vendor.id}`
+  const showServicesFull = servicesFull && activeServices.some(s => !selectedServiceIds.has(s.id))
 
   // Get day-of-week multiplier for current date
   const getDynamicMultiplier = (service: VendorService): number | null => {
@@ -273,8 +289,15 @@ export function VendorCard({ vendor, selectedServiceIds, onToggleService, eventD
               onToggle={() => onToggleService(service.id)}
               eventDate={eventDate}
               dynamicMultiplier={getDynamicMultiplier(service)}
+              blocked={servicesFull && !selectedServiceIds.has(service.id)}
+              describedBy={servicesFullId}
             />
           ))}
+          {showServicesFull && (
+            <p id={servicesFullId} className="pt-1 text-center text-sm leading-5 font-sans text-[#7DD8E8]">
+              {SERVICE_LIMIT_MESSAGE}
+            </p>
+          )}
         </div>
       )}
 

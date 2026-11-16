@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { canAddVendor, planVendorIds } from '@/lib/plan-request-vendors'
+import { canAddService, canAddVendor, planVendorIds } from '@/lib/plan-request-vendors'
+import { servicesTotal } from '@/lib/plan-total'
 
 // ─── Category → DB type mapping for client-side filtering ────────────────────
 
@@ -242,7 +243,8 @@ export function usePlanBuilder() {
   }, [state.selectedServiceIds, serviceMap, state.eventDetails.eventDate])
 
   const estimatedTotal = useMemo(
-    () => selectedServices.reduce((sum, s) => sum + s.effectivePrice, 0),
+    // Ticked services only, rounded to cents: the number shown is the number saved.
+    () => servicesTotal(selectedServices),
     [selectedServices]
   )
 
@@ -367,6 +369,8 @@ export function usePlanBuilder() {
     setState(s => {
       const next = new Set(s.selectedServiceIds)
       if (next.has(serviceId)) next.delete(serviceId)
+      // At most 30 services per request (the request route rejects more). Removing always works.
+      else if (!canAddService(s.selectedServiceIds.size)) return s
       else next.add(serviceId)
       return { ...s, selectedServiceIds: next }
     })

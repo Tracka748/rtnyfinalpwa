@@ -48,6 +48,55 @@ describe('RequestForm copy', () => {
   })
 })
 
+describe('30-service cap', () => {
+  const hook = read('hooks/usePlanBuilder.ts')
+  const card = read('components/custom/plan/VendorCard.tsx')
+
+  it('toggleService refuses a 31st service but still removes', () => {
+    const toggle = hook.slice(hook.indexOf('const toggleService'), hook.indexOf('const goNext'))
+    expect(toggle).toMatch(/if \(next\.has\(serviceId\)\) next\.delete\(serviceId\)\s*\n[^\n]*\n\s*else if \(!canAddService\(s\.selectedServiceIds\.size\)\) return s\s*\n\s*else next\.add\(serviceId\)/)
+  })
+
+  it('ServiceRow is a real button with aria-pressed, 44px, a focus ring, and is blocked with the message', () => {
+    const row = card.slice(card.indexOf('function ServiceRow'), card.indexOf('// ─── Vendor Card'))
+    expect(row).toMatch(/<button\s+type="button"\s+aria-pressed=\{selected\}/)
+    expect(row).toContain('aria-describedby={blocked ? describedBy : undefined}')
+    expect(row).toContain('min-h-[44px]')
+    expect(row).toContain('focus-visible:ring-2 focus-visible:ring-[#59ffa0]')
+    expect(row).toContain('onClick={blocked ? undefined : onToggle}')
+    expect(row).not.toMatch(/<div|<p[\s>]/) // phrasing content only inside a button
+    expect(card).toContain('const servicesFull = !canAddService(selectedServiceIds.size)')
+    expect(card).toContain('blocked={servicesFull && !selectedServiceIds.has(service.id)}')
+    expect(card).toMatch(/<p id=\{servicesFullId\} className="[^"]*\btext-sm\b[^"]*">\s*\{SERVICE_LIMIT_MESSAGE\}/)
+  })
+})
+
+describe('shown total = saved total', () => {
+  const hook = read('hooks/usePlanBuilder.ts')
+  const panel = read('components/custom/plan/PlanSummaryPanel.tsx')
+  const form = read('components/custom/plan/RequestForm.tsx')
+
+  it('the hook computes estimatedTotal with servicesTotal and sends it', () => {
+    expect(hook).toContain('() => servicesTotal(selectedServices),')
+    expect(hook).toContain('estimated_total: estimatedTotal || null,')
+  })
+
+  it('the summary panel never adds vendor prices and uses planTotalView', () => {
+    expect(panel).not.toContain('planItems.reduce(')
+    expect(panel).not.toMatch(/combinedTotal|mobileTotal/)
+    expect(panel).toContain('planTotalView({')
+    expect(panel).toMatch(/\{totalView\.showAmount \? \(/)
+    expect(panel).toMatch(/<p className="[^"]*\btext-sm\b[^"]*">\{VENDOR_PRICING_NOTE\}<\/p>/)
+    expect(panel).toMatch(/totalView\.showVendorNote && \(\s*<p className=\{cn\('[^']*\btext-sm\b/)
+  })
+
+  it('the review step shows the vendor note at 14px under the vendors', () => {
+    expect(form).toMatch(/<p className="[^"]*\btext-sm\b[^"]*">\{VENDOR_PRICING_NOTE\}<\/p>/)
+    expect(form).toContain('${estimatedTotal.toLocaleString(')
+    expect(form).not.toContain('planItems.reduce(')
+  })
+})
+
 describe('staff request page', () => {
   const page = read('app/(staff)/admin/requests/[id]/page.tsx')
 

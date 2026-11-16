@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database'
 import { scheduleOutbox } from '@/lib/notifications/outbox'
-import { keepKnown, parseVendorIds } from '@/lib/plan-request-vendors'
+import { keepKnown, parseServiceIds, parseVendorIds } from '@/lib/plan-request-vendors'
 
 type PlanRequestInsert = Database['public']['Tables']['plan_requests']['Insert']
 
@@ -102,6 +102,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const serviceIds = parseServiceIds(selected_service_ids)
+    if (!serviceIds.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: serviceIds.reason === 'too_many' ? 'Too many services selected (max 30)' : 'Invalid service selection',
+        },
+        { status: 422 }
+      )
+    }
+
     const vendorIds = parseVendorIds(body.selected_vendor_ids)
     if (!vendorIds.ok) {
       return NextResponse.json(
@@ -151,7 +162,7 @@ export async function POST(request: NextRequest) {
       budget_range: budget_range ?? null,
       guest_count: guest_count ?? null,
       has_venue: has_venue ?? null,
-      selected_service_ids: Array.isArray(selected_service_ids) ? selected_service_ids : [],
+      selected_service_ids: serviceIds.ids,
       selected_vendor_ids: selectedVendorIds,
       // Package requests are created only by public.theme_package_create_request
       selected_package_id: null,

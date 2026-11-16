@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { SelectedService, PlanItem } from '@/hooks/usePlanBuilder'
+import { VENDOR_PRICING_NOTE } from '@/lib/plan-total'
 
 interface RequestFormProps {
   selectedServices: SelectedService[]
@@ -77,6 +78,8 @@ export function RequestForm({
               </div>
             ))}
           </div>
+          {/* Vendor prices are not part of the estimated total. */}
+          <p className="text-[#f9fdff] text-sm leading-5 font-sans mt-3">{VENDOR_PRICING_NOTE}</p>
         </div>
       )}
 

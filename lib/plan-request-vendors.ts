@@ -7,16 +7,19 @@ export const PLAN_VENDOR_LIMIT = 20
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export type VendorIdsResult =
+export const SERVICE_ID_LIMIT = 30
+
+export type UuidListResult =
   | { ok: true; ids: string[] }
   | { ok: false; reason: 'malformed' | 'too_many' }
+export type VendorIdsResult = UuidListResult
 
 /**
  * undefined/null -> []. A non-array, more than MAX_RAW elements, or any element that is not a
  * uuid string -> 'malformed'. Ids are lowercased and deduplicated keeping first position; more than
- * PLAN_VENDOR_LIMIT distinct ids -> 'too_many' (never silently cut).
+ * `limit` distinct ids -> 'too_many' (never silently cut).
  */
-export function parseVendorIds(raw: unknown): VendorIdsResult {
+export function parseUuidList(raw: unknown, limit: number): UuidListResult {
   if (raw === undefined || raw === null) return { ok: true, ids: [] }
   if (!Array.isArray(raw) || raw.length > MAX_RAW) return { ok: false, reason: 'malformed' }
   const ids: string[] = []
@@ -26,9 +29,15 @@ export function parseVendorIds(raw: unknown): VendorIdsResult {
     const id = v.toLowerCase()
     if (!seen.has(id)) { seen.add(id); ids.push(id) }
   }
-  if (ids.length > PLAN_VENDOR_LIMIT) return { ok: false, reason: 'too_many' }
+  if (ids.length > limit) return { ok: false, reason: 'too_many' }
   return { ok: true, ids }
 }
+
+/** Vendor ids from "Add to Plan": at most PLAN_VENDOR_LIMIT distinct. */
+export const parseVendorIds = (raw: unknown): VendorIdsResult => parseUuidList(raw, PLAN_VENDOR_LIMIT)
+
+/** Ticked service ids: at most SERVICE_ID_LIMIT distinct. */
+export const parseServiceIds = (raw: unknown): UuidListResult => parseUuidList(raw, SERVICE_ID_LIMIT)
 
 /** Keeps the ids that appear in rows (matched case-insensitively), in input order. */
 export function keepKnown(ids: readonly string[], rows: ReadonlyArray<{ id?: unknown }> | null | undefined): string[] {
@@ -47,3 +56,8 @@ export function planVendorIds(planItems: ReadonlyArray<{ vendorId: string }>): s
 export const canAddVendor = (count: number): boolean => count < PLAN_VENDOR_LIMIT
 
 export const VENDOR_LIMIT_MESSAGE = `You can add up to ${PLAN_VENDOR_LIMIT} vendors.`
+
+/** True when another service can still be ticked. */
+export const canAddService = (count: number): boolean => count < SERVICE_ID_LIMIT
+
+export const SERVICE_LIMIT_MESSAGE = `You can select up to ${SERVICE_ID_LIMIT} services.`
