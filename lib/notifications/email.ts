@@ -31,20 +31,36 @@ export function classifyProviderError(
   return { code: 'provider_rejected', retryable: false }
 }
 
+/** A provider call that has not answered by then is abandoned and retried later (provider_timeout). */
+export const SEND_TIMEOUT_MS = 10_000
+
+const TIMED_OUT = Symbol('timed_out')
+
 export async function sendEmail(
   msg: { to: string; subject: string; html: string; text: string },
-  config: EmailConfig | null = getEmailConfig()
+  config: EmailConfig | null = getEmailConfig(),
+  opts: { timeoutMs?: number } = {}
 ): Promise<SendResult> {
   if (!config) return { ok: false, code: 'email_not_configured', retryable: false }
+  const timeoutMs = opts.timeoutMs ?? SEND_TIMEOUT_MS
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
     const resend = new Resend(config.apiKey)
-    const { data, error } = await resend.emails.send({
+    const send = resend.emails.send({
       from: config.from,
       to: msg.to,
       subject: msg.subject,
       html: msg.html,
       text: msg.text,
     })
+    const timeout = new Promise<typeof TIMED_OUT>(resolve => { timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs) })
+    const res = await Promise.race([send, timeout])
+    if (res === TIMED_OUT) {
+      // Swallow a late rejection from the abandoned call so it never becomes an unhandled rejection.
+      send.catch(() => undefined)
+      return { ok: false, code: 'provider_timeout', retryable: true }
+    }
+    const { data, error } = res
     if (error) {
       const e = error as { statusCode?: number | null; name?: string | null }
       return { ok: false, ...classifyProviderError(e.statusCode, e.name) }
@@ -52,5 +68,7 @@ export async function sendEmail(
     return { ok: true, id: typeof data?.id === 'string' ? data.id.slice(0, 128) : null }
   } catch {
     return { ok: false, code: 'network_error', retryable: true }
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }

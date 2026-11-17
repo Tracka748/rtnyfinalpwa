@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/v1/internal/outbox/run", "schedule": "0 14 * * *" }
+  ]
+}

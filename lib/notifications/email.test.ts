@@ -62,6 +62,40 @@ describe('sendEmail', () => {
     expect(r).toEqual({ ok: false, code: 'network_error', retryable: true })
   })
 
+  it('gives up on a provider call that does not answer in time (retryable provider_timeout)', async () => {
+    vi.useFakeTimers()
+    try {
+      h.send.mockReturnValue(new Promise(() => {})) // never settles
+      const pending = sendEmail(MSG, CONFIG, { timeoutMs: 50 })
+      await vi.advanceTimersByTimeAsync(50)
+      expect(await pending).toEqual({ ok: false, code: 'provider_timeout', retryable: true })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a late rejection after the timeout is swallowed', async () => {
+    vi.useFakeTimers()
+    try {
+      let reject!: (e: unknown) => void
+      h.send.mockReturnValue(new Promise((_, r) => { reject = r }))
+      const pending = sendEmail(MSG, CONFIG, { timeoutMs: 10 })
+      await vi.advanceTimersByTimeAsync(10)
+      expect((await pending).ok).toBe(false)
+      reject(new Error('late secret@x.com'))
+      await vi.advanceTimersByTimeAsync(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('an answer inside the timeout wins, and the default timeout is 10 seconds', async () => {
+    h.send.mockResolvedValue({ data: { id: 're_9' }, error: null })
+    expect(await sendEmail(MSG, CONFIG, { timeoutMs: 1000 })).toEqual({ ok: true, id: 're_9' })
+    const { SEND_TIMEOUT_MS } = await import('@/lib/notifications/email')
+    expect(SEND_TIMEOUT_MS).toBe(10_000)
+  })
+
   it('classifies directly too', () => {
     expect(classifyProviderError(404)).toEqual({ code: 'provider_rejected', retryable: false })
   })

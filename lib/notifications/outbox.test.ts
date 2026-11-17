@@ -14,7 +14,7 @@ vi.mock('next/server', async importOriginal => ({
 }))
 
 import { fakeSupabase, type FakeResult, type Recorded } from '@/lib/test-support/fake-supabase'
-import { processNotificationOutbox, scheduleOutbox } from '@/lib/notifications/outbox'
+import { OUTBOX_BUDGET, processNotificationOutbox, runOutboxWithBudget, scheduleOutbox } from '@/lib/notifications/outbox'
 
 const REQ = '11111111-1111-1111-1111-111111111111'
 const ACT = '22222222-2222-2222-2222-222222222222'
@@ -574,5 +574,75 @@ describe('scheduleOutbox', () => {
     h.after.mockImplementation(() => { throw new Error('outside a request scope') })
     expect(() => scheduleOutbox(REQ)).not.toThrow()
     await vi.waitFor(() => expect(calls(f, 'request_notifications_claim_email')).toHaveLength(1))
+  })
+})
+
+describe('runOutboxWithBudget', () => {
+  const rowsOf = (n: number, from = 0) => Array.from({ length: n }, (_, i) => ({ ...STAFF_ROW, id: `n-${from + i}` }))
+
+  function setupClaims(batches: unknown[][], claimError: unknown = null) {
+    let i = 0
+    const f = fakeSupabase({
+      rpc: fn => {
+        if (fn === 'request_notifications_claim_email') return claimError ? { data: null, error: claimError } : { data: batches[i++] ?? [], error: null }
+        return { data: true, error: null } // specialist_can and mark
+      },
+      respond: (q: Recorded) => (q.table === 'plan_requests' ? { data: [REQUEST_ROW], error: null } : { data: null, error: null }),
+      user: () => ({ data: { user: CONFIRMED }, error: null }),
+    })
+    h.createSupabaseAdmin.mockReturnValue(f.client)
+    return f
+  }
+  const limits = (f: ReturnType<typeof setupClaims>) =>
+    f.rpcCalls.filter(c => c.fn === 'request_notifications_claim_email').map(c => c.args.p_limit)
+
+  it('claims batches of 25 until a short batch, and sums the counts', async () => {
+    const f = setupClaims([rowsOf(25), rowsOf(3, 25)])
+    const s = await runOutboxWithBudget({ pauseMs: 0, now: () => 0 })
+    expect(s).toEqual({ claimed: 28, sent: 28, retried: 0, failed: 0, skipped: 0, batches: 2, deferred: 0 })
+    expect(limits(f)).toEqual([25, 25])
+  })
+
+  it('defaults to a 40-second budget, batches of 25 and 1.5 seconds per row', () => {
+    expect(OUTBOX_BUDGET).toEqual({ budgetMs: 40_000, batch: 25, perRowMs: 1_500 })
+  })
+
+  it('claims fewer rows as time runs out', async () => {
+    let t = 0
+    const f = setupClaims([rowsOf(25), rowsOf(1)])
+    h.sendEmail.mockImplementation(async () => { t += 1_000; return { ok: true, id: 're' } })
+    await runOutboxWithBudget({ pauseMs: 0, now: () => t })
+    // After 25 sends at 1s each, 15s remain: floor(15000 / 1500) = 10.
+    expect(limits(f)).toEqual([25, 10])
+  })
+
+  it('claims nothing when less than one row of time is left', async () => {
+    const f = setupClaims([rowsOf(5)])
+    const s = await runOutboxWithBudget({ budgetMs: 1_000, pauseMs: 0, now: () => 0 })
+    expect(limits(f)).toEqual([])
+    expect(s.batches).toBe(0)
+    expect(h.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('does not start a row without room for a full send; the rest stay claimed and are counted as deferred', async () => {
+    let t = 0
+    const f = setupClaims([rowsOf(3)])
+    h.sendEmail.mockImplementation(async () => { t += 2_000; return { ok: true, id: 're' } })
+    const s = await runOutboxWithBudget({ budgetMs: 13_000, pauseMs: 0, now: () => t })
+    expect(s).toEqual({ claimed: 3, sent: 1, retried: 0, failed: 0, skipped: 0, batches: 1, deferred: 2 })
+    expect(marks(f as never)).toHaveLength(1) // the two unstarted rows are not marked
+  })
+
+  it('passes the 10-second timeout to every send', async () => {
+    setupClaims([rowsOf(1)])
+    await runOutboxWithBudget({ pauseMs: 0, now: () => 0 })
+    expect(h.sendEmail.mock.calls[0][2]).toEqual({ timeoutMs: 10_000 })
+  })
+
+  it('a claim error returns zero counts and never throws', async () => {
+    setupClaims([], { code: 'XX000', message: 'PGSECRET' })
+    const s = await runOutboxWithBudget({ pauseMs: 0, now: () => 0 })
+    expect(s).toEqual({ claimed: 0, sent: 0, retried: 0, failed: 0, skipped: 0, batches: 1, deferred: 0 })
+    expect(JSON.stringify(errSpy.mock.calls)).not.toContain('PGSECRET')
   })
 })

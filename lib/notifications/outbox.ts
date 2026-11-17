@@ -35,6 +35,12 @@ export interface OutboxSummary { claimed: number; sent: number; retried: number;
 const DEFAULT_LIMIT = 20
 const SCHEDULED_LIMIT = 50
 const DEFAULT_PAUSE_MS = 550 // stays under Resend's default 2 requests/second
+// Each provider call is abandoned after this long (retryable provider_timeout), so one hung call
+// cannot hold a run past its budget.
+const SEND_TIMEOUT_MS = 10_000
+// A row is only started when this much time is left before the deadline: the send timeout plus room
+// for the lookups and the mark call. Rows left unstarted keep their lease and are recovered later.
+const ROW_RESERVE_MS = SEND_TIMEOUT_MS + 2_000
 
 // Supported kinds and the audience each one must have. Anything else is skipped (kind_not_supported).
 const KIND_AUDIENCE: Record<string, 'staff' | 'customer'> = {
@@ -189,7 +195,7 @@ async function decide(
   }
 
   try {
-    const res = await sendEmail({ to, ...content }, config)
+    const res = await sendEmail({ to, ...content }, config, { timeoutMs: SEND_TIMEOUT_MS })
     if (res.ok) return { outcome: 'sent', providerId: res.id }
     return res.retryable ? retry(res.code) : fail(res.code)
   } catch {
@@ -211,8 +217,9 @@ async function mark(supabase: Admin, id: string, d: Decision): Promise<void> {
 }
 
 export async function processNotificationOutbox(
-  opts: { requestId?: string; limit?: number; pauseMs?: number } = {}
+  opts: { requestId?: string; limit?: number; pauseMs?: number; deadline?: number; now?: () => number } = {}
 ): Promise<OutboxSummary> {
+  const now = opts.now ?? Date.now
   const summary: OutboxSummary = { claimed: 0, sent: 0, retried: 0, failed: 0, skipped: 0 }
   try {
     // Without a working email config nothing is claimed, so rows stay pending and send once it is fixed.
@@ -240,6 +247,8 @@ export async function processNotificationOutbox(
     let urlMisconfigured = false
 
     for (const [i, row] of rows.entries()) {
+      // Past the safe point: leave the rest claimed; their lease expires and recovery re-queues them.
+      if (opts.deadline !== undefined && now() + ROW_RESERVE_MS > opts.deadline) break
       if (i > 0 && pauseMs > 0) await sleep(pauseMs)
       const d = await decide(supabase, row, requests, config, baseUrl)
       if (d.code === 'app_url_not_configured') urlMisconfigured = true
@@ -254,6 +263,50 @@ export async function processNotificationOutbox(
     console.error('[notifications] outbox run failed')
   }
   return summary
+}
+
+export interface BudgetSummary extends OutboxSummary {
+  /** Batches claimed in this run. */
+  batches: number
+  /** Rows claimed but not started because the deadline was near; recovery re-queues them. */
+  deferred: number
+}
+
+export const OUTBOX_BUDGET = { budgetMs: 40_000, batch: 25, perRowMs: 1_500 } as const
+
+/**
+ * The scheduled run: claims small batches until the time budget is used. Each batch only claims as
+ * many rows as the remaining time can take (perRowMs each), and rows are only started while there is
+ * still room for a full send (see ROW_RESERVE_MS). Never throws.
+ */
+export async function runOutboxWithBudget(opts: {
+  budgetMs?: number; batch?: number; perRowMs?: number; pauseMs?: number; now?: () => number
+} = {}): Promise<BudgetSummary> {
+  const now = opts.now ?? Date.now
+  const budgetMs = opts.budgetMs ?? OUTBOX_BUDGET.budgetMs
+  const batch = opts.batch ?? OUTBOX_BUDGET.batch
+  const perRowMs = opts.perRowMs ?? OUTBOX_BUDGET.perRowMs
+  const deadline = now() + budgetMs
+  const total: BudgetSummary = { claimed: 0, sent: 0, retried: 0, failed: 0, skipped: 0, batches: 0, deferred: 0 }
+  try {
+    for (;;) {
+      const limit = Math.min(batch, Math.floor((deadline - now()) / perRowMs))
+      if (limit < 1) break
+      const s = await processNotificationOutbox({ limit, deadline, now, pauseMs: opts.pauseMs })
+      total.batches++
+      total.claimed += s.claimed
+      total.sent += s.sent
+      total.retried += s.retried
+      total.failed += s.failed
+      total.skipped += s.skipped
+      const deferred = s.claimed - (s.sent + s.retried + s.failed + s.skipped)
+      total.deferred += deferred
+      if (s.claimed < limit || deferred > 0) break
+    }
+  } catch {
+    console.error('[notifications] budgeted run failed')
+  }
+  return total
 }
 
 /** Sends this request's notifications after the response is returned. Never blocks or throws. */
