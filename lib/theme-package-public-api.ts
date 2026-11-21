@@ -4,8 +4,8 @@
 import { fetchAllRows, loadOwnerNames, type AdminClient } from '@/lib/catalog-api'
 import { chunk } from '@/lib/catalog-guards'
 import {
-  projectLiveDocument,
-  type LiveDocument, type PublicTheme, type RawComponent, type RawItem, type RawLink, type RawOption, type RawService,
+  projectCard, projectLiveDocument,
+  type LiveDocument, type PublicCard, type PublicTheme, type RawComponent, type RawItem, type RawLink, type RawOption, type RawService,
 } from '@/lib/theme-package-public'
 
 export const PUBLIC_PAGE = 50
@@ -144,4 +144,63 @@ export async function getVerifiedEmail(supabase: AdminClient, userId: string): P
   const user = data?.user
   if (!user?.email || !(user.email_confirmed_at || user.confirmed_at)) return null
   return user.email
+}
+
+const LIST_CARD_COLUMNS = 'id, package_id, title, subtitle, cover_image_url, price_note, min_guests, max_guests'
+
+interface ListPackageRow { id: string; key: string; occasion: string; theme_id: string | null; live_version_id: string | null }
+interface ListVersionRow {
+  id: string; package_id: string; title: string; subtitle: string | null; cover_image_url: string | null
+  price_note: string | null; min_guests: number | null; max_guests: number | null
+}
+
+/**
+ * One page of public package cards: live approved versions of active packages only. Moved out of the
+ * list route unchanged so the browse page can share it. Database errors are thrown as-is.
+ */
+export async function listLiveCards(
+  supabase: AdminClient,
+  q: { offset: number; occasion?: string; theme_id?: string }
+): Promise<{ packages: PublicCard[]; has_more: boolean; next_offset: number | null }> {
+  const { offset, occasion, theme_id } = q
+  let query = supabase
+    .from('theme_packages')
+    .select('id, key, occasion, theme_id, live_version_id')
+    .eq('status', 'active')
+    .not('live_version_id', 'is', null)
+    .order('key')
+    .order('id')
+    .range(offset, offset + PUBLIC_PAGE) // PUBLIC_PAGE + 1 rows: the extra one tells us there is more
+  if (occasion) query = query.eq('occasion', occasion)
+  if (theme_id) query = query.eq('theme_id', theme_id)
+
+  const { data: rows, error } = await query
+  if (error) throw error
+
+  const hasMore = (rows?.length ?? 0) > PUBLIC_PAGE
+  const nextOffset = hasMore ? offset + PUBLIC_PAGE : null
+  const packages: ListPackageRow[] = (rows ?? []).slice(0, PUBLIC_PAGE)
+  if (packages.length === 0) return { packages: [], has_more: false, next_offset: null }
+
+  const liveIds = packages.map(p => p.live_version_id).filter((x): x is string => !!x)
+  const themeIds = [...new Set(packages.map(p => p.theme_id).filter((x): x is string => !!x))]
+  const [versions, themes] = await Promise.all([
+    supabase.from('theme_package_versions').select(LIST_CARD_COLUMNS).in('id', liveIds).eq('status', 'approved'),
+    themeIds.length
+      ? supabase.from('themes').select('id, name').in('id', themeIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+  ])
+  const aggError = versions.error ?? themes.error
+  if (aggError) throw aggError
+
+  const versionById = new Map<string, ListVersionRow>((versions.data ?? []).map((v: ListVersionRow) => [v.id, v]))
+  const themeById = new Map<string, { id: string; name: string }>((themes.data ?? []).map((t: { id: string; name: string }) => [t.id, t]))
+
+  const cards = packages.flatMap(p => {
+    const v = p.live_version_id ? versionById.get(p.live_version_id) : undefined
+    if (!v || v.package_id !== p.id) return [] // live pointer must be an approved version of this package
+    return [projectCard({ pkg: p, theme: p.theme_id ? themeById.get(p.theme_id) ?? null : null, version: v })]
+  })
+
+  return { packages: cards, has_more: hasMore, next_offset: nextOffset }
 }
