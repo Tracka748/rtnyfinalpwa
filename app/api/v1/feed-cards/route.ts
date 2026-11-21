@@ -33,7 +33,12 @@ export async function GET() {
       try {
         live = await loadLivePackagesByIds(supabase, packageIds)
       } catch (packageErr) {
-        console.error('feed-cards GET package lookup error:', packageErr)
+        const e = (packageErr ?? {}) as { code?: string; message?: string }
+        console.error('feed-cards GET package lookup failed', {
+          code: e.code ?? null,
+          message: e.message ?? String(packageErr),
+          package_card_count: packageIds.length,
+        })
       }
     }
 
