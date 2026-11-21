@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Megaphone, Award, Tag, Copy, Check, ExternalLink } from 'lucide-react'
+import { feedCardDestination, isPackageHref } from '@/lib/feed-card-destination'
+import { safeExternalUrl } from '@/lib/safe-url'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,9 @@ interface FeedCard {
   cta_url?: string
   event_id?: string
   promo_code?: string
+  href?: string
+  label?: string
+  price_note?: string
 }
 
 // Shape returned by GET /api/v1/feed-cards
@@ -36,19 +41,33 @@ interface ApiFeedCard {
   event_id: string | null
   promo_code: string | null
   image_url: string | null
+  // Present only for cards whose theme package is live (see applyLivePackages).
+  href?: string
+  package?: {
+    key: string
+    occasion: string
+    title: string
+    subtitle: string | null
+    cover_image_url: string | null
+    price_note: string | null
+  }
 }
 
 function mapApiCard(api: ApiFeedCard): FeedCard {
+  const isPackage = isPackageHref(api.href)
   return {
     id: api.id,
     type: api.type,
     headline: api.headline,
     sub: api.sub ?? '',
     action: api.action_label ?? '',
-    image_url: api.image_url ?? undefined,
+    image_url: isPackage ? safeExternalUrl(api.image_url) ?? undefined : api.image_url ?? undefined,
     cta_url: api.cta_url ?? undefined,
     event_id: api.event_id ?? undefined,
     promo_code: api.promo_code ?? undefined,
+    href: isPackage ? api.href : undefined,
+    label: isPackage ? api.package?.occasion?.trim() || undefined : undefined,
+    price_note: isPackage ? api.package?.price_note?.trim() || undefined : undefined,
   }
 }
 
@@ -167,41 +186,41 @@ function FeedCardItem({ card }: { card: FeedCard }) {
   const router = useRouter()
   const [dealOpen, setDealOpen] = useState(false)
   const color = TYPE_COLOR[card.type]
-  const label = TYPE_LABEL[card.type]
+  const label = card.label ?? TYPE_LABEL[card.type]
   const iconBg = `${color}1F`
+  const dest = feedCardDestination(card)
+  const interactive = dest.kind !== 'none'
 
   const navigate = () => {
-    switch (card.type) {
-      case 'announcement':
-        if (!card.cta_url) return
-        if (card.cta_url.startsWith('/')) {
-          router.push(card.cta_url)
-        } else {
-          window.open(card.cta_url, '_blank', 'noopener,noreferrer')
-        }
+    switch (dest.kind) {
+      case 'internal':
+        router.push(dest.url)
         break
-      case 'curated':
-        if (card.event_id) router.push(`/events/${card.event_id}`)
+      case 'external':
+        window.open(dest.url, '_blank', 'noopener,noreferrer')
         break
       case 'deal':
         setDealOpen(true)
         break
-      case 'featured':
-        if (card.event_id) router.push(`/events/${card.event_id}`)
-        break
     }
   }
 
-  const handleActionClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigate()
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget || e.repeat) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      navigate()
+    }
   }
 
   return (
     <>
       <div
-        onClick={navigate}
-        className="active:scale-[0.98] transition-transform"
+        onClick={interactive ? navigate : undefined}
+        onKeyDown={interactive ? handleKeyDown : undefined}
+        role={interactive ? (dest.kind === 'deal' ? 'button' : 'link') : undefined}
+        tabIndex={interactive ? 0 : undefined}
+        className="active:scale-[0.98] transition-transform touch-manipulation focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#59FFA0]"
         style={{
           width: '280px',
           flexShrink: 0,
@@ -214,7 +233,7 @@ function FeedCardItem({ card }: { card: FeedCard }) {
           gap: '12px',
           position: 'relative',
           overflow: 'hidden',
-          cursor: 'pointer',
+          cursor: interactive ? 'pointer' : 'default',
         }}
       >
         {/* Orb */}
@@ -294,29 +313,33 @@ function FeedCardItem({ card }: { card: FeedCard }) {
           >
             {card.sub}
           </span>
-          <span
-            onClick={handleActionClick}
-            role="button"
-            style={{
-              marginTop: '8px',
-              fontSize: '11px',
-              fontWeight: 500,
-              padding: '4px 12px',
-              borderRadius: '20px',
-              border: `0.5px solid ${color}`,
-              display: 'inline-block',
-              color,
-              background: 'transparent',
-              alignSelf: 'flex-start',
-              cursor: 'pointer',
-            }}
-          >
-            {card.action}
-          </span>
+          {card.price_note && (
+            <span style={{ fontSize: '11px', fontWeight: 500, color, marginTop: '3px', lineHeight: 1.4 }}>
+              {card.price_note}
+            </span>
+          )}
+          {card.action && (
+            <span
+              style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                fontWeight: 500,
+                padding: '4px 12px',
+                borderRadius: '20px',
+                border: `0.5px solid ${color}`,
+                display: 'inline-block',
+                color,
+                background: 'transparent',
+                alignSelf: 'flex-start',
+              }}
+            >
+              {card.action}
+            </span>
+          )}
         </div>
       </div>
 
-      {card.type === 'deal' && (
+      {dest.kind === 'deal' && (
         <DealModal card={card} open={dealOpen} onClose={() => setDealOpen(false)} />
       )}
     </>
