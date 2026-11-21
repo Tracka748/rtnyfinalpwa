@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Megaphone, Award, Tag, Copy, Check, ExternalLink } from 'lucide-react'
 import { feedCardDestination, isPackageHref } from '@/lib/feed-card-destination'
@@ -392,12 +393,29 @@ export function AnnouncementFeed() {
 
   return (
     <section style={{ paddingTop: '16px', paddingBottom: '4px' }}>
-      <p
-        className="font-label text-xs uppercase tracking-widest text-amber-400 mb-3"
-        style={{ paddingLeft: '16px' }}
+      <div
+        className="mb-3"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}
       >
-        What&apos;s Happening
-      </p>
+        <p className="font-label text-xs uppercase tracking-widest text-amber-400">
+          What&apos;s Happening
+        </p>
+        {cards.some((c) => c.href) && (
+          <Link
+            href="/packages"
+            className="touch-manipulation focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#59FFA0]"
+            style={{
+              fontFamily: 'Rubik, sans-serif',
+              fontWeight: 500,
+              fontSize: 12,
+              color: '#1AC8ED',
+              textDecoration: 'none',
+            }}
+          >
+            See all packages →
+          </Link>
+        )}
+      </div>
       <div
         style={{
           display: 'flex',

@@ -185,6 +185,18 @@ export function AppNav() {
               Plan
             </Link>
 
+            {/* Packages Link */}
+            <Link
+              href="/packages"
+              className={`font-sans text-sm font-medium transition-colors ${
+                pathname.startsWith("/packages")
+                  ? "text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:text-[#59FFA0]"
+              }`}
+            >
+              Packages
+            </Link>
+
             {/* Conditional Links based on Auth State */}
             {!loading && (
               <>
@@ -314,6 +326,18 @@ export function AppNav() {
               }`}
             >
               Plan
+            </Link>
+
+            <Link
+              href="/packages"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block rounded-lg px-3 py-2 font-sans text-base font-medium transition-colors ${
+                pathname.startsWith("/packages")
+                  ? "bg-[#59FFA0]/10 text-[#59FFA0]"
+                  : "text-[#F9FDFF] hover:bg-[#1A1A1A]"
+              }`}
+            >
+              Packages
             </Link>
 
             {!loading && (

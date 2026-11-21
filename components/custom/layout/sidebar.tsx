@@ -243,6 +243,7 @@ export function Sidebar() {
           <div className="border-b border-white/10">
             <NavItem href="/merch" emoji="👕" label="Merch Store" onClick={handleNavClick} />
             <NavItem href="/gift-cards" emoji="🎁" label="Gift Cards" onClick={handleNavClick} />
+            <NavItem href="/packages" emoji="🎉" label="Packages" onClick={handleNavClick} />
           </div>
 
           {/* TOOLS */}
