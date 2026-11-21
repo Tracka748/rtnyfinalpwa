@@ -214,6 +214,18 @@
       ],
       "guard": "checkIsAdmin"
     },
+    "notifications/health": {
+      "methods": [
+        "GET"
+      ],
+      "guard": "requireAdmin"
+    },
+    "notifications/requeue": {
+      "methods": [
+        "POST"
+      ],
+      "guard": "requireAdmin"
+    },
     "packages": {
       "methods": [
         "GET",

@@ -101,3 +101,88 @@ describe('outbox reads unowned_since for the reminder check', () => {
     expect(read('lib/notifications/outbox.ts')).toContain(".select('id, request_source, request_kind, status, user_id, coordinator_id, unowned_since')")
   })
 })
+
+describe('migration 20261117100021 (health and requeue)', () => {
+  const sql = read('supabase/migrations/20261117100021_outbox_health_and_requeue.sql')
+  const code = sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
+  const SIGS = ['request_notifications_health()', 'request_notifications_requeue(uuid, uuid[])', 'request_notifications_requeue_app_url(uuid)']
+  const body = (name: string, next: string | null) => {
+    const start = code.indexOf(`create or replace function public.${name}`)
+    return code.slice(start, next ? code.indexOf(`create or replace function public.${next}`) : undefined)
+  }
+  const health = body('request_notifications_health()', 'request_notifications_requeue(')
+  const requeue = body('request_notifications_requeue(', 'request_notifications_requeue_app_url(')
+  const appUrl = body('request_notifications_requeue_app_url(', null)
+
+  it('defines exactly three functions, all security definer with an empty search_path', () => {
+    expect(code.match(/create or replace function/g)).toHaveLength(3)
+    expect(code.match(/security definer set search_path = ''/g)).toHaveLength(3)
+  })
+
+  it('every function is service_role only', () => {
+    for (const sig of SIGS) {
+      expect(code).toContain(`revoke all on function public.${sig} from public, anon, authenticated;`)
+      expect(code).toContain(`grant execute on function public.${sig} to service_role;`)
+    }
+  })
+
+  it('creates no cron job and uses no Vault', () => {
+    expect(code).not.toMatch(/cron\.schedule|cron\.unschedule|vault\./)
+  })
+
+  it('reads cron history only inside a block that handles missing access', () => {
+    expect(health).toContain('from cron.job_run_details d')
+    expect(health.indexOf('exception when insufficient_privilege or undefined_table or invalid_schema_name then'))
+      .toBeGreaterThan(health.indexOf('from cron.job_run_details d'))
+    expect(health).toContain("'cron_readable', v_cron")
+  })
+
+  it('health returns counts, ages, codes and ids only: it never reads people or request content', () => {
+    expect(health).not.toMatch(/auth\.users|public\.profiles|contact_|notes|event_type|recipient_user_id/)
+  })
+
+  it('both requeues re-check the admin actor, only touch rows on open requests, and never change identity', () => {
+    expect(code.match(/not public\.tp_is_admin\(p_actor\)/g)).toHaveLength(2)
+    for (const fn of [requeue, appUrl]) {
+      expect(fn).toContain("r.status not in ('completed','declined','cancelled')")
+      expect(fn).toContain('email_attempts = 0')
+      expect(fn).toContain('email_locked_until = null')
+      expect(fn).not.toMatch(/dedupe_key\s*=|recipient_user_id\s*=|request_id\s*=|kind\s*=|created_at\s*=/)
+    }
+  })
+
+  it('the id requeue is one conditional update on failed rows, capped at 100', () => {
+    expect(requeue).toContain("and n.email_status = 'failed'")
+    expect(requeue).toContain('v_req > 100')
+    expect(requeue).toContain("errcode = '22023'")
+  })
+
+  it('the app_url requeue targets the retry code the outbox writes, locks rows with skip locked, and caps at 100', () => {
+    expect(appUrl).toContain("n.email_last_error = 'app_url_not_configured'")
+    expect(appUrl).toContain("n.email_status in ('failed','pending')")
+    expect(appUrl).toContain('for update of n skip locked')
+    expect(appUrl).toContain('limit 100')
+  })
+
+  it('the audit table holds counts only and is locked down', () => {
+    expect(code).toContain('alter table public.request_notification_admin_actions enable row level security;')
+    expect(code).toContain('revoke all on table public.request_notification_admin_actions from anon, authenticated;')
+    expect(code).toContain('grant select on table public.request_notification_admin_actions to service_role;')
+    const table = code.slice(code.indexOf('create table public.request_notification_admin_actions'), code.indexOf('alter table public.request_notification_admin_actions'))
+    expect(table).not.toMatch(/\b(email|name|notes|ids|recipient\w*|details)\b\s+(text|uuid|jsonb)/)
+    expect(table).toMatch(/\bactor_id\s+uuid references public\.profiles\(id\) on delete set null/)
+  })
+})
+
+describe('notification admin routes', () => {
+  for (const file of ['app/api/v1/admin/notifications/health/route.ts', 'app/api/v1/admin/notifications/requeue/route.ts']) {
+    const src = read(file)
+    it(`${file}: admin check first, service client, fixed errors`, () => {
+      expect(src.indexOf('requireAdmin(request)')).toBeGreaterThan(-1)
+      expect(src.indexOf('requireAdmin(request)')).toBeLessThan(src.indexOf('createSupabaseAdmin()'))
+      expect(src).toContain("export const dynamic = 'force-dynamic'")
+      // No database error text can reach a response or a log.
+      expect(src).not.toMatch(/\.message|details:|hint:/)
+    })
+  }
+})

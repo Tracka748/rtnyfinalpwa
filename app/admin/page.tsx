@@ -9,6 +9,7 @@ import { VenuePerformanceTable } from '@/components/admin/VenuePerformanceTable'
 import { PromoterPerformanceTable } from '@/components/admin/PromoterPerformanceTable';
 import { ExportButton } from '@/components/admin/ExportButton';
 import { DashboardSkeleton } from '@/components/admin/DashboardSkeleton';
+import { OutboxHealthCard } from '@/components/admin/OutboxHealthCard';
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
 
 interface DashboardStats {
@@ -293,6 +294,14 @@ export default function AdminDashboardPage() {
             subtitle="All-time"
           />
         </div>
+      </section>
+
+      {/* Section: Request email delivery (admin only: this page is behind the admin layout) */}
+      <section className="space-y-3 md:space-y-4">
+        <h2 className="text-base md:text-xl font-header font-bold text-white">
+          📬 Email delivery
+        </h2>
+        <OutboxHealthCard />
       </section>
 
       {/* Section: Analytics */}
