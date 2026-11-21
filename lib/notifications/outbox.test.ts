@@ -44,6 +44,7 @@ interface Opts {
   activity?: unknown
   activityError?: unknown
   can?: FakeResult
+  isAdmin?: FakeResult
   user?: FakeResult
   markResult?: FakeResult
 }
@@ -54,6 +55,7 @@ function setup(o: Opts = {}) {
     rpc: fn => {
       if (fn === 'request_notifications_claim_email') return o.claim ?? { data: o.rows ?? [STAFF_ROW], error: null }
       if (fn === 'specialist_can') return o.can ?? { data: true, error: null }
+      if (fn === 'tp_is_admin') return o.isAdmin ?? { data: true, error: null }
       return o.markResult ?? { data: true, error: null }
     },
     respond: (q: Recorded) => {
@@ -166,7 +168,7 @@ describe('processNotificationOutbox: outcomes', () => {
   })
 
   it('marks skipped for a kind it does not build yet', async () => {
-    const f = setup({ rows: [{ ...STAFF_ROW, kind: 'unclaimed_reminder' }] })
+    const f = setup({ rows: [{ ...STAFF_ROW, kind: 'future_kind' }] })
     await run()
     expect(marks(f)[0]).toMatchObject({ p_outcome: 'skipped', p_error_code: 'kind_not_supported' })
     expect(h.sendEmail).not.toHaveBeenCalled()
@@ -644,5 +646,105 @@ describe('runOutboxWithBudget', () => {
     const s = await runOutboxWithBudget({ pauseMs: 0, now: () => 0 })
     expect(s).toEqual({ claimed: 0, sent: 0, retried: 0, failed: 0, skipped: 0, batches: 1, deferred: 0 })
     expect(JSON.stringify(errSpy.mock.calls)).not.toContain('PGSECRET')
+  })
+})
+
+describe('processNotificationOutbox: unclaimed_reminder', () => {
+  const UNOWNED = '2026-11-18T09:00:00.654321+00:00'
+  const MICROS = Date.parse('2026-11-18T09:00:00Z') * 1000 + 654321
+  const REMINDER_ROW = {
+    id: 'n-rem', request_id: REQ, audience: 'staff', recipient_user_id: 'u-admin',
+    kind: 'unclaimed_reminder', dedupe_key: `reminder_24h:${MICROS}`,
+  }
+  const OPEN = { ...REQUEST_ROW, status: 'pending', coordinator_id: null, unowned_since: UNOWNED }
+  const remind = (o: Opts = {}) => setup({ rows: [REMINDER_ROW], requests: [OPEN], ...o })
+  const noSend = (f: ReturnType<typeof setup>) => {
+    expect(h.sendEmail).not.toHaveBeenCalled()
+    expect(f.getUser).not.toHaveBeenCalled()
+  }
+
+  it('sends to a current admin while the request is unowned, open and in the same period', async () => {
+    const f = remind()
+    const s = await run()
+    expect(s.sent).toBe(1)
+    expect(calls(f, 'tp_is_admin')).toEqual([{ p_user_id: 'u-admin' }])
+    expect(calls(f, 'specialist_can')).toEqual([{ p_user_id: 'u-admin', p_capability: 'events.requests.manage', p_required: 'allow' }])
+    const mail = h.sendEmail.mock.calls[0][0]
+    expect(mail.subject).toBe('A request is waiting for an owner')
+    expect(mail.text).toContain(`https://app.example.com/admin/requests/${REQ}`)
+    const out = JSON.stringify(mail) + JSON.stringify(marks(f))
+    for (const v of ['SECRET-NOTE', 'EVIL', 'contact@customer.com']) expect(out).not.toContain(v)
+    expect(marks(f)).toEqual([{ p_id: 'n-rem', p_outcome: 'sent', p_error_code: null, p_provider_message_id: 're_1' }])
+  })
+
+  it('skips claimed_since when the request now has an owner, with no lookups and no send', async () => {
+    const f = remind({ requests: [{ ...OPEN, status: 'in_progress', coordinator_id: 'u-staff', unowned_since: null }] })
+    await run()
+    expect(marks(f)).toEqual([{ p_id: 'n-rem', p_outcome: 'skipped', p_error_code: 'claimed_since', p_provider_message_id: null }])
+    expect(calls(f, 'tp_is_admin')).toHaveLength(0)
+    expect(calls(f, 'specialist_can')).toHaveLength(0)
+    noSend(f)
+  })
+
+  it.each(['completed', 'declined', 'cancelled'])('skips closed_since when the request is %s', async status => {
+    const f = remind({ requests: [{ ...OPEN, status }] })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'skipped', p_error_code: 'closed_since' })
+    noSend(f)
+  })
+
+  it('skips new_unowned_period when unowned_since differs by 1 microsecond', async () => {
+    const f = remind({ requests: [{ ...OPEN, unowned_since: '2026-11-18T09:00:00.654322+00:00' }] })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'skipped', p_error_code: 'new_unowned_period' })
+    noSend(f)
+  })
+
+  it('skips new_unowned_period when unowned_since is null', async () => {
+    const f = remind({ requests: [{ ...OPEN, unowned_since: null }] })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'skipped', p_error_code: 'new_unowned_period' })
+    noSend(f)
+  })
+
+  it('fails invalid_notification when unowned_since is set but does not parse', async () => {
+    const f = remind({ requests: [{ ...OPEN, unowned_since: 'yesterday-ish' }] })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'failed', p_error_code: 'invalid_notification' })
+    noSend(f)
+  })
+
+  it('fails invalid_notification for a malformed key or a customer audience', async () => {
+    let f = remind({ rows: [{ ...REMINDER_ROW, dedupe_key: 'reminder_24h:abc' }] })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'failed', p_error_code: 'invalid_notification' })
+
+    vi.clearAllMocks()
+    f = remind({ rows: [{ ...REMINDER_ROW, audience: 'customer' }] })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'failed', p_error_code: 'invalid_notification' })
+    expect(h.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('skips not_admin when the recipient is no longer an admin, and retries when that check errors', async () => {
+    let f = remind({ isAdmin: { data: false, error: null } })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'skipped', p_error_code: 'not_admin' })
+    noSend(f)
+
+    vi.clearAllMocks()
+    f = remind({ isAdmin: { data: null, error: { code: 'XX000', message: 'PGSECRET' } } })
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'retry', p_error_code: 'recipient_lookup_failed' })
+    expect(JSON.stringify(errSpy.mock.calls)).not.toContain('PGSECRET')
+    expect(h.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('retries app_url_not_configured without a valid app URL', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
+    const f = remind()
+    await run()
+    expect(marks(f)[0]).toMatchObject({ p_outcome: 'retry', p_error_code: 'app_url_not_configured' })
+    expect(h.sendEmail).not.toHaveBeenCalled()
   })
 })

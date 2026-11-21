@@ -68,3 +68,36 @@ describe('migration 20261117100019', () => {
     expect(code).toContain("'/api/v1/internal/outbox/run'")
   })
 })
+
+describe('migration 20261117100020 (unclaimed reminders)', () => {
+  const sql = read('supabase/migrations/20261117100020_unclaimed_reminders.sql')
+  const code = sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
+
+  it('defines only the enqueue function, with the fixed cutoff default; no cron job and no Vault', () => {
+    expect(code.match(/create or replace function/g)).toHaveLength(1)
+    expect(code).toContain("create or replace function public.request_enqueue_unclaimed_reminders(\n  p_created_after timestamptz default '2026-11-10 13:26:43+00')")
+    expect(code).not.toMatch(/cron\.schedule|vault\./)
+    expect(code).toContain("security definer set search_path = ''")
+  })
+
+  it('is service_role only', () => {
+    expect(code).toContain('revoke all on function public.request_enqueue_unclaimed_reminders(timestamptz) from public, anon, authenticated;')
+    expect(code).toContain('grant execute on function public.request_enqueue_unclaimed_reminders(timestamptz) to service_role;')
+  })
+
+  it('targets eligible admins, open unowned requests past 24 hours, one row per period', () => {
+    expect(code).toContain('from public.request_eligible_coordinators() e')
+    expect(code).toContain('where e.is_admin')
+    expect(code).toContain("r.status not in ('completed','declined','cancelled')")
+    expect(code).toContain("r.unowned_since <= now() - interval '24 hours'")
+    expect(code).toContain('r.created_at >= p_created_after')
+    expect(code).toContain("'reminder_24h:' || ((extract(epoch from d.unowned_since) * 1000000)::bigint)::text")
+    expect(code).toContain('on conflict on constraint request_notifications_dedupe do nothing')
+  })
+})
+
+describe('outbox reads unowned_since for the reminder check', () => {
+  it('selects it with the request', () => {
+    expect(read('lib/notifications/outbox.ts')).toContain(".select('id, request_source, request_kind, status, user_id, coordinator_id, unowned_since')")
+  })
+})

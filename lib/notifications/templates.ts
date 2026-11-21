@@ -102,6 +102,23 @@ export function buildStaffAssignedEmail(o: { requestId: string; appUrl: string }
   }
 }
 
+/** appUrl must already be a parseBaseUrl result. Link-only: no customer name, contact or message. */
+export function buildStaffUnclaimedReminderEmail(o: { requestId: string; appUrl: string }): EmailContent {
+  if (!UUID.test(o.requestId)) throw new Error('invalid_request_id')
+  const link = `${o.appUrl}/admin/requests/${o.requestId}`
+  const subject = 'A request is waiting for an owner'
+  return {
+    subject,
+    html: layout(
+      subject,
+      `<p>A request has been waiting for an owner for more than 24 hours.</p>
+<p><a href="${escapeHtml(link)}" style="color:#1AC8ED;">Open the request</a></p>
+<p style="color:#666;font-size:13px;">Sign in with a staff account to view the details. This email does not include customer information.</p>`
+    ),
+    text: `A request has been waiting for an owner for more than 24 hours.\n\nOpen the request: ${link}\n\nSign in with a staff account to view the details. This email does not include customer information.`,
+  }
+}
+
 /** Exact copy for the status, no links. */
 export function buildCustomerStatusEmail(o: { status: CustomerStatus }): EmailContent {
   if (!isCustomerStatus(o.status)) throw new Error('invalid_status')

@@ -11,11 +11,13 @@ import {
   buildCustomerStatusEmail,
   buildStaffAssignedEmail,
   buildStaffNewRequestEmail,
+  buildStaffUnclaimedReminderEmail,
   isCustomerStatus,
   parseBaseUrl,
   type CustomerStatus,
   type EmailContent,
 } from '@/lib/notifications/templates'
+import { parseReminderKey, reminderVerdict } from '@/lib/notifications/reminder'
 
 type Admin = ReturnType<typeof createSupabaseAdmin>
 type Outcome = 'sent' | 'retry' | 'failed' | 'skipped'
@@ -27,6 +29,7 @@ interface RequestInfo {
   status: string | null
   user_id: string | null
   coordinator_id: string | null
+  unowned_since: string | null
 }
 interface Decision { outcome: Outcome; code?: string; providerId?: string | null }
 
@@ -46,6 +49,7 @@ const ROW_RESERVE_MS = SEND_TIMEOUT_MS + 2_000
 const KIND_AUDIENCE: Record<string, 'staff' | 'customer'> = {
   new_request: 'staff',
   assigned: 'staff',
+  unclaimed_reminder: 'staff',
   customer_confirmation: 'customer',
   status_update: 'customer',
 }
@@ -66,7 +70,7 @@ async function loadRequests(supabase: Admin, rows: OutboxRow[]): Promise<Map<str
   const ids = [...new Set(rows.map(r => r.request_id))]
   const { data, error } = await supabase
     .from('plan_requests')
-    .select('id, request_source, request_kind, status, user_id, coordinator_id')
+    .select('id, request_source, request_kind, status, user_id, coordinator_id, unowned_since')
     .in('id', ids)
   if (error) { logCode('request lookup', error); return null }
   const map = new Map<string, RequestInfo>()
@@ -77,6 +81,7 @@ async function loadRequests(supabase: Admin, rows: OutboxRow[]): Promise<Map<str
       status: r.status ?? null,
       user_id: r.user_id ?? null,
       coordinator_id: r.coordinator_id ?? null,
+      unowned_since: r.unowned_since ?? null,
     })
   }
   return map
@@ -159,6 +164,17 @@ async function decide(
     if (customerStatus && STALE_SENSITIVE.has(customerStatus) && req.status !== customerStatus) {
       return skip('status_changed_since')
     }
+  } else if (row.kind === 'unclaimed_reminder') {
+    // Checked against the request as it is now, not as it was when the reminder was queued.
+    const keyMicros = parseReminderKey(row.dedupe_key)
+    if (keyMicros === null) return fail('invalid_notification')
+    const v = reminderVerdict(req, keyMicros)
+    if (v && 'skip' in v) return skip(v.skip)
+    if (v) return fail(v.fail)
+    // Reminders go to admins only: re-checked at send time.
+    const { data, error } = await supabase.rpc('tp_is_admin', { p_user_id: row.recipient_user_id })
+    if (error) { logCode('admin check', error); return retry('recipient_lookup_failed') }
+    if (data !== true) return skip('not_admin')
   }
 
   // Staff must still be eligible at send time (the DB only checked when the row was created).
@@ -185,6 +201,8 @@ async function decide(
       content = buildStaffNewRequestEmail({ requestId: row.request_id, source: req.request_source, kind: req.request_kind, appUrl: baseUrl as string })
     } else if (row.kind === 'assigned') {
       content = buildStaffAssignedEmail({ requestId: row.request_id, appUrl: baseUrl as string })
+    } else if (row.kind === 'unclaimed_reminder') {
+      content = buildStaffUnclaimedReminderEmail({ requestId: row.request_id, appUrl: baseUrl as string })
     } else if (row.kind === 'status_update') {
       content = buildCustomerStatusEmail({ status: customerStatus as CustomerStatus })
     } else {

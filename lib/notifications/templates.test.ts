@@ -5,6 +5,7 @@ import {
   buildCustomerStatusEmail,
   buildStaffAssignedEmail,
   buildStaffNewRequestEmail,
+  buildStaffUnclaimedReminderEmail,
   escapeHtml,
   isCustomerStatus,
   parseBaseUrl,
@@ -136,6 +137,31 @@ describe('buildStaffNewRequestEmail', () => {
     const m = buildStaffNewRequestEmail({ requestId: ID, source: null, kind: null, appUrl: 'https://a.com/?a=1&b=2' })
     expect(m.html).toContain('a=1&amp;b=2')
     expect(m.html).not.toContain('a=1&b=2')
+  })
+})
+
+describe('buildStaffUnclaimedReminderEmail', () => {
+  const mail = buildStaffUnclaimedReminderEmail({ requestId: ID, appUrl: 'https://app.example.com' })
+
+  it('has the fixed subject and links to the staff request page', () => {
+    expect(mail.subject).toBe('A request is waiting for an owner')
+    expect(mail.html).toContain(`href="https://app.example.com/admin/requests/${ID}"`)
+    expect(mail.text).toContain(`Open the request: https://app.example.com/admin/requests/${ID}`)
+  })
+
+  it('carries no customer data, even when extra fields are passed in', () => {
+    const extra = {
+      requestId: ID, appUrl: 'https://app.example.com',
+      customerName: 'Jane Customer', contactEmail: 'jane@customer.com', phone: '555-0100', notes: 'SECRET-NOTE',
+    } as unknown as Parameters<typeof buildStaffUnclaimedReminderEmail>[0]
+    const m = buildStaffUnclaimedReminderEmail(extra)
+    const all = m.subject + m.html + m.text
+    for (const v of ['Jane', 'jane@customer.com', '555-0100', 'SECRET-NOTE', 'undefined', 'null']) expect(all).not.toContain(v)
+    expect(all).not.toContain('@')
+  })
+
+  it('rejects a request id that is not a uuid', () => {
+    expect(() => buildStaffUnclaimedReminderEmail({ requestId: '../x', appUrl: 'https://app.example.com' })).toThrow('invalid_request_id')
   })
 })
 
