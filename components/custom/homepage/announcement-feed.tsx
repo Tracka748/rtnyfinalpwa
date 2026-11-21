@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Megaphone, Award, Tag, Copy, Check, ExternalLink } from 'lucide-react'
+import { Megaphone, Award, Tag, Copy, Check, ExternalLink, Gift } from 'lucide-react'
 import { feedCardDestination, isPackageHref } from '@/lib/feed-card-destination'
 import { safeExternalUrl } from '@/lib/safe-url'
 import {
@@ -275,6 +275,8 @@ function FeedCardItem({ card }: { card: FeedCard }) {
               height={60}
               style={{ objectFit: 'cover', borderRadius: '10px', width: '60px', height: '60px' }}
             />
+          ) : isPackageHref(card.href) ? (
+            <Gift size={24} color={color} strokeWidth={1.5} />
           ) : (
             <TypeIcon type={card.type} />
           )}
