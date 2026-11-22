@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdmin } from '@/lib/supabase';
 import { checkIsAdmin } from '@/lib/admin-auth';
+import { ensureAliasSafe } from '@/lib/alias-hooks';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -127,6 +128,9 @@ export async function POST(
       .from('profiles')
       .update({ is_organizer: true })
       .eq('id', user_id);
+
+    // Non-fatal: a failure is logged and the assignment stands.
+    await ensureAliasSafe(supabase, user_id, 'admin/groups/[id]/organizers POST');
 
     return NextResponse.json({ success: true, data: newAssignment });
   } catch (err) {

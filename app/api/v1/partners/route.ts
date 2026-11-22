@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin, createSupabaseServer } from '@/lib/supabase'
+import { ensureAliasSafe } from '@/lib/alias-hooks'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -63,6 +64,9 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ error: 'Failed to create partner' }, { status: 500 })
     }
+
+    // A partner owner is a special user. Only when an owner was set. Non-fatal.
+    if (body.owner_id) await ensureAliasSafe(supabase, body.owner_id, 'partners POST')
 
     return NextResponse.json({ success: true, data: { id: partner.id } })
   } catch (err) {

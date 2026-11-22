@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { checkIsAdmin } from '@/lib/admin-auth';
+import { ensureAliasSafe } from '@/lib/alias-hooks';
 
 const VALID_ROLES = ['user', 'promoter', 'organizer', 'admin'] as const;
 type Role = (typeof VALID_ROLES)[number];
@@ -92,6 +93,11 @@ export async function PATCH(
             updated_at: new Date().toISOString(),
           });
       }
+    }
+
+    // Only when the new role makes them special (not when demoting to user). Non-fatal.
+    if (role === 'admin' || role === 'promoter' || role === 'organizer') {
+      await ensureAliasSafe(supabase, targetId, 'admin/users/[id]/role PATCH');
     }
 
     return NextResponse.json({ success: true, data });

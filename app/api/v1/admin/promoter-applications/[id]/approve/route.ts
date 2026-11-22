@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase'
 import { checkIsAdmin } from '@/lib/admin-auth'
+import { ensureAliasSafe } from '@/lib/alias-hooks'
 
 // POST /api/v1/admin/promoter-applications/[id]/approve
 export async function POST(
@@ -110,6 +111,9 @@ export async function POST(
     // const { sendPromoterApprovalEmail } = await import('@/lib/email-notifications')
     // await sendPromoterApprovalEmail(application.contact_email, application.business_name)
     //   .catch(err => console.error('⚠️ Failed to send email:', err))
+
+    // The applicant is now a promoter. Non-fatal: a failure is logged and the approval stands.
+    await ensureAliasSafe(supabase, application.user_id, 'admin/promoter-applications/[id]/approve POST')
 
     return NextResponse.json({
       success: true,

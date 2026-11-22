@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin, createSupabaseServer } from '@/lib/supabase'
+import { ensureAliasSafe } from '@/lib/alias-hooks'
 
 // Columns safe to show on the public partner page. Internal fields (owner_id,
 // business_id, venue_id, vendor_id, active, moderation flags, timestamps,
@@ -278,6 +279,11 @@ export async function PATCH(
     if (error) {
       console.error('partners/[id] PATCH update error:', error)
       return NextResponse.json({ error: 'Failed to update partner' }, { status: 500 })
+    }
+
+    // An admin set or changed the owner to a real user: they are now a partner owner. Non-fatal.
+    if (isAdmin && updates.owner_id && updates.owner_id !== partnerResult.data?.owner_id) {
+      await ensureAliasSafe(supabase, updatedPartner?.owner_id, 'partners/[id] PATCH')
     }
 
     return NextResponse.json({ success: true, data: updatedPartner })
