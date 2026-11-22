@@ -440,6 +440,13 @@
       ],
       "guard": "checkIsAdmin"
     },
+    "users/[id]/alias": {
+      "methods": [
+        "GET",
+        "PUT"
+      ],
+      "guard": "requireAdmin"
+    },
     "users/[id]/role": {
       "methods": [
         "PATCH"
