@@ -198,6 +198,18 @@ export type Database = {
           },
         ]
       }
+      alias_reserved_words: {
+        Row: {
+          word: string
+        }
+        Insert: {
+          word: string
+        }
+        Update: {
+          word?: string
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           active: boolean
@@ -3938,6 +3950,44 @@ export type Database = {
           },
         ]
       }
+      request_notification_admin_actions: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          requested: number
+          requeued: number
+          skipped: number
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          requested: number
+          requeued: number
+          skipped: number
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          requested?: number
+          requeued?: number
+          skipped?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_notification_admin_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       request_notifications: {
         Row: {
           audience: string
@@ -4858,6 +4908,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_aliases: {
+        Row: {
+          alias: string
+          created_at: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          alias: string
+          created_at?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          alias?: string
+          created_at?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_aliases_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_aliases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_badges: {
         Row: {
           badge_type: string
@@ -5740,6 +5829,7 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_alias: { Args: { p_user_id: string }; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       generate_referral_code: { Args: never; Returns: string }
       get_auto_apply_promos: {
@@ -5787,7 +5877,9 @@ export type Database = {
         Args: { p_option_id: string }
         Returns: number
       }
+      is_special_user: { Args: { p_user_id: string }; Returns: boolean }
       is_valid_email: { Args: { email: string }; Returns: boolean }
+      outbox_kick: { Args: never; Returns: number }
       process_checkout_completed: {
         Args: { p_items: Json; p_order: Json; p_tickets: Json }
         Returns: Json
@@ -5839,6 +5931,10 @@ export type Database = {
       request_enqueue_notifications: {
         Args: { p_request_id: string }
         Returns: number
+      }
+      request_enqueue_unclaimed_reminders: {
+        Args: { p_created_after?: string }
+        Returns: Json
       }
       request_inbox_can_view: { Args: { p_actor: string }; Returns: boolean }
       request_inbox_detail: {
@@ -5944,6 +6040,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      request_notifications_health: { Args: never; Returns: Json }
       request_notifications_mark_email: {
         Args: {
           p_error_code?: string
@@ -5952,6 +6049,15 @@ export type Database = {
           p_provider_message_id?: string
         }
         Returns: boolean
+      }
+      request_notifications_recover_stuck: { Args: never; Returns: Json }
+      request_notifications_requeue: {
+        Args: { p_actor: string; p_ids: string[] }
+        Returns: Json
+      }
+      request_notifications_requeue_app_url: {
+        Args: { p_actor: string }
+        Returns: Json
       }
       request_reassign: {
         Args: {
@@ -6012,6 +6118,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      suggest_alias: { Args: { p_user_id: string }; Returns: string }
       theme_package_build_snapshot: {
         Args: {
           p_event_date: string
