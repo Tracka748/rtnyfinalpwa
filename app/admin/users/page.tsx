@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { AliasCell } from '@/components/admin/AliasCell';
+import { AliasEditDialog } from '@/components/admin/AliasEditDialog';
+import { parseAliasRefresh, withAliasFields } from '@/lib/admin-alias-ui';
 
 type Role = 'user' | 'promoter' | 'organizer' | 'admin';
 type Tab = 'all' | 'promoters' | 'organizers' | 'admins';
@@ -17,6 +20,8 @@ interface Profile {
   bio: string | null;
   order_count?: number;
   total_spent?: number;
+  alias?: string | null;
+  is_special?: boolean;
   promoter?: {
     display_name: string | null;
     instagram_handle: string | null;
@@ -103,6 +108,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
+  const [aliasEdit, setAliasEdit] = useState<{ id: string; name: string; alias: string | null } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -147,6 +153,7 @@ export default function AdminUsersPage() {
       const json = await res.json();
       if (json.success) {
         toast.success('Role updated');
+        void refreshAlias(userId);
       } else {
         setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: prevRole } : u)));
         toast.error(json.error ?? 'Failed to update role');
@@ -154,6 +161,18 @@ export default function AdminUsersPage() {
     } catch {
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: prevRole } : u)));
       toast.error('Network error');
+    }
+  }
+
+  // A role change can create the user's alias (and change is_special). Refresh just that row; if the
+  // lookup fails the row stays as it is, with no flag and no toast.
+  async function refreshAlias(userId: string) {
+    try {
+      const res = await fetch(`/api/v1/admin/users/${userId}/alias`);
+      const fields = parseAliasRefresh(await res.json());
+      if (res.ok && fields) setUsers((prev) => withAliasFields(prev, userId, fields));
+    } catch {
+      /* leave the row as it is */
     }
   }
 
@@ -183,6 +202,10 @@ export default function AdminUsersPage() {
       u.email ||
       u.id
     );
+  }
+
+  function openAliasEdit(u: Profile) {
+    setAliasEdit({ id: u.id, name: userName(u), alias: u.alias ?? null });
   }
 
   const th = 'px-3 py-2.5 text-left text-xs font-label uppercase tracking-wider text-[#7DD8E8] whitespace-nowrap';
@@ -255,6 +278,7 @@ export default function AdminUsersPage() {
                 <thead className="bg-white/5">
                   <tr>
                     <th className={th}>User</th>
+                    <th className={`${th} hidden md:table-cell`}>Alias</th>
                     <th className={th}>Email</th>
                     <th className={th}>Role</th>
                     <th className={th}>Neighborhood</th>
@@ -273,6 +297,12 @@ export default function AdminUsersPage() {
                             {[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}
                           </span>
                         </div>
+                        <div className="md:hidden">
+                          <AliasCell compact name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
+                        </div>
+                      </td>
+                      <td className={`${td} hidden md:table-cell`}>
+                        <AliasCell name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
                       </td>
                       <td className={tdMuted}>{u.email ?? '—'}</td>
                       <td className={td}>
@@ -315,6 +345,7 @@ export default function AdminUsersPage() {
                 <thead className="bg-white/5">
                   <tr>
                     <th className={th}>Display Name</th>
+                    <th className={`${th} hidden md:table-cell`}>Alias</th>
                     <th className={th}>Email</th>
                     <th className={th}>Instagram</th>
                     <th className={th}>Status</th>
@@ -329,6 +360,12 @@ export default function AdminUsersPage() {
                         {u.promoter?.display_name ||
                           [u.first_name, u.last_name].filter(Boolean).join(' ') ||
                           '—'}
+                        <div className="md:hidden">
+                          <AliasCell compact name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
+                        </div>
+                      </td>
+                      <td className={`${td} hidden md:table-cell`}>
+                        <AliasCell name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
                       </td>
                       <td className={tdMuted}>{u.email ?? '—'}</td>
                       <td className={td}>
@@ -368,6 +405,7 @@ export default function AdminUsersPage() {
                 <thead className="bg-white/5">
                   <tr>
                     <th className={th}>Full Name</th>
+                    <th className={`${th} hidden md:table-cell`}>Alias</th>
                     <th className={th}>Email</th>
                     <th className={th}>Neighborhood</th>
                     <th className={th}>Bio</th>
@@ -380,6 +418,12 @@ export default function AdminUsersPage() {
                     <tr key={u.id} className="hover:bg-white/[0.03] transition-colors">
                       <td className={td}>
                         {[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}
+                        <div className="md:hidden">
+                          <AliasCell compact name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
+                        </div>
+                      </td>
+                      <td className={`${td} hidden md:table-cell`}>
+                        <AliasCell name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
                       </td>
                       <td className={tdMuted}>{u.email ?? '—'}</td>
                       <td className={tdMuted}>{u.neighborhood ?? '—'}</td>
@@ -421,6 +465,7 @@ export default function AdminUsersPage() {
                 <thead className="bg-white/5">
                   <tr>
                     <th className={th}>Full Name</th>
+                    <th className={`${th} hidden md:table-cell`}>Alias</th>
                     <th className={th}>Email</th>
                     <th className={th}>Joined</th>
                     <th className={th}>Action</th>
@@ -431,6 +476,12 @@ export default function AdminUsersPage() {
                     <tr key={u.id} className="hover:bg-white/[0.03] transition-colors">
                       <td className={td}>
                         {[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}
+                        <div className="md:hidden">
+                          <AliasCell compact name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
+                        </div>
+                      </td>
+                      <td className={`${td} hidden md:table-cell`}>
+                        <AliasCell name={userName(u)} alias={u.alias} isSpecial={u.is_special} onEdit={() => openAliasEdit(u)} />
                       </td>
                       <td className={tdMuted}>{u.email ?? '—'}</td>
                       <td className={`${tdMuted} whitespace-nowrap`}>
@@ -496,6 +547,17 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Alias edit dialog */}
+      {aliasEdit && (
+        <AliasEditDialog
+          userId={aliasEdit.id}
+          userName={aliasEdit.name}
+          currentAlias={aliasEdit.alias}
+          onClose={() => setAliasEdit(null)}
+          onSaved={(id, alias) => setUsers((prev) => withAliasFields(prev, id, { alias }))}
+        />
       )}
     </div>
   );
