@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { checkIsAdmin } from '@/lib/admin-auth';
+import { attachAliasInfo } from '@/lib/admin-user-aliases';
 
 function getSupabaseAdmin() {
   return createSupabaseClient(
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
 
     let profilesQuery = supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, phone, role, created_at, neighborhood, age_range, gender, is_parent, bio')
+      .select('id, first_name, last_name, email, phone, role, created_at, neighborhood, age_range, gender, is_parent, bio, is_organizer')
       .order('created_at', { ascending: false });
 
     const roleMap: Record<string, string> = {
@@ -62,7 +63,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: profilesError.message }, { status: 500 });
     }
 
-    const profileList = profiles ?? [];
+    // Adds alias and is_special for this page of users (never throws; see lib/admin-user-aliases.ts).
+    const profileList = await attachAliasInfo(supabase, profiles ?? []);
 
     if (tab === 'all') {
       const userIds = profileList.map((p) => p.id);
