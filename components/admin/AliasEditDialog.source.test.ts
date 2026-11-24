@@ -8,6 +8,23 @@ const dialog = read('components/admin/AliasEditDialog.tsx')
 const cell = read('components/admin/AliasCell.tsx')
 const page = read('app/admin/users/page.tsx')
 
+// The trimmed argument text of every `setError(...)` call, with balanced parentheses.
+function setErrorArgs(src: string): string[] {
+  const out: string[] = []
+  for (const m of src.matchAll(/\bsetError\(/g)) {
+    let depth = 1
+    let i = (m.index as number) + m[0].length
+    const start = i
+    while (i < src.length && depth > 0) {
+      if (src[i] === '(') depth++
+      else if (src[i] === ')') depth--
+      i++
+    }
+    out.push(src.slice(start, i - 1).trim())
+  }
+  return out
+}
+
 describe('AliasEditDialog', () => {
   it('is a labelled modal dialog with the user name in the label', () => {
     expect(dialog.startsWith("'use client'")).toBe(true)
@@ -43,8 +60,12 @@ describe('AliasEditDialog', () => {
     expect(dialog).toContain('aliasSaveError(')
     expect(dialog).toContain('NETWORK_ERROR')
     expect(dialog).not.toMatch(/setError\([^)]*\.message/)
-    expect(dialog).not.toMatch(/setError\([^)]*\.error\b/)
     expect(dialog).not.toMatch(/toast\.error/)
+    // Allowlist of every setError( argument. v.error is allowed because v is the result of the client-side
+    // validateAlias, so it is one of that function's own fixed messages, never server text.
+    const args = setErrorArgs(dialog)
+    expect(args.length).toBeGreaterThanOrEqual(4)
+    for (const a of args) expect(a).toMatch(/^(?:null|v\.error|aliasSaveError\([\s\S]*\)|NETWORK_ERROR)$/)
   })
 
   it('on success calls onSaved, closes and shows the toast', () => {
