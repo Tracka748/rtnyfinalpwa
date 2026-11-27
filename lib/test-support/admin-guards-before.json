@@ -478,6 +478,7 @@
     "/admin/groups": "admin-layout",
     "/admin/invites": "admin-layout",
     "/admin/orders": "admin-layout",
+    "/admin/packages": "admin-layout",
     "/admin/partners": "admin-layout",
     "/admin/partners/[id]/edit": "admin-layout",
     "/admin/partners/[id]/offers": "admin-layout",
