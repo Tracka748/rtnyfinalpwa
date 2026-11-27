@@ -240,6 +240,13 @@
       ],
       "guard": "requireAdmin+requireCapability:PACKAGES_VIEW"
     },
+    "packages/[id]/routing": {
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "guard": "requireAdmin"
+    },
     "packages/[id]/versions": {
       "methods": [
         "POST"
